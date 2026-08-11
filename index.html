@@ -19,70 +19,68 @@
     -webkit-user-select: none; user-select: none;
   }
 
+  button { font-family: inherit; }
+
   #carte { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
 
   /* ---------- Bandeau de la carte ---------- */
 
   #hud {
-    position: absolute;
-    left: 12px; right: 12px; bottom: 30px;
+    position: absolute; left: 12px; right: 12px; bottom: 30px;
     z-index: 1000;
     background: rgba(20, 20, 25, 0.92);
-    border: 1px solid #333;
-    border-radius: 16px;
-    padding: 16px;
-    text-align: center;
+    border: 1px solid #333; border-radius: 16px;
+    padding: 16px; text-align: center;
   }
 
   #texte { font-size: 16px; line-height: 1.4; }
-
-  #etat {
-    font-size: 12px; color: #777;
-    margin-top: 6px; min-height: 14px;
-  }
+  #etat { font-size: 12px; color: #777; margin-top: 6px; min-height: 14px; }
 
   #entrer {
-    display: none;
-    margin-top: 12px; width: 100%;
-    padding: 14px;
-    font-size: 17px; font-weight: 600;
+    display: none; margin-top: 12px; width: 100%;
+    padding: 14px; font-size: 17px; font-weight: 600;
     color: #fff; background: #b455d4;
     border: none; border-radius: 12px;
   }
 
-  /* Fiche du joueur, en haut de la carte */
-  #fiche {
-    position: absolute;
-    top: 60px; left: 12px;
+  #barre-haut {
+    position: absolute; top: 60px; left: 12px; right: 12px;
     z-index: 1000;
-    background: rgba(20, 20, 25, 0.92);
-    border: 1px solid #333;
-    border-radius: 12px;
-    padding: 8px 12px;
-    font-size: 13px;
+    display: flex; gap: 8px; align-items: center;
   }
 
-  /* ---------- Ecran d'accueil ---------- */
+  #fiche {
+    background: rgba(20, 20, 25, 0.92);
+    border: 1px solid #333; border-radius: 12px;
+    padding: 8px 12px; font-size: 13px;
+  }
+
+  #btn-grimoire {
+    margin-left: auto;
+    background: rgba(20, 20, 25, 0.92);
+    border: 1px solid #333; border-radius: 12px;
+    padding: 8px 14px; font-size: 13px; color: #eee;
+  }
+
+  /* ---------- Accueil ---------- */
 
   #depart {
     position: absolute; top: 0; left: 0; right: 0; bottom: 0;
     z-index: 3000; background: #111;
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 24px;
+    align-items: center; justify-content: center; gap: 24px;
   }
 
   #depart h1 { font-size: 42px; margin: 0; letter-spacing: 4px; }
-  #depart p  { color: #888; margin: 0 40px; text-align: center; line-height: 1.5; }
+  #depart p { color: #888; margin: 0 40px; text-align: center; line-height: 1.5; }
 
   #btn-depart {
-    padding: 16px 40px;
-    font-size: 18px; font-weight: 600;
+    padding: 16px 40px; font-size: 18px; font-weight: 600;
     color: #fff; background: #b455d4;
     border: none; border-radius: 12px;
   }
 
-  /* ---------- Ecran de combat ---------- */
+  /* ---------- Combat ---------- */
 
   #combat {
     display: none;
@@ -95,55 +93,50 @@
   #combat.actif { display: flex; }
 
   #combat-lieu {
-    text-align: center;
-    padding: 60px 20px 0;
-    font-size: 13px;
-    color: #b98fd0;
-    letter-spacing: 1px;
+    text-align: center; padding: 55px 20px 0;
+    font-size: 12px; color: #b98fd0; letter-spacing: 1px;
   }
 
-  /* Zone du monstre : c'est ici que viendront tes dessins */
   #scene {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    flex: 1; min-height: 120px;
+    display: flex; align-items: center; justify-content: center;
     position: relative;
   }
 
   #monstre-img {
-    max-height: 100%;
-    max-width: 70%;
+    max-height: 100%; max-width: 65%;
     object-fit: contain;
     filter: drop-shadow(0 0 24px rgba(180, 85, 212, 0.35));
   }
 
-  /* Silhouette de remplacement tant qu'aucun dessin n'existe */
   #monstre-vide {
-    width: 150px; height: 150px;
+    width: 130px; height: 130px;
     border-radius: 50% 50% 42% 42%;
     background: radial-gradient(circle at 40% 35%, #4a3060, #221430);
     border: 2px solid #6b4a85;
     display: flex; align-items: center; justify-content: center;
-    font-size: 46px;
+    font-size: 40px;
     animation: flotter 3s ease-in-out infinite;
   }
 
   @keyframes flotter {
     0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-12px); }
+    50% { transform: translateY(-12px); }
   }
 
   .secoue { animation: secousse 0.3s; }
 
   @keyframes secousse {
     0%, 100% { transform: translateX(0); }
-    25%      { transform: translateX(-10px); }
-    75%      { transform: translateX(10px); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
   }
 
-  /* Barres de vie */
-  .jauge-bloc { padding: 0 20px 10px; }
+  /* Jauge de scouting */
+  #scout-bloc { display: none; padding: 0 20px 8px; }
+  #scout-bloc.visible { display: block; }
+
+  .jauge-bloc { padding: 0 20px 8px; }
 
   .jauge-nom {
     display: flex; justify-content: space-between;
@@ -151,70 +144,143 @@
   }
 
   .jauge {
-    height: 10px;
-    background: #241a2e;
-    border-radius: 6px;
-    overflow: hidden;
+    height: 9px; background: #241a2e;
+    border-radius: 6px; overflow: hidden;
   }
 
   .jauge span {
     display: block; height: 100%;
-    background: #6ec06e;
-    transition: width 0.35s;
+    background: #6ec06e; transition: width 0.35s;
   }
 
-  .jauge span.bas    { background: #d4a02a; }
+  .jauge span.bas { background: #d4a02a; }
   .jauge span.danger { background: #d4554a; }
+  .jauge span.scout { background: #b455d4; }
+
+  /* L'equipe, en bas */
+  #equipe-combat {
+    display: flex; gap: 6px;
+    padding: 0 20px 8px;
+  }
+
+  .carte-echo {
+    flex: 1;
+    background: rgba(10, 6, 16, 0.7);
+    border: 1px solid #4a3060;
+    border-radius: 10px;
+    padding: 7px 6px;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .carte-echo.ko { opacity: 0.35; }
+  .carte-echo b { display: block; font-size: 12px; margin-bottom: 3px; }
+
+  .mini-jauge {
+    height: 5px; background: #241a2e;
+    border-radius: 3px; overflow: hidden; margin-top: 4px;
+  }
+
+  .mini-jauge span { display: block; height: 100%; background: #6ec06e; }
 
   #combat-message {
-    margin: 0 20px 12px;
-    padding: 14px;
-    min-height: 52px;
+    margin: 0 20px 10px; padding: 12px;
+    min-height: 60px;
     background: rgba(10, 6, 16, 0.85);
-    border: 1px solid #4a3060;
-    border-radius: 12px;
-    font-size: 15px;
-    line-height: 1.4;
+    border: 1px solid #4a3060; border-radius: 12px;
+    font-size: 14px; line-height: 1.45;
   }
 
   #combat-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-    padding: 0 20px 40px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px; padding: 0 20px 40px;
   }
 
   #combat-actions button {
-    padding: 16px 4px;
-    font-size: 15px; font-weight: 600;
-    color: #fff;
-    background: #3d2452;
-    border: 1px solid #6b4a85;
-    border-radius: 12px;
+    padding: 15px 4px; font-size: 15px; font-weight: 600;
+    color: #fff; background: #3d2452;
+    border: 1px solid #6b4a85; border-radius: 12px;
   }
 
   #combat-actions button:disabled { opacity: 0.35; }
 
+  #combat-actions button.scout { background: #7a3d95; border-color: #b455d4; }
+
   #combat-actions button.sortie {
     grid-column: 1 / -1;
-    background: #b455d4;
-    border-color: #b455d4;
+    background: #b455d4; border-color: #b455d4;
   }
+
+  /* ---------- Grimoire ---------- */
+
+  #grimoire {
+    display: none;
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 2500; background: #14101a;
+    flex-direction: column;
+  }
+
+  #grimoire.actif { display: flex; }
+
+  #grimoire h2 {
+    margin: 0; padding: 60px 20px 6px;
+    font-size: 22px; letter-spacing: 2px;
+  }
+
+  #grimoire .aide { padding: 0 20px 12px; color: #888; font-size: 13px; }
+
+  #liste-echos { flex: 1; overflow-y: auto; padding: 0 20px 20px; }
+
+  .ligne-echo {
+    display: flex; align-items: center; gap: 12px;
+    background: #1e1826; border: 1px solid #332a3f;
+    border-radius: 12px; padding: 12px; margin-bottom: 8px;
+  }
+
+  .ligne-echo.equipee { border-color: #b455d4; background: #251b30; }
+
+  .ligne-echo .infos { flex: 1; min-width: 0; }
+  .ligne-echo .nom { font-size: 15px; font-weight: 600; }
+  .ligne-echo .titre { font-size: 12px; color: #999; }
+  .ligne-echo .trait { font-size: 12px; color: #b98fd0; margin-top: 4px; line-height: 1.3; }
+  .ligne-echo .stats { font-size: 12px; color: #777; margin-top: 3px; }
+
+  .pastille {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+
+  #btn-fermer-grimoire {
+    margin: 0 20px 40px; padding: 15px;
+    font-size: 16px; font-weight: 600;
+    color: #fff; background: #b455d4;
+    border: none; border-radius: 12px;
+  }
+
+  .leaflet-popup-content { font-family: -apple-system, sans-serif; }
+  .pop-titre { font-weight: 700; font-size: 15px; }
+  .pop-lieu { color: #666; font-size: 12px; margin-top: 2px; }
+  .pop-mons { margin-top: 6px; }
 </style>
 </head>
 <body>
 
 <div id="carte"></div>
 
-<div id="fiche">Niveau 1 &middot; 40/40 PV</div>
+<div id="barre-haut">
+  <div id="fiche">Equipe vide</div>
+  <button id="btn-grimoire">Grimoire</button>
+</div>
 
 <div id="hud">
   <div id="texte">Recherche de ta position...</div>
   <div id="etat"></div>
-  <button id="entrer">Entrer dans le donjon</button>
+  <button id="entrer">Approcher</button>
 </div>
 
-<!-- ------------------ ECRAN DE COMBAT ------------------ -->
+<!-- ------------------ COMBAT ------------------ -->
 <div id="combat">
   <div id="combat-lieu"></div>
 
@@ -225,32 +291,42 @@
 
   <div class="jauge-bloc">
     <div class="jauge-nom">
-      <span id="m-nom">Monstre</span>
+      <span id="m-nom">Echo</span>
       <span id="m-pv">0/0</span>
     </div>
     <div class="jauge"><span id="m-jauge" style="width:100%"></span></div>
   </div>
 
-  <div class="jauge-bloc">
+  <div id="scout-bloc">
     <div class="jauge-nom">
-      <span id="j-nom">Toi</span>
-      <span id="j-pv">0/0</span>
+      <span>Emprise</span>
+      <span id="s-val">0 %</span>
     </div>
-    <div class="jauge"><span id="j-jauge" style="width:100%"></span></div>
+    <div class="jauge"><span id="s-jauge" class="scout" style="width:0%"></span></div>
   </div>
+
+  <div id="equipe-combat"></div>
 
   <div id="combat-message"></div>
 
   <div id="combat-actions">
     <button id="btn-attaquer">Attaquer</button>
-    <button id="btn-defendre">Defendre</button>
+    <button id="btn-scouter" class="scout">Scouter</button>
     <button id="btn-fuir">Fuir</button>
   </div>
 </div>
 
+<!-- ------------------ GRIMOIRE ------------------ -->
+<div id="grimoire">
+  <h2>GRIMOIRE</h2>
+  <div class="aide">Touche un Echo pour le placer dans ton equipe (3 maximum).</div>
+  <div id="liste-echos"></div>
+  <button id="btn-fermer-grimoire">Fermer</button>
+</div>
+
 <div id="depart">
   <h1>ECHOS</h1>
-  <p>Les lieux du monde reel gardent chacun leur echo. Marche jusqu'a eux.</p>
+  <p>Les lieux gardent leurs echos. Tu ne combats pas : tu invoques.</p>
   <button id="btn-depart">Commencer</button>
 </div>
 
@@ -259,41 +335,161 @@
    1. REGLAGES
    ============================================================ */
 
-var RAYON_RECHERCHE   = 700;
-var DISTANCE_ENTREE   = 40;
-var DISTANCE_RELANCE  = 350;
-var DISTANCE_DOUBLON  = 80;
-var CLE_DONJONS       = "echos_donjons_v3";
-var CLE_JOUEUR        = "echos_joueur_v1";
-var URL_OVERPASS      = "https://overpass-api.de/api/interpreter";
+var RAYON_RECHERCHE    = 700;
+var DISTANCE_ENTREE    = 40;   // metres pour declencher la rencontre
+var DISTANCE_PREEMPTIF = 15;   // en dessous : tour d'ouverture gratuit
+var DISTANCE_RELANCE   = 350;
+var DISTANCE_DOUBLON   = 80;
+var EQUIPE_MAX         = 3;
 
-// Dossier de tes dessins. Un fichier par monstre, nomme comme
-// la cle ci-dessous : monstres/gardien-de-cendre.png
-var DOSSIER_MONSTRES  = "monstres/";
+var CLE_DONJONS = "echos_donjons_v3";
+var CLE_JOUEUR  = "echos_joueur_v2";
+var URL_OVERPASS = "https://overpass-api.de/api/interpreter";
+var DOSSIER_MONSTRES = "monstres/";
 
 
 /* ============================================================
-   2. LES QUATRE TYPES DE LIEUX
+   2. LE BESTIAIRE
+   Chaque espece : ses statistiques de base, son trait, sa famille.
+   "img" est le nom du fichier : monstres/komainu.png
    ============================================================ */
 
-var CATEGORIES = {
-  monument: {
-    prefixe: "Seuil de",
-    monstres: ["Cendrec", "Spectre grave", "Statue fendue", "Poussiere ancienne"]
+var ESPECES = {
+  /* --- TEMPLES --- */
+  komainu: {
+    img: "komainu", famille: "temple",
+    nom: "Komainu", titre: "le Lion Gardien",
+    pv: 26, atq: 5, def: 9,
+    trait: "Garde du Seuil : annule les degats d'un tour et en renvoie la moitie."
   },
-  parc: {
-    prefixe: "Clairiere du parc",
-    monstres: ["Bourgeon-dent", "Gloubi", "Souche rampante", "Vieux Rat"]
+  chiguo: {
+    img: "chiguo", famille: "temple",
+    nom: "Chi Guo", titre: "Gardien des Terres",
+    pv: 23, atq: 4, def: 7,
+    trait: "Souffle d'Encens : empoisonne l'adversaire pendant 4 tours."
   },
-  metro: {
-    prefixe: "Tunnel d'entree de",
-    monstres: ["Passant gris", "Echo perdu", "Rat de quai", "Souffle d'acier"]
+  sunwukong: {
+    img: "sunwukong", famille: "temple",
+    nom: "Sun Wukong", titre: "l'Esprit Enchaine",
+    pv: 14, atq: 11, def: 2,
+    trait: "Bond du Singe : frappe deux fois, mais subit un contrecoup."
   },
-  temple: {
-    prefixe: "Porte du Temple de",
-    monstres: ["Gardien de cendre", "Moine sans visage", "Braise votive", "Ombre d'encens"]
+  palantir: {
+    img: "palantir", famille: "temple",
+    nom: "Palantir", titre: "la Sphere de Vide",
+    pv: 20, atq: 3, def: 6,
+    trait: "Question du Vide : pose une question ; l'echec coute la moitie des PV."
+  },
+
+  /* --- METRO --- */
+  mechadrill: {
+    img: "mechadrill", famille: "metro",
+    nom: "Mecha Drill", titre: "la Foreuse",
+    pv: 31, atq: 8, def: 6,
+    trait: "Percee : charge un tour, puis frappe au triple."
+  },
+  teketeke: {
+    img: "teketeke", famille: "metro",
+    nom: "Teke Teke", titre: "l'Onryo",
+    pv: 16, atq: 7, def: 3,
+    trait: "Rampe : trois frappes qui ignorent la defense."
+  },
+  zhanxiyuan: {
+    img: "zhanxiyuan", famille: "metro",
+    nom: "Zhan Xiyuan", titre: "l'Inventeur",
+    pv: 19, atq: 5, def: 5,
+    trait: "Aiguillage : l'adversaire saute son prochain tour."
+  },
+  baku: {
+    img: "baku", famille: "metro",
+    nom: "Baku", titre: "le Mange-Reve",
+    pv: 23, atq: 6, def: 4,
+    trait: "Devorer : vole des PV a l'adversaire."
+  },
+
+  /* --- MONUMENTS --- */
+  eiffel: {
+    img: "eiffel", famille: "monument",
+    nom: "Eiffel", titre: "l'Architecte",
+    pv: 24, atq: 5, def: 7,
+    trait: "Charpente : la defense monte a chaque tour."
+  },
+  tortuedragon: {
+    img: "tortuedragon", famille: "monument",
+    nom: "Tortue Dragon", titre: "le Maitre des Fondations",
+    pv: 29, atq: 6, def: 9,
+    trait: "Ancrage : renonce a fuir, mais double ses degats."
+  },
+  hephaistos: {
+    img: "hephaistos", famille: "monument",
+    nom: "Hephaiston", titre: "le Marteau",
+    pv: 22, atq: 7, def: 6,
+    trait: "Enclume : rend d'un coup tout ce qu'il a encaisse."
+  },
+  vinci: {
+    img: "vinci", famille: "monument",
+    nom: "Vinci", titre: "le Savoir",
+    pv: 18, atq: 8, def: 3,
+    trait: "Mesure : ses coups ignorent la defense pendant 3 tours."
+  },
+
+  /* --- PARCS --- */
+  hinezumi: {
+    img: "hinezumi", famille: "parc",
+    nom: "Hinezumi", titre: "le Rat de Feu",
+    pv: 18, atq: 6, def: 3,
+    trait: "Robe de Flammes : brulure qui s'aggrave chaque tour."
+  },
+  penghou: {
+    img: "penghou", famille: "parc",
+    nom: "Penghou", titre: "le Chien",
+    pv: 21, atq: 4, def: 5,
+    trait: "Seve : regenere des PV a chaque tour."
+  },
+  peng: {
+    img: "peng", famille: "parc",
+    nom: "Peng", titre: "l'Oiseau Colossal",
+    pv: 20, atq: 7, def: 4,
+    trait: "Envol : esquive garantie, puis contre-attaque."
+  },
+  jinchan: {
+    img: "jinchan", famille: "parc",
+    nom: "Jin Chan", titre: "le Crapaud",
+    pv: 17, atq: 4, def: 3,
+    trait: "Fortune : double les points d'echo gagnes."
   }
 };
+
+// Les quatre especes possibles par type de lieu
+var ESPECES_PAR_LIEU = {
+  temple:   ["komainu", "chiguo", "sunwukong", "palantir"],
+  metro:    ["mechadrill", "teketeke", "zhanxiyuan", "baku"],
+  monument: ["eiffel", "tortuedragon", "hephaistos", "vinci"],
+  parc:     ["hinezumi", "penghou", "peng", "jinchan"]
+};
+
+var CATEGORIES = {
+  monument: { prefixe: "Seuil de" },
+  parc:     { prefixe: "Clairiere du parc" },
+  metro:    { prefixe: "Tunnel d'entree de" },
+  temple:   { prefixe: "Porte du Temple de" }
+};
+
+// Statistiques d'un Echo a un niveau donne
+function statsAuNiveau(especeId, niveau) {
+  var e = ESPECES[especeId];
+  var f = 1 + (niveau - 1) * 0.26;
+  return {
+    pvMax: Math.round(e.pv * f),
+    atq:   Math.round(e.atq * f),
+    def:   Math.round(e.def * f)
+  };
+}
+
+
+/* ============================================================
+   3. TYPE DE LIEU ET NOM
+   ============================================================ */
 
 function categorieDuLieu(tags) {
   if (tags.amenity === "place_of_worship") return "temple";
@@ -305,11 +501,6 @@ function categorieDuLieu(tags) {
   if (tags.tourism === "attraction") return "monument";
   return null;
 }
-
-
-/* ============================================================
-   3. NETTOYAGE DU NOM
-   ============================================================ */
 
 var MOTS_A_RETIRER = [
   "MRT Station", "Metro Station", "Subway Station", "Station",
@@ -325,14 +516,6 @@ function nettoyerNom(nom) {
   }
   propre = propre.trim();
   return propre.length > 0 ? propre : nom;
-}
-
-// "Gardien de cendre" -> "gardien-de-cendre" (nom du fichier PNG)
-function cleImage(nomMonstre) {
-  return nomMonstre
-    .toLowerCase()
-    .replace(/[' ]/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
 }
 
 
@@ -378,71 +561,117 @@ function donjonDepuisLieu(element) {
 
   var id = element.type + "/" + element.id;
   var a = tirageAleatoire(grainePourTexte(id));
-  var modele = CATEGORIES[cat];
+  var liste = ESPECES_PAR_LIEU[cat];
 
   return {
     id: id,
-    lat: lat,
-    lon: lon,
+    lat: lat, lon: lon,
     lieu: brut,
     categorie: cat,
-    nom: modele.prefixe + " " + nettoyerNom(brut),
-    monstre: modele.monstres[Math.floor(a() * modele.monstres.length)],
+    nom: CATEGORIES[cat].prefixe + " " + nettoyerNom(brut),
+    espece: liste[Math.floor(a() * liste.length)],
     niveau: 1 + Math.floor(a() * 8),
-    vaincu: false
-  };
-}
-
-// Statistiques du monstre, deduites de son niveau
-function statsMonstre(donjon) {
-  return {
-    nom: donjon.monstre,
-    niveau: donjon.niveau,
-    pvMax: 18 + donjon.niveau * 7,
-    pv:    18 + donjon.niveau * 7,
-    atq:   4 + donjon.niveau * 2,
-    def:   1 + donjon.niveau
+    capture: false,     // scoute avec succes
+    dissipe: false      // vaincu sans etre capture
   };
 }
 
 
 /* ============================================================
-   5. LE JOUEUR
+   5. LE JOUEUR : sa collection et son equipe
    ============================================================ */
 
-var joueurStats = {
-  niveau: 1,
-  pvMax: 40, pv: 40,
-  atq: 9, def: 4,
-  xp: 0,
-  victoires: 0
-};
+var collection = {};   // { komainu: { espece, niveau, xp, pv } }
+var equipe = [];       // jusqu'a 3 identifiants d'espece
 
-function xpRequis(niveau) {
-  return niveau * 25;
+function nouvelEcho(especeId, niveau) {
+  var s = statsAuNiveau(especeId, niveau);
+  return { espece: especeId, niveau: niveau, xp: 0, pv: s.pvMax };
+}
+
+function ajouterAlaCollection(especeId, niveau) {
+  var existant = collection[especeId];
+
+  if (!existant) {
+    collection[especeId] = nouvelEcho(especeId, niveau);
+    if (equipe.length < EQUIPE_MAX) equipe.push(especeId);
+    return "nouveau";
+  }
+
+  if (niveau > existant.niveau) {
+    existant.niveau = niveau;
+    existant.pv = statsAuNiveau(especeId, niveau).pvMax;
+    return "renforce";
+  }
+
+  return "connu";
+}
+
+function xpRequis(niveau) { return 12 + niveau * 14; }
+
+function gagnerXp(especeId, gain) {
+  var e = collection[especeId];
+  if (!e) return null;
+
+  e.xp += gain;
+  var montees = 0;
+
+  while (e.xp >= xpRequis(e.niveau) && e.niveau < 50) {
+    e.xp -= xpRequis(e.niveau);
+    e.niveau++;
+    montees++;
+    e.pv = statsAuNiveau(especeId, e.niveau).pvMax;   // soin a la montee
+  }
+
+  return montees;
 }
 
 function sauverJoueur() {
-  try { localStorage.setItem(CLE_JOUEUR, JSON.stringify(joueurStats)); } catch (e) {}
+  try {
+    localStorage.setItem(CLE_JOUEUR, JSON.stringify({ collection: collection, equipe: equipe }));
+  } catch (e) {}
 }
 
 function chargerJoueur() {
   try {
     var brut = localStorage.getItem(CLE_JOUEUR);
-    if (brut) joueurStats = JSON.parse(brut);
+    if (brut) {
+      var d = JSON.parse(brut);
+      collection = d.collection || {};
+      equipe = d.equipe || [];
+    }
   } catch (e) {}
+
+  // Premier lancement : Jin Chan te suit deja, au niveau 3.
+  // En dessous, un Echo seul ne survit a aucune rencontre.
+  if (Object.keys(collection).length === 0) {
+    ajouterAlaCollection("jinchan", 3);
+    sauverJoueur();
+  }
+
   majFiche();
 }
 
 function majFiche() {
-  document.getElementById("fiche").innerHTML =
-    "Niveau " + joueurStats.niveau + " &middot; " +
-    joueurStats.pv + "/" + joueurStats.pvMax + " PV";
+  var f = document.getElementById("fiche");
+
+  if (equipe.length === 0) {
+    f.textContent = "Equipe vide";
+    return;
+  }
+
+  var noms = [];
+  for (var i = 0; i < equipe.length; i++) {
+    var e = collection[equipe[i]];
+    noms.push(ESPECES[e.espece].nom + " " + e.niveau);
+  }
+
+  f.textContent = noms.join(" \u00b7 ");
 }
 
 
 /* ============================================================
-   6. INTERROGATION D'OPENSTREETMAP
+   6. OPENSTREETMAP
    ============================================================ */
 
 function requeteOverpass(lat, lon) {
@@ -479,9 +708,9 @@ function chargerDonjons(lat, lon) {
   etat("Consultation des lieux alentour...");
 
   fetch(URL_OVERPASS, { method: "POST", body: requeteOverpass(lat, lon) })
-    .then(function (reponse) {
-      if (!reponse.ok) throw new Error("serveur OSM occupe (" + reponse.status + ")");
-      return reponse.json();
+    .then(function (r) {
+      if (!r.ok) throw new Error("serveur OSM occupe (" + r.status + ")");
+      return r.json();
     })
     .then(function (donnees) {
       var nouveaux = 0;
@@ -530,16 +759,19 @@ var COULEURS = {
 };
 
 var donjons = {};
-var marqueurs = {};          // pour pouvoir griser un donjon vaincu
+var marqueurs = {};
 var donjonProche = null;
+var distanceProche = Infinity;
 var dernierePosition = null;
 var dernierePosRequete = null;
+
+function estClos(d) { return d.capture || d.dissipe; }
 
 function poserMarqueur(d) {
   var m = L.circleMarker([d.lat, d.lon], {
     radius: 11, color: "#fff", weight: 2,
-    fillColor: d.vaincu ? "#555" : (COULEURS[d.categorie] || "#b455d4"),
-    fillOpacity: d.vaincu ? 0.5 : 0.9
+    fillColor: estClos(d) ? "#555" : (COULEURS[d.categorie] || "#b455d4"),
+    fillOpacity: estClos(d) ? 0.5 : 0.9
   }).addTo(carte);
 
   m.bindPopup(texteInfobulle(d));
@@ -547,21 +779,26 @@ function poserMarqueur(d) {
 }
 
 function texteInfobulle(d) {
+  var e = ESPECES[d.espece];
+  var bas;
+
+  if (d.capture) bas = "Echo lie a toi";
+  else if (d.dissipe) bas = "Echo dissipe";
+  else bas = e.nom + ", " + e.titre + " &middot; niveau " + d.niveau;
+
   return '<div class="pop-titre">' + d.nom + '</div>' +
          '<div class="pop-lieu">' + d.lieu + '</div>' +
-         '<div class="pop-mons">' +
-         (d.vaincu ? "Echo dissipe" : d.monstre + ' &middot; niveau ' + d.niveau) +
-         '</div>';
+         '<div class="pop-mons">' + bas + '</div>';
 }
 
-function marquerVaincu(d) {
-  d.vaincu = true;
+function rafraichirMarqueur(d) {
   var m = marqueurs[d.id];
-  if (m) {
-    m.setStyle({ fillColor: "#555", fillOpacity: 0.5 });
-    m.setPopupContent(texteInfobulle(d));
-  }
-  sauvegarder();
+  if (!m) return;
+  m.setStyle({
+    fillColor: estClos(d) ? "#555" : (COULEURS[d.categorie] || "#b455d4"),
+    fillOpacity: estClos(d) ? 0.5 : 0.9
+  });
+  m.setPopupContent(texteInfobulle(d));
 }
 
 
@@ -579,9 +816,7 @@ function charger() {
     if (!brut) return;
     donjons = JSON.parse(brut);
     for (var id in donjons) poserMarqueur(donjons[id]);
-  } catch (e) {
-    donjons = {};
-  }
+  } catch (e) { donjons = {}; }
 }
 
 
@@ -590,19 +825,16 @@ function charger() {
    ============================================================ */
 
 function distanceMetres(lat1, lon1, lat2, lon2) {
-  var R = 6371000;
-  var p = Math.PI / 180;
-  var dLat = (lat2 - lat1) * p;
-  var dLon = (lon2 - lon1) * p;
+  var R = 6371000, p = Math.PI / 180;
+  var dLat = (lat2 - lat1) * p, dLon = (lon2 - lon1) * p;
   var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
           Math.cos(lat1 * p) * Math.cos(lat2 * p) *
           Math.sin(dLon / 2) * Math.sin(dLon / 2);
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function etat(message) {
-  document.getElementById("etat").textContent = message;
-}
+function elem(id) { return document.getElementById(id); }
+function etat(m) { elem("etat").textContent = m; }
 
 
 /* ============================================================
@@ -611,38 +843,46 @@ function etat(message) {
 
 function mettreAJourHud(lat, lon) {
   donjonProche = null;
-  var distanceMin = Infinity;
+  distanceProche = Infinity;
 
   for (var id in donjons) {
     var d = donjons[id];
     var dist = distanceMetres(lat, lon, d.lat, d.lon);
-    if (dist < distanceMin) {
-      distanceMin = dist;
-      donjonProche = d;
-    }
+    if (dist < distanceProche) { distanceProche = dist; donjonProche = d; }
   }
 
-  var texte = document.getElementById("texte");
-  var boutonEntrer = document.getElementById("entrer");
+  var texte = elem("texte");
+  var bouton = elem("entrer");
 
   if (!donjonProche) {
     texte.textContent = "Aucun lieu eveille dans les environs.";
-    boutonEntrer.style.display = "none";
+    bouton.style.display = "none";
     return;
   }
 
-  if (distanceMin <= DISTANCE_ENTREE) {
-    if (donjonProche.vaincu) {
-      texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>L'echo s'est dissipe ici.";
-      boutonEntrer.style.display = "none";
-    } else {
-      texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>" +
-                        donjonProche.monstre + " &middot; niveau " + donjonProche.niveau;
-      boutonEntrer.style.display = "block";
-    }
+  var e = ESPECES[donjonProche.espece];
+
+  if (distanceProche > DISTANCE_ENTREE) {
+    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>" + Math.round(distanceProche) + " m";
+    bouton.style.display = "none";
+    return;
+  }
+
+  if (donjonProche.capture) {
+    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>Cet echo t'a deja rejoint.";
+    bouton.style.display = "none";
+  } else if (donjonProche.dissipe) {
+    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>L'echo s'est dissipe ici.";
+    bouton.style.display = "none";
+  } else if (equipe.length === 0) {
+    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>Aucun echo dans ton equipe.";
+    bouton.style.display = "none";
   } else {
-    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>" + Math.round(distanceMin) + " m";
-    boutonEntrer.style.display = "none";
+    texte.innerHTML = "<b>" + e.nom + "</b>, " + e.titre +
+                      "<br>niveau " + donjonProche.niveau +
+                      (distanceProche <= DISTANCE_PREEMPTIF ?
+                       "<br><span style='color:#b455d4'>Il ne t'a pas vu venir.</span>" : "");
+    bouton.style.display = "block";
   }
 }
 
@@ -651,175 +891,325 @@ function mettreAJourHud(lat, lon) {
    11. LE COMBAT
    ============================================================ */
 
-var combat = null;   // { donjon, monstre, defend, fini }
+var combat = null;
 
-function elem(id) { return document.getElementById(id); }
-
-function message(txt) {
-  elem("combat-message").innerHTML = txt;
-}
-
-function majJauges() {
-  var m = combat.monstre;
-
-  elem("m-pv").textContent = Math.max(0, m.pv) + "/" + m.pvMax;
-  elem("j-pv").textContent = Math.max(0, joueurStats.pv) + "/" + joueurStats.pvMax;
-
-  var pourcentM = Math.max(0, m.pv) / m.pvMax * 100;
-  var pourcentJ = Math.max(0, joueurStats.pv) / joueurStats.pvMax * 100;
-
-  var jm = elem("m-jauge"), jj = elem("j-jauge");
-  jm.style.width = pourcentM + "%";
-  jj.style.width = pourcentJ + "%";
-
-  jm.className = pourcentM < 20 ? "danger" : (pourcentM < 50 ? "bas" : "");
-  jj.className = pourcentJ < 20 ? "danger" : (pourcentJ < 50 ? "bas" : "");
-}
-
-function boutonsActifs(actifs) {
-  elem("btn-attaquer").disabled = !actifs;
-  elem("btn-defendre").disabled = !actifs;
-  elem("btn-fuir").disabled = !actifs;
-}
-
-// Degats : l'attaque moins la moitie de la defense, plus un alea
-function degats(atq, def, aleatoire) {
+function degats(atq, def, alea) {
   var base = atq - def / 2;
-  var variation = 0.85 + aleatoire * 0.3;      // entre 85 % et 115 %
-  return Math.max(1, Math.round(base * variation));
+  return Math.max(1, Math.round(base * (0.85 + alea * 0.3)));
 }
 
-function demarrerCombat(donjon) {
+// Chance de lier l'Echo, en pourcentage
+function chanceScout(c) {
+  var a = c.adversaire;
+
+  // Plus il est affaibli, plus il ecoute
+  var affaibli = 1 - Math.max(0, a.pv) / a.pvMax;
+
+  var moyenneEquipe = 0;
+  for (var i = 0; i < c.equipe.length; i++) moyenneEquipe += c.equipe[i].niveau;
+  moyenneEquipe = moyenneEquipe / c.equipe.length;
+
+  var p = 8;                                   // socle
+  p += affaibli * 55;                          // jusqu'a +55 s'il est exsangue
+  p += (moyenneEquipe - a.niveau) * 5;         // ecart de niveau
+  p += (c.equipe.length - 1) * 6;              // le nombre impressionne
+  p -= c.tentatives * 4;                       // il se mefie a chaque essai
+
+  return Math.max(2, Math.min(95, Math.round(p)));
+}
+
+function combattantsEquipe() {
+  var liste = [];
+  for (var i = 0; i < equipe.length; i++) {
+    var e = collection[equipe[i]];
+    if (!e) continue;
+    var s = statsAuNiveau(e.espece, e.niveau);
+    liste.push({
+      espece: e.espece, niveau: e.niveau,
+      pv: s.pvMax, pvMax: s.pvMax, atq: s.atq, def: s.def
+    });
+  }
+  return liste;
+}
+
+function adversaireDe(donjon, tailleEquipe) {
+  var s = statsAuNiveau(donjon.espece, donjon.niveau);
+
+  // Il se renforce a mesure que ton equipe grandit : seul contre un,
+  // il reste abordable ; face a trois, il doit tenir trois attaques par tour.
+  var facteurPv  = 1 + (tailleEquipe - 1) * 0.7;
+  var facteurAtq = 1 + (tailleEquipe - 1) * 0.15;
+
+  return {
+    espece: donjon.espece, niveau: donjon.niveau,
+    pv:    Math.round(s.pvMax * facteurPv),
+    pvMax: Math.round(s.pvMax * facteurPv),
+    atq:   Math.round(s.atq * facteurAtq),
+    def:   s.def
+  };
+}
+
+function message(t) { elem("combat-message").innerHTML = t; }
+
+function majAffichageCombat() {
+  var a = combat.adversaire;
+
+  elem("m-pv").textContent = Math.max(0, a.pv) + "/" + a.pvMax;
+  var pc = Math.max(0, a.pv) / a.pvMax * 100;
+  var jm = elem("m-jauge");
+  jm.style.width = pc + "%";
+  jm.className = pc < 20 ? "danger" : (pc < 50 ? "bas" : "");
+
+  // Jauge d'emprise
+  var chance = chanceScout(combat);
+  elem("s-val").textContent = chance + " %";
+  elem("s-jauge").style.width = chance + "%";
+  elem("scout-bloc").classList.add("visible");
+
+  // Cartes de l'equipe
+  var html = "";
+  for (var i = 0; i < combat.equipe.length; i++) {
+    var c = combat.equipe[i];
+    var e = ESPECES[c.espece];
+    var pct = Math.max(0, c.pv) / c.pvMax * 100;
+    html += '<div class="carte-echo' + (c.pv <= 0 ? " ko" : "") + '">' +
+            '<b>' + e.nom + '</b>' +
+            'niv. ' + c.niveau + ' &middot; ' + Math.max(0, c.pv) + ' PV' +
+            '<div class="mini-jauge"><span style="width:' + pct + '%"></span></div>' +
+            '</div>';
+  }
+  elem("equipe-combat").innerHTML = html;
+}
+
+function boutonsActifs(a) {
+  elem("btn-attaquer").disabled = !a;
+  elem("btn-scouter").disabled = !a;
+  elem("btn-fuir").disabled = !a;
+}
+
+function demarrerCombat(donjon, preemptif) {
+  var mesEchos = combattantsEquipe();
+
   combat = {
     donjon: donjon,
-    monstre: statsMonstre(donjon),
-    defend: false,
-    fini: false
+    adversaire: adversaireDe(donjon, mesEchos.length),
+    equipe: mesEchos,
+    tentatives: 0,
+    fini: false,
+    preemptif: preemptif
   };
 
-  // Si le joueur revient exsangue, on lui laisse au moins un souffle
-  if (joueurStats.pv <= 0) joueurStats.pv = Math.ceil(joueurStats.pvMax / 2);
+  var e = ESPECES[donjon.espece];
 
   elem("combat-lieu").textContent = donjon.nom.toUpperCase();
-  elem("m-nom").textContent = combat.monstre.nom + " (niv. " + combat.monstre.niveau + ")";
-  elem("j-nom").textContent = "Toi (niv. " + joueurStats.niveau + ")";
+  elem("m-nom").textContent = e.nom + " (niv. " + donjon.niveau + ")";
 
-  // Tes dessins : monstres/<nom-du-monstre>.png
-  var img = elem("monstre-img");
-  var vide = elem("monstre-vide");
+  var img = elem("monstre-img"), vide = elem("monstre-vide");
   img.style.display = "none";
   vide.style.display = "flex";
-  img.onload  = function () { img.style.display = "block"; vide.style.display = "none"; };
-  img.onerror = function () { img.style.display = "none";  vide.style.display = "flex"; };
-  img.src = DOSSIER_MONSTRES + cleImage(combat.monstre.nom) + ".png";
+  img.onload = function () { img.style.display = "block"; vide.style.display = "none"; };
+  img.onerror = function () { img.style.display = "none"; vide.style.display = "flex"; };
+  img.src = DOSSIER_MONSTRES + e.img + ".png";
 
-  majJauges();
-  message("<b>" + combat.monstre.nom + "</b> surgit du seuil !");
-
-  // On remet les trois boutons d'action
   elem("combat-actions").innerHTML =
     '<button id="btn-attaquer">Attaquer</button>' +
-    '<button id="btn-defendre">Defendre</button>' +
+    '<button id="btn-scouter" class="scout">Scouter</button>' +
     '<button id="btn-fuir">Fuir</button>';
   brancherBoutonsCombat();
   boutonsActifs(true);
 
+  majAffichageCombat();
+
+  message("<b>" + e.nom + "</b>, " + e.titre + ", se manifeste." +
+          (preemptif ? "<br><span style='color:#b455d4'>Tu l'as surpris : il perd son premier tour.</span>" : ""));
+
   elem("combat").classList.add("actif");
 }
 
-function actionJoueur(action) {
-  if (!combat || combat.fini) return;
-  boutonsActifs(false);
-  combat.defend = false;
-
-  if (action === "attaquer") {
-    var d = degats(joueurStats.atq, combat.monstre.def, Math.random());
-    combat.monstre.pv -= d;
-    elem("scene").classList.add("secoue");
-    setTimeout(function () { elem("scene").classList.remove("secoue"); }, 300);
-    message("Tu frappes <b>" + combat.monstre.nom + "</b> : " + d + " degats.");
-  }
-  else if (action === "defendre") {
-    combat.defend = true;
-    message("Tu te mets en garde.");
-  }
-  else if (action === "fuir") {
-    // Fuir est plus facile face a un monstre de faible niveau
-    var chance = 0.5 + (joueurStats.niveau - combat.monstre.niveau) * 0.08;
-    if (Math.random() < chance) {
-      message("Tu recules dans la rue. L'echo reste.");
-      finDeCombat("fuite");
-      return;
-    }
-    message("Impossible de fuir !");
-  }
-
-  majJauges();
-
-  if (combat.monstre.pv <= 0) {
-    setTimeout(victoire, 700);
-    return;
-  }
-
-  setTimeout(tourDuMonstre, 900);
+function equipeDebout() {
+  for (var i = 0; i < combat.equipe.length; i++) if (combat.equipe[i].pv > 0) return true;
+  return false;
 }
 
-function tourDuMonstre() {
-  if (!combat || combat.fini) return;
+function actionAttaquer() {
+  boutonsActifs(false);
 
-  var d = degats(combat.monstre.atq, joueurStats.def, Math.random());
-  if (combat.defend) d = Math.max(1, Math.floor(d / 2));
+  var lignes = [];
+  for (var i = 0; i < combat.equipe.length; i++) {
+    var c = combat.equipe[i];
+    if (c.pv <= 0) continue;
 
-  joueurStats.pv -= d;
-  majJauges();
-  majFiche();
+    var d = degats(c.atq, combat.adversaire.def, Math.random());
+    combat.adversaire.pv -= d;
+    lignes.push(ESPECES[c.espece].nom + " frappe : " + d);
 
-  message("<b>" + combat.monstre.nom + "</b> riposte : " + d + " degats" +
-          (combat.defend ? " (amortis)" : "") + ".");
+    if (combat.adversaire.pv <= 0) break;
+  }
 
-  if (joueurStats.pv <= 0) {
-    joueurStats.pv = 0;
-    setTimeout(defaite, 700);
+  elem("scene").classList.add("secoue");
+  setTimeout(function () { elem("scene").classList.remove("secoue"); }, 300);
+
+  message(lignes.join("<br>"));
+  majAffichageCombat();
+
+  if (combat.adversaire.pv <= 0) { setTimeout(dissipation, 800); return; }
+  setTimeout(tourAdverse, 900);
+}
+
+function actionScouter() {
+  boutonsActifs(false);
+
+  var chance = chanceScout(combat);
+  combat.tentatives++;
+
+  var e = ESPECES[combat.donjon.espece];
+
+  if (Math.random() * 100 < chance) {
+    message("Ton equipe impose sa presence.<br><b>" + e.nom + "</b> incline la tete.");
+    setTimeout(capture, 800);
     return;
   }
 
+  message("Tu montres ta force (" + chance + " %).<br><b>" + e.nom + "</b> ne cede pas.");
+  majAffichageCombat();
+  setTimeout(tourAdverse, 900);
+}
+
+function actionFuir() {
+  boutonsActifs(false);
+
+  var moyenne = 0;
+  for (var i = 0; i < combat.equipe.length; i++) moyenne += combat.equipe[i].niveau;
+  moyenne = moyenne / combat.equipe.length;
+
+  var chance = 0.5 + (moyenne - combat.adversaire.niveau) * 0.07;
+
+  if (Math.random() < chance) {
+    message("Tu rappelles tes echos et t'eloignes.<br>Le lieu garde le sien.");
+    finDeCombat();
+    return;
+  }
+
+  message("L'echo te barre le passage !");
+  setTimeout(tourAdverse, 900);
+}
+
+function tourAdverse() {
+  if (!combat || combat.fini) return;
+
+  // Tour d'ouverture offert par l'approche discrete
+  if (combat.preemptif) {
+    combat.preemptif = false;
+    boutonsActifs(true);
+    return;
+  }
+
+  // Il frappe l'Echo debout le plus avance
+  var cible = null;
+  for (var i = 0; i < combat.equipe.length; i++) {
+    if (combat.equipe[i].pv > 0) { cible = combat.equipe[i]; break; }
+  }
+
+  if (!cible) { defaite(); return; }
+
+  var d = degats(combat.adversaire.atq, cible.def, Math.random());
+  cible.pv -= d;
+
+  var txt = "<b>" + ESPECES[combat.donjon.espece].nom + "</b> frappe " +
+            ESPECES[cible.espece].nom + " : " + d + " degats.";
+
+  if (cible.pv <= 0) {
+    cible.pv = 0;
+    txt += "<br>" + ESPECES[cible.espece].nom + " se dissout.";
+  }
+
+  message(txt);
+  majAffichageCombat();
+
+  if (!equipeDebout()) { setTimeout(defaite, 800); return; }
   boutonsActifs(true);
 }
 
-function victoire() {
-  var gain = 8 + combat.monstre.niveau * 6;
-  joueurStats.xp += gain;
-  joueurStats.victoires++;
+// Recompense commune a la capture et a la dissipation
+function distribuerXp(bonusFortune) {
+  var gain = 6 + combat.donjon.niveau * 5;
+  if (bonusFortune) gain *= 2;
 
-  var texte = "<b>" + combat.monstre.nom + "</b> se dissipe.<br>+" + gain + " points d'echo.";
-
-  // Montees de niveau (plusieurs d'affilee possibles)
-  while (joueurStats.xp >= xpRequis(joueurStats.niveau)) {
-    joueurStats.xp -= xpRequis(joueurStats.niveau);
-    joueurStats.niveau++;
-    joueurStats.pvMax += 6;
-    joueurStats.atq += 2;
-    joueurStats.def += 1;
-    joueurStats.pv = joueurStats.pvMax;
-    texte += "<br><b>Niveau " + joueurStats.niveau + " !</b> Tes forces reviennent.";
+  var lignes = [];
+  for (var i = 0; i < combat.equipe.length; i++) {
+    var c = combat.equipe[i];
+    var montees = gagnerXp(c.espece, gain);
+    if (montees > 0) {
+      lignes.push(ESPECES[c.espece].nom + " atteint le niveau " + collection[c.espece].niveau + " !");
+    }
   }
 
-  message(texte);
-  marquerVaincu(combat.donjon);
-  finDeCombat("victoire");
+  return { gain: gain, lignes: lignes };
+}
+
+function capture() {
+  var d = combat.donjon;
+  var e = ESPECES[d.espece];
+
+  // Jin Chan double les gains s'il est dans l'equipe
+  var fortune = equipe.indexOf("jinchan") !== -1;
+  var r = distribuerXp(fortune);
+
+  var issue = ajouterAlaCollection(d.espece, d.niveau);
+  var txt;
+
+  if (issue === "nouveau") {
+    txt = "<b>" + e.nom + "</b> rejoint ton grimoire !";
+  } else if (issue === "renforce") {
+    txt = "<b>" + e.nom + "</b> niveau " + d.niveau + " remplace le tien, plus faible.";
+  } else {
+    txt = "<b>" + e.nom + "</b> se lie a toi, mais le tien est deja plus fort.";
+  }
+
+  txt += "<br>+" + r.gain + " points d'echo" + (fortune ? " (Fortune)" : "") + ".";
+  if (r.lignes.length) txt += "<br>" + r.lignes.join("<br>");
+
+  d.capture = true;
+  rafraichirMarqueur(d);
+  sauvegarder();
+
+  message(txt);
+  finDeCombat();
+}
+
+function dissipation() {
+  var e = ESPECES[combat.donjon.espece];
+  var fortune = equipe.indexOf("jinchan") !== -1;
+  var r = distribuerXp(fortune);
+
+  var txt = "<b>" + e.nom + "</b> se disloque et disparait.<br>" +
+            "<span style='color:#d4554a'>Tu ne pourras plus le lier ici.</span><br>" +
+            "+" + r.gain + " points d'echo.";
+  if (r.lignes.length) txt += "<br>" + r.lignes.join("<br>");
+
+  combat.donjon.dissipe = true;
+  rafraichirMarqueur(combat.donjon);
+  sauvegarder();
+
+  message(txt);
+  finDeCombat();
 }
 
 function defaite() {
-  joueurStats.pv = Math.ceil(joueurStats.pvMax / 2);
-  message("Tu perds pied et te retrouves dans la rue.<br>Le lieu garde son echo.");
-  finDeCombat("defaite");
+  message("Tes echos sont epuises.<br>Tu recules. Le lieu garde le sien.");
+  finDeCombat();
 }
 
-function finDeCombat(issue) {
+function finDeCombat() {
   combat.fini = true;
+
+  // Les Echos se remettent entre deux rencontres
+  for (var id in collection) {
+    collection[id].pv = statsAuNiveau(id, collection[id].niveau).pvMax;
+  }
+
   sauverJoueur();
   majFiche();
-  majJauges();
 
   elem("combat-actions").innerHTML =
     '<button class="sortie" id="btn-sortir">Revenir a la carte</button>';
@@ -832,14 +1222,72 @@ function finDeCombat(issue) {
 }
 
 function brancherBoutonsCombat() {
-  elem("btn-attaquer").addEventListener("click", function () { actionJoueur("attaquer"); });
-  elem("btn-defendre").addEventListener("click", function () { actionJoueur("defendre"); });
-  elem("btn-fuir").addEventListener("click",     function () { actionJoueur("fuir"); });
+  elem("btn-attaquer").addEventListener("click", actionAttaquer);
+  elem("btn-scouter").addEventListener("click", actionScouter);
+  elem("btn-fuir").addEventListener("click", actionFuir);
 }
 
 
 /* ============================================================
-   12. BOUCLE PRINCIPALE
+   12. LE GRIMOIRE
+   ============================================================ */
+
+function ouvrirGrimoire() {
+  var html = "";
+  var ids = Object.keys(collection);
+
+  if (ids.length === 0) {
+    html = '<div style="color:#888">Aucun echo lie pour le moment.</div>';
+  }
+
+  for (var i = 0; i < ids.length; i++) {
+    var c = collection[ids[i]];
+    var e = ESPECES[c.espece];
+    var s = statsAuNiveau(c.espece, c.niveau);
+    var dansEquipe = equipe.indexOf(c.espece) !== -1;
+
+    html += '<div class="ligne-echo' + (dansEquipe ? " equipee" : "") +
+            '" data-espece="' + c.espece + '">' +
+            '<div class="pastille" style="background:' + COULEURS[e.famille] + '">' +
+            c.niveau + '</div>' +
+            '<div class="infos">' +
+            '<div class="nom">' + e.nom + '</div>' +
+            '<div class="titre">' + e.titre + '</div>' +
+            '<div class="stats">' + s.pvMax + ' PV &middot; ATQ ' + s.atq + ' &middot; DEF ' + s.def + '</div>' +
+            '<div class="trait">' + e.trait + '</div>' +
+            '</div></div>';
+  }
+
+  elem("liste-echos").innerHTML = html;
+
+  var lignes = document.querySelectorAll(".ligne-echo");
+  for (var j = 0; j < lignes.length; j++) {
+    lignes[j].addEventListener("click", function () {
+      basculerEquipe(this.getAttribute("data-espece"));
+    });
+  }
+
+  elem("grimoire").classList.add("actif");
+}
+
+function basculerEquipe(especeId) {
+  var pos = equipe.indexOf(especeId);
+
+  if (pos !== -1) {
+    equipe.splice(pos, 1);
+  } else {
+    if (equipe.length >= EQUIPE_MAX) return;   // equipe pleine
+    equipe.push(especeId);
+  }
+
+  sauverJoueur();
+  majFiche();
+  ouvrirGrimoire();
+}
+
+
+/* ============================================================
+   13. BOUCLE PRINCIPALE
    ============================================================ */
 
 function positionMiseAJour(position) {
@@ -849,7 +1297,6 @@ function positionMiseAJour(position) {
   dernierePosition = [lat, lon];
   joueur.setLatLng([lat, lon]);
 
-  // On ne recentre pas la carte pendant un combat
   if (!combat) carte.setView([lat, lon], carte.getZoom());
 
   if (!dernierePosRequete ||
@@ -867,7 +1314,7 @@ function erreurPosition(err) {
 
 
 /* ============================================================
-   13. DEMARRAGE
+   14. DEMARRAGE
    ============================================================ */
 
 elem("btn-depart").addEventListener("click", function () {
@@ -876,14 +1323,19 @@ elem("btn-depart").addEventListener("click", function () {
   charger();
 
   navigator.geolocation.watchPosition(positionMiseAJour, erreurPosition, {
-    enableHighAccuracy: true,
-    maximumAge: 2000,
-    timeout: 20000
+    enableHighAccuracy: true, maximumAge: 2000, timeout: 20000
   });
 });
 
 elem("entrer").addEventListener("click", function () {
-  if (donjonProche && !donjonProche.vaincu) demarrerCombat(donjonProche);
+  if (!donjonProche || estClos(donjonProche) || equipe.length === 0) return;
+  demarrerCombat(donjonProche, distanceProche <= DISTANCE_PREEMPTIF);
+});
+
+elem("btn-grimoire").addEventListener("click", ouvrirGrimoire);
+
+elem("btn-fermer-grimoire").addEventListener("click", function () {
+  elem("grimoire").classList.remove("actif");
 });
 
 brancherBoutonsCombat();
