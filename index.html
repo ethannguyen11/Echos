@@ -16,9 +16,12 @@
     background: #111; color: #eee;
     font-family: -apple-system, sans-serif;
     overflow: hidden;
+    -webkit-user-select: none; user-select: none;
   }
 
   #carte { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+
+  /* ---------- Bandeau de la carte ---------- */
 
   #hud {
     position: absolute;
@@ -47,10 +50,23 @@
     border: none; border-radius: 12px;
   }
 
-  #depart {
+  /* Fiche du joueur, en haut de la carte */
+  #fiche {
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 2000; background: #111;
+    top: 60px; left: 12px;
+    z-index: 1000;
+    background: rgba(20, 20, 25, 0.92);
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  /* ---------- Ecran d'accueil ---------- */
+
+  #depart {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 3000; background: #111;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 24px;
@@ -66,20 +82,170 @@
     border: none; border-radius: 12px;
   }
 
-  .leaflet-popup-content { font-family: -apple-system, sans-serif; }
-  .pop-titre { font-weight: 700; font-size: 15px; }
-  .pop-lieu  { color: #666; font-size: 12px; margin-top: 2px; }
-  .pop-mons  { margin-top: 6px; }
+  /* ---------- Ecran de combat ---------- */
+
+  #combat {
+    display: none;
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 2000;
+    background: linear-gradient(#1a1024 0%, #2a1636 55%, #0d0812 100%);
+    flex-direction: column;
+  }
+
+  #combat.actif { display: flex; }
+
+  #combat-lieu {
+    text-align: center;
+    padding: 60px 20px 0;
+    font-size: 13px;
+    color: #b98fd0;
+    letter-spacing: 1px;
+  }
+
+  /* Zone du monstre : c'est ici que viendront tes dessins */
+  #scene {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  #monstre-img {
+    max-height: 100%;
+    max-width: 70%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 24px rgba(180, 85, 212, 0.35));
+  }
+
+  /* Silhouette de remplacement tant qu'aucun dessin n'existe */
+  #monstre-vide {
+    width: 150px; height: 150px;
+    border-radius: 50% 50% 42% 42%;
+    background: radial-gradient(circle at 40% 35%, #4a3060, #221430);
+    border: 2px solid #6b4a85;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 46px;
+    animation: flotter 3s ease-in-out infinite;
+  }
+
+  @keyframes flotter {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-12px); }
+  }
+
+  .secoue { animation: secousse 0.3s; }
+
+  @keyframes secousse {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-10px); }
+    75%      { transform: translateX(10px); }
+  }
+
+  /* Barres de vie */
+  .jauge-bloc { padding: 0 20px 10px; }
+
+  .jauge-nom {
+    display: flex; justify-content: space-between;
+    font-size: 14px; margin-bottom: 4px;
+  }
+
+  .jauge {
+    height: 10px;
+    background: #241a2e;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .jauge span {
+    display: block; height: 100%;
+    background: #6ec06e;
+    transition: width 0.35s;
+  }
+
+  .jauge span.bas    { background: #d4a02a; }
+  .jauge span.danger { background: #d4554a; }
+
+  #combat-message {
+    margin: 0 20px 12px;
+    padding: 14px;
+    min-height: 52px;
+    background: rgba(10, 6, 16, 0.85);
+    border: 1px solid #4a3060;
+    border-radius: 12px;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  #combat-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    padding: 0 20px 40px;
+  }
+
+  #combat-actions button {
+    padding: 16px 4px;
+    font-size: 15px; font-weight: 600;
+    color: #fff;
+    background: #3d2452;
+    border: 1px solid #6b4a85;
+    border-radius: 12px;
+  }
+
+  #combat-actions button:disabled { opacity: 0.35; }
+
+  #combat-actions button.sortie {
+    grid-column: 1 / -1;
+    background: #b455d4;
+    border-color: #b455d4;
+  }
 </style>
 </head>
 <body>
 
 <div id="carte"></div>
 
+<div id="fiche">Niveau 1 &middot; 40/40 PV</div>
+
 <div id="hud">
   <div id="texte">Recherche de ta position...</div>
   <div id="etat"></div>
   <button id="entrer">Entrer dans le donjon</button>
+</div>
+
+<!-- ------------------ ECRAN DE COMBAT ------------------ -->
+<div id="combat">
+  <div id="combat-lieu"></div>
+
+  <div id="scene">
+    <img id="monstre-img" alt="">
+    <div id="monstre-vide">&#128128;</div>
+  </div>
+
+  <div class="jauge-bloc">
+    <div class="jauge-nom">
+      <span id="m-nom">Monstre</span>
+      <span id="m-pv">0/0</span>
+    </div>
+    <div class="jauge"><span id="m-jauge" style="width:100%"></span></div>
+  </div>
+
+  <div class="jauge-bloc">
+    <div class="jauge-nom">
+      <span id="j-nom">Toi</span>
+      <span id="j-pv">0/0</span>
+    </div>
+    <div class="jauge"><span id="j-jauge" style="width:100%"></span></div>
+  </div>
+
+  <div id="combat-message"></div>
+
+  <div id="combat-actions">
+    <button id="btn-attaquer">Attaquer</button>
+    <button id="btn-defendre">Defendre</button>
+    <button id="btn-fuir">Fuir</button>
+  </div>
 </div>
 
 <div id="depart">
@@ -93,18 +259,21 @@
    1. REGLAGES
    ============================================================ */
 
-var RAYON_RECHERCHE   = 700;   // metres interroges autour de toi
-var DISTANCE_ENTREE   = 40;    // metres pour pouvoir entrer
-var DISTANCE_RELANCE  = 350;   // deplacement avant de re-interroger OSM
-var DISTANCE_DOUBLON  = 80;    // deux donjons de meme type plus proches = doublon
-var CLE_SAUVEGARDE    = "echos_donjons_v3";
+var RAYON_RECHERCHE   = 700;
+var DISTANCE_ENTREE   = 40;
+var DISTANCE_RELANCE  = 350;
+var DISTANCE_DOUBLON  = 80;
+var CLE_DONJONS       = "echos_donjons_v3";
+var CLE_JOUEUR        = "echos_joueur_v1";
 var URL_OVERPASS      = "https://overpass-api.de/api/interpreter";
+
+// Dossier de tes dessins. Un fichier par monstre, nomme comme
+// la cle ci-dessous : monstres/gardien-de-cendre.png
+var DOSSIER_MONSTRES  = "monstres/";
 
 
 /* ============================================================
    2. LES QUATRE TYPES DE LIEUX
-   Un prefixe fixe par type, et son bestiaire.
-   C'est ici que tu enrichiras ton univers.
    ============================================================ */
 
 var CATEGORIES = {
@@ -126,58 +295,49 @@ var CATEGORIES = {
   }
 };
 
-// Traduit les etiquettes OSM en type de jeu. null = on ignore le lieu.
 function categorieDuLieu(tags) {
   if (tags.amenity === "place_of_worship") return "temple";
   if (tags.leisure === "park") return "parc";
-
-  // Metro : plusieurs facons de l'etiqueter selon les villes
   if (tags.station === "subway") return "metro";
   if (tags.railway === "station" && tags.subway === "yes") return "metro";
-
-  // Monument : au sens large, ce qui se visite et fait repere
   if (tags.historic) return "monument";
   if (tags.man_made === "tower") return "monument";
   if (tags.tourism === "attraction") return "monument";
-
   return null;
 }
 
 
 /* ============================================================
    3. NETTOYAGE DU NOM
-   OSM ecrit "Songshan Ciyou Temple" ou "Xiangshan MRT Station".
-   On retire ces mots pour que le prefixe ne fasse pas doublon :
-   "Porte du Temple de Songshan Ciyou".
    ============================================================ */
 
 var MOTS_A_RETIRER = [
   "MRT Station", "Metro Station", "Subway Station", "Station",
-  "Temple", "Shrine", "Park", "Garden", "Memorial Hall"
+  "Temple", "Shrine", "Park", "Garden", "Memorial Hall", "Observatory"
 ];
 
 function nettoyerNom(nom) {
   var propre = nom;
-
   for (var i = 0; i < MOTS_A_RETIRER.length; i++) {
     var mot = MOTS_A_RETIRER[i];
-    // en fin de nom : "Songshan Park" -> "Songshan"
-    var finale = new RegExp("\\s+" + mot + "$", "i");
-    propre = propre.replace(finale, "");
-    // en debut de nom : "Temple Songshan" -> "Songshan"
-    var initiale = new RegExp("^" + mot + "\\s+", "i");
-    propre = propre.replace(initiale, "");
+    propre = propre.replace(new RegExp("\\s+" + mot + "$", "i"), "");
+    propre = propre.replace(new RegExp("^" + mot + "\\s+", "i"), "");
   }
-
   propre = propre.trim();
-  return propre.length > 0 ? propre : nom;   // jamais de nom vide
+  return propre.length > 0 ? propre : nom;
+}
+
+// "Gardien de cendre" -> "gardien-de-cendre" (nom du fichier PNG)
+function cleImage(nomMonstre) {
+  return nomMonstre
+    .toLowerCase()
+    .replace(/[' ]/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
 }
 
 
 /* ============================================================
    4. GENERATION DETERMINISTE
-   La graine est l'identifiant OSM : le meme temple donnera
-   toujours le meme monstre et le meme niveau.
    ============================================================ */
 
 function grainePourTexte(t) {
@@ -207,12 +367,11 @@ function donjonDepuisLieu(element) {
   var tags = element.tags || {};
 
   var cat = categorieDuLieu(tags);
-  if (!cat) return null;                  // type de lieu non retenu
+  if (!cat) return null;
 
   var brut = nomDuLieu(tags);
-  if (!brut) return null;                 // sans nom, pas de donjon
+  if (!brut) return null;
 
-  // les surfaces (way/relation) renvoient leur centre dans "center"
   var lat = element.lat || (element.center && element.center.lat);
   var lon = element.lon || (element.center && element.center.lon);
   if (!lat || !lon) return null;
@@ -220,7 +379,6 @@ function donjonDepuisLieu(element) {
   var id = element.type + "/" + element.id;
   var a = tirageAleatoire(grainePourTexte(id));
   var modele = CATEGORIES[cat];
-  var nom = nettoyerNom(brut);
 
   return {
     id: id,
@@ -228,15 +386,63 @@ function donjonDepuisLieu(element) {
     lon: lon,
     lieu: brut,
     categorie: cat,
-    nom: modele.prefixe + " " + nom,
+    nom: modele.prefixe + " " + nettoyerNom(brut),
     monstre: modele.monstres[Math.floor(a() * modele.monstres.length)],
-    niveau: 1 + Math.floor(a() * 8)
+    niveau: 1 + Math.floor(a() * 8),
+    vaincu: false
+  };
+}
+
+// Statistiques du monstre, deduites de son niveau
+function statsMonstre(donjon) {
+  return {
+    nom: donjon.monstre,
+    niveau: donjon.niveau,
+    pvMax: 18 + donjon.niveau * 7,
+    pv:    18 + donjon.niveau * 7,
+    atq:   4 + donjon.niveau * 2,
+    def:   1 + donjon.niveau
   };
 }
 
 
 /* ============================================================
-   5. INTERROGATION D'OPENSTREETMAP (API Overpass, gratuite)
+   5. LE JOUEUR
+   ============================================================ */
+
+var joueurStats = {
+  niveau: 1,
+  pvMax: 40, pv: 40,
+  atq: 9, def: 4,
+  xp: 0,
+  victoires: 0
+};
+
+function xpRequis(niveau) {
+  return niveau * 25;
+}
+
+function sauverJoueur() {
+  try { localStorage.setItem(CLE_JOUEUR, JSON.stringify(joueurStats)); } catch (e) {}
+}
+
+function chargerJoueur() {
+  try {
+    var brut = localStorage.getItem(CLE_JOUEUR);
+    if (brut) joueurStats = JSON.parse(brut);
+  } catch (e) {}
+  majFiche();
+}
+
+function majFiche() {
+  document.getElementById("fiche").innerHTML =
+    "Niveau " + joueurStats.niveau + " &middot; " +
+    joueurStats.pv + "/" + joueurStats.pvMax + " PV";
+}
+
+
+/* ============================================================
+   6. INTERROGATION D'OPENSTREETMAP
    ============================================================ */
 
 function requeteOverpass(lat, lon) {
@@ -252,7 +458,6 @@ function requeteOverpass(lat, lon) {
     '["tourism"="attraction"]'
   ];
 
-  // nwr = noeuds, surfaces et relations en une seule passe
   var corps = "";
   for (var i = 0; i < filtres.length; i++) {
     corps += "nwr" + filtres[i] + autour + ";";
@@ -261,14 +466,11 @@ function requeteOverpass(lat, lon) {
   return "[out:json][timeout:25];(" + corps + ");out center 80;";
 }
 
-// Evite d'empiler trois donjons sur le meme batiment
 function estUnDoublon(nouveau) {
   for (var id in donjons) {
     var d = donjons[id];
     if (d.categorie !== nouveau.categorie) continue;
-    if (distanceMetres(d.lat, d.lon, nouveau.lat, nouveau.lon) < DISTANCE_DOUBLON) {
-      return true;
-    }
+    if (distanceMetres(d.lat, d.lon, nouveau.lat, nouveau.lon) < DISTANCE_DOUBLON) return true;
   }
   return false;
 }
@@ -287,8 +489,8 @@ function chargerDonjons(lat, lon) {
       for (var i = 0; i < donnees.elements.length; i++) {
         var d = donjonDepuisLieu(donnees.elements[i]);
         if (!d) continue;
-        if (donjons[d.id]) continue;      // deja connu
-        if (estUnDoublon(d)) continue;    // meme lieu, autre fiche OSM
+        if (donjons[d.id]) continue;
+        if (estUnDoublon(d)) continue;
 
         donjons[d.id] = d;
         poserMarqueur(d);
@@ -298,11 +500,7 @@ function chargerDonjons(lat, lon) {
       sauvegarder();
       etat(nouveaux + " nouveau(x) lieu(x) eveille(s)");
 
-      // CORRECTION : on rafraichit le bandeau tout de suite,
-      // sans attendre le prochain signal GPS.
-      if (dernierePosition) {
-        mettreAJourHud(dernierePosition[0], dernierePosition[1]);
-      }
+      if (dernierePosition) mettreAJourHud(dernierePosition[0], dernierePosition[1]);
     })
     .catch(function (err) {
       etat("Lieux indisponibles : " + err.message);
@@ -311,7 +509,7 @@ function chargerDonjons(lat, lon) {
 
 
 /* ============================================================
-   6. LA CARTE
+   7. LA CARTE
    ============================================================ */
 
 var carte = L.map("carte", { zoomControl: false, attributionControl: false })
@@ -332,36 +530,52 @@ var COULEURS = {
 };
 
 var donjons = {};
+var marqueurs = {};          // pour pouvoir griser un donjon vaincu
 var donjonProche = null;
 var dernierePosition = null;
 var dernierePosRequete = null;
 
 function poserMarqueur(d) {
-  L.circleMarker([d.lat, d.lon], {
+  var m = L.circleMarker([d.lat, d.lon], {
     radius: 11, color: "#fff", weight: 2,
-    fillColor: COULEURS[d.categorie] || "#b455d4",
-    fillOpacity: 0.9
-  }).addTo(carte).bindPopup(
-    '<div class="pop-titre">' + d.nom + '</div>' +
-    '<div class="pop-lieu">' + d.lieu + '</div>' +
-    '<div class="pop-mons">' + d.monstre + ' &middot; niveau ' + d.niveau + '</div>'
-  );
+    fillColor: d.vaincu ? "#555" : (COULEURS[d.categorie] || "#b455d4"),
+    fillOpacity: d.vaincu ? 0.5 : 0.9
+  }).addTo(carte);
+
+  m.bindPopup(texteInfobulle(d));
+  marqueurs[d.id] = m;
+}
+
+function texteInfobulle(d) {
+  return '<div class="pop-titre">' + d.nom + '</div>' +
+         '<div class="pop-lieu">' + d.lieu + '</div>' +
+         '<div class="pop-mons">' +
+         (d.vaincu ? "Echo dissipe" : d.monstre + ' &middot; niveau ' + d.niveau) +
+         '</div>';
+}
+
+function marquerVaincu(d) {
+  d.vaincu = true;
+  var m = marqueurs[d.id];
+  if (m) {
+    m.setStyle({ fillColor: "#555", fillOpacity: 0.5 });
+    m.setPopupContent(texteInfobulle(d));
+  }
+  sauvegarder();
 }
 
 
 /* ============================================================
-   7. SAUVEGARDE LOCALE
+   8. SAUVEGARDE DES DONJONS
    ============================================================ */
 
 function sauvegarder() {
-  try {
-    localStorage.setItem(CLE_SAUVEGARDE, JSON.stringify(donjons));
-  } catch (e) { /* memoire pleine : sans importance */ }
+  try { localStorage.setItem(CLE_DONJONS, JSON.stringify(donjons)); } catch (e) {}
 }
 
 function charger() {
   try {
-    var brut = localStorage.getItem(CLE_SAUVEGARDE);
+    var brut = localStorage.getItem(CLE_DONJONS);
     if (!brut) return;
     donjons = JSON.parse(brut);
     for (var id in donjons) poserMarqueur(donjons[id]);
@@ -372,7 +586,7 @@ function charger() {
 
 
 /* ============================================================
-   8. OUTILS
+   9. OUTILS
    ============================================================ */
 
 function distanceMetres(lat1, lon1, lat2, lon2) {
@@ -392,8 +606,7 @@ function etat(message) {
 
 
 /* ============================================================
-   9. LE BANDEAU D'INFORMATION
-   Separe de la boucle GPS pour pouvoir etre rappele seul.
+   10. BANDEAU DE LA CARTE
    ============================================================ */
 
 function mettreAJourHud(lat, lon) {
@@ -412,23 +625,221 @@ function mettreAJourHud(lat, lon) {
   var texte = document.getElementById("texte");
   var boutonEntrer = document.getElementById("entrer");
 
-  if (donjonProche && distanceMin <= DISTANCE_ENTREE) {
-    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>" +
-                      donjonProche.monstre + " &middot; niveau " + donjonProche.niveau;
-    boutonEntrer.style.display = "block";
-  } else if (donjonProche) {
-    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>" +
-                      Math.round(distanceMin) + " m";
-    boutonEntrer.style.display = "none";
-  } else {
+  if (!donjonProche) {
     texte.textContent = "Aucun lieu eveille dans les environs.";
+    boutonEntrer.style.display = "none";
+    return;
+  }
+
+  if (distanceMin <= DISTANCE_ENTREE) {
+    if (donjonProche.vaincu) {
+      texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>L'echo s'est dissipe ici.";
+      boutonEntrer.style.display = "none";
+    } else {
+      texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>" +
+                        donjonProche.monstre + " &middot; niveau " + donjonProche.niveau;
+      boutonEntrer.style.display = "block";
+    }
+  } else {
+    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>" + Math.round(distanceMin) + " m";
     boutonEntrer.style.display = "none";
   }
 }
 
 
 /* ============================================================
-   10. BOUCLE PRINCIPALE
+   11. LE COMBAT
+   ============================================================ */
+
+var combat = null;   // { donjon, monstre, defend, fini }
+
+function elem(id) { return document.getElementById(id); }
+
+function message(txt) {
+  elem("combat-message").innerHTML = txt;
+}
+
+function majJauges() {
+  var m = combat.monstre;
+
+  elem("m-pv").textContent = Math.max(0, m.pv) + "/" + m.pvMax;
+  elem("j-pv").textContent = Math.max(0, joueurStats.pv) + "/" + joueurStats.pvMax;
+
+  var pourcentM = Math.max(0, m.pv) / m.pvMax * 100;
+  var pourcentJ = Math.max(0, joueurStats.pv) / joueurStats.pvMax * 100;
+
+  var jm = elem("m-jauge"), jj = elem("j-jauge");
+  jm.style.width = pourcentM + "%";
+  jj.style.width = pourcentJ + "%";
+
+  jm.className = pourcentM < 20 ? "danger" : (pourcentM < 50 ? "bas" : "");
+  jj.className = pourcentJ < 20 ? "danger" : (pourcentJ < 50 ? "bas" : "");
+}
+
+function boutonsActifs(actifs) {
+  elem("btn-attaquer").disabled = !actifs;
+  elem("btn-defendre").disabled = !actifs;
+  elem("btn-fuir").disabled = !actifs;
+}
+
+// Degats : l'attaque moins la moitie de la defense, plus un alea
+function degats(atq, def, aleatoire) {
+  var base = atq - def / 2;
+  var variation = 0.85 + aleatoire * 0.3;      // entre 85 % et 115 %
+  return Math.max(1, Math.round(base * variation));
+}
+
+function demarrerCombat(donjon) {
+  combat = {
+    donjon: donjon,
+    monstre: statsMonstre(donjon),
+    defend: false,
+    fini: false
+  };
+
+  // Si le joueur revient exsangue, on lui laisse au moins un souffle
+  if (joueurStats.pv <= 0) joueurStats.pv = Math.ceil(joueurStats.pvMax / 2);
+
+  elem("combat-lieu").textContent = donjon.nom.toUpperCase();
+  elem("m-nom").textContent = combat.monstre.nom + " (niv. " + combat.monstre.niveau + ")";
+  elem("j-nom").textContent = "Toi (niv. " + joueurStats.niveau + ")";
+
+  // Tes dessins : monstres/<nom-du-monstre>.png
+  var img = elem("monstre-img");
+  var vide = elem("monstre-vide");
+  img.style.display = "none";
+  vide.style.display = "flex";
+  img.onload  = function () { img.style.display = "block"; vide.style.display = "none"; };
+  img.onerror = function () { img.style.display = "none";  vide.style.display = "flex"; };
+  img.src = DOSSIER_MONSTRES + cleImage(combat.monstre.nom) + ".png";
+
+  majJauges();
+  message("<b>" + combat.monstre.nom + "</b> surgit du seuil !");
+
+  // On remet les trois boutons d'action
+  elem("combat-actions").innerHTML =
+    '<button id="btn-attaquer">Attaquer</button>' +
+    '<button id="btn-defendre">Defendre</button>' +
+    '<button id="btn-fuir">Fuir</button>';
+  brancherBoutonsCombat();
+  boutonsActifs(true);
+
+  elem("combat").classList.add("actif");
+}
+
+function actionJoueur(action) {
+  if (!combat || combat.fini) return;
+  boutonsActifs(false);
+  combat.defend = false;
+
+  if (action === "attaquer") {
+    var d = degats(joueurStats.atq, combat.monstre.def, Math.random());
+    combat.monstre.pv -= d;
+    elem("scene").classList.add("secoue");
+    setTimeout(function () { elem("scene").classList.remove("secoue"); }, 300);
+    message("Tu frappes <b>" + combat.monstre.nom + "</b> : " + d + " degats.");
+  }
+  else if (action === "defendre") {
+    combat.defend = true;
+    message("Tu te mets en garde.");
+  }
+  else if (action === "fuir") {
+    // Fuir est plus facile face a un monstre de faible niveau
+    var chance = 0.5 + (joueurStats.niveau - combat.monstre.niveau) * 0.08;
+    if (Math.random() < chance) {
+      message("Tu recules dans la rue. L'echo reste.");
+      finDeCombat("fuite");
+      return;
+    }
+    message("Impossible de fuir !");
+  }
+
+  majJauges();
+
+  if (combat.monstre.pv <= 0) {
+    setTimeout(victoire, 700);
+    return;
+  }
+
+  setTimeout(tourDuMonstre, 900);
+}
+
+function tourDuMonstre() {
+  if (!combat || combat.fini) return;
+
+  var d = degats(combat.monstre.atq, joueurStats.def, Math.random());
+  if (combat.defend) d = Math.max(1, Math.floor(d / 2));
+
+  joueurStats.pv -= d;
+  majJauges();
+  majFiche();
+
+  message("<b>" + combat.monstre.nom + "</b> riposte : " + d + " degats" +
+          (combat.defend ? " (amortis)" : "") + ".");
+
+  if (joueurStats.pv <= 0) {
+    joueurStats.pv = 0;
+    setTimeout(defaite, 700);
+    return;
+  }
+
+  boutonsActifs(true);
+}
+
+function victoire() {
+  var gain = 8 + combat.monstre.niveau * 6;
+  joueurStats.xp += gain;
+  joueurStats.victoires++;
+
+  var texte = "<b>" + combat.monstre.nom + "</b> se dissipe.<br>+" + gain + " points d'echo.";
+
+  // Montees de niveau (plusieurs d'affilee possibles)
+  while (joueurStats.xp >= xpRequis(joueurStats.niveau)) {
+    joueurStats.xp -= xpRequis(joueurStats.niveau);
+    joueurStats.niveau++;
+    joueurStats.pvMax += 6;
+    joueurStats.atq += 2;
+    joueurStats.def += 1;
+    joueurStats.pv = joueurStats.pvMax;
+    texte += "<br><b>Niveau " + joueurStats.niveau + " !</b> Tes forces reviennent.";
+  }
+
+  message(texte);
+  marquerVaincu(combat.donjon);
+  finDeCombat("victoire");
+}
+
+function defaite() {
+  joueurStats.pv = Math.ceil(joueurStats.pvMax / 2);
+  message("Tu perds pied et te retrouves dans la rue.<br>Le lieu garde son echo.");
+  finDeCombat("defaite");
+}
+
+function finDeCombat(issue) {
+  combat.fini = true;
+  sauverJoueur();
+  majFiche();
+  majJauges();
+
+  elem("combat-actions").innerHTML =
+    '<button class="sortie" id="btn-sortir">Revenir a la carte</button>';
+
+  elem("btn-sortir").addEventListener("click", function () {
+    elem("combat").classList.remove("actif");
+    combat = null;
+    if (dernierePosition) mettreAJourHud(dernierePosition[0], dernierePosition[1]);
+  });
+}
+
+function brancherBoutonsCombat() {
+  elem("btn-attaquer").addEventListener("click", function () { actionJoueur("attaquer"); });
+  elem("btn-defendre").addEventListener("click", function () { actionJoueur("defendre"); });
+  elem("btn-fuir").addEventListener("click",     function () { actionJoueur("fuir"); });
+}
+
+
+/* ============================================================
+   12. BOUCLE PRINCIPALE
    ============================================================ */
 
 function positionMiseAJour(position) {
@@ -437,30 +848,31 @@ function positionMiseAJour(position) {
 
   dernierePosition = [lat, lon];
   joueur.setLatLng([lat, lon]);
-  carte.setView([lat, lon], carte.getZoom());
 
-  // Faut-il redemander des lieux a OpenStreetMap ?
+  // On ne recentre pas la carte pendant un combat
+  if (!combat) carte.setView([lat, lon], carte.getZoom());
+
   if (!dernierePosRequete ||
       distanceMetres(lat, lon, dernierePosRequete[0], dernierePosRequete[1]) > DISTANCE_RELANCE) {
     dernierePosRequete = [lat, lon];
     chargerDonjons(lat, lon);
   }
 
-  mettreAJourHud(lat, lon);
+  if (!combat) mettreAJourHud(lat, lon);
 }
 
 function erreurPosition(err) {
-  document.getElementById("texte").textContent =
-    "Position indisponible (" + err.message + ")";
+  elem("texte").textContent = "Position indisponible (" + err.message + ")";
 }
 
 
 /* ============================================================
-   11. DEMARRAGE
+   13. DEMARRAGE
    ============================================================ */
 
-document.getElementById("btn-depart").addEventListener("click", function () {
-  document.getElementById("depart").style.display = "none";
+elem("btn-depart").addEventListener("click", function () {
+  elem("depart").style.display = "none";
+  chargerJoueur();
   charger();
 
   navigator.geolocation.watchPosition(positionMiseAJour, erreurPosition, {
@@ -470,12 +882,11 @@ document.getElementById("btn-depart").addEventListener("click", function () {
   });
 });
 
-// Etape suivante : l'ecran de combat.
-document.getElementById("entrer").addEventListener("click", function () {
-  if (donjonProche) {
-    alert(donjonProche.nom + "\n\nCombat contre " + donjonProche.monstre + " (a construire)");
-  }
+elem("entrer").addEventListener("click", function () {
+  if (donjonProche && !donjonProche.vaincu) demarrerCombat(donjonProche);
 });
+
+brancherBoutonsCombat();
 
 </script>
 </body>
