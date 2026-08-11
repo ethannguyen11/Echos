@@ -7,28 +7,19 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Echos</title>
 
-<!-- Leaflet : la bibliotheque de carte -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
   html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    background: #111;
-    color: #eee;
+    margin: 0; padding: 0; height: 100%;
+    background: #111; color: #eee;
     font-family: -apple-system, sans-serif;
     overflow: hidden;
   }
 
-  /* La carte occupe tout l'ecran */
-  #carte {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-  }
+  #carte { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
 
-  /* Le bandeau d'information en bas */
   #hud {
     position: absolute;
     left: 12px; right: 12px; bottom: 30px;
@@ -41,6 +32,13 @@
   }
 
   #texte { font-size: 16px; line-height: 1.4; }
+
+  #etat {
+    font-size: 12px;
+    color: #777;
+    margin-top: 6px;
+    min-height: 14px;
+  }
 
   #entrer {
     display: none;
@@ -55,7 +53,6 @@
     border-radius: 12px;
   }
 
-  /* L'ecran d'accueil, affiche avant le demarrage */
   #depart {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -73,13 +70,15 @@
 
   #btn-depart {
     padding: 16px 40px;
-    font-size: 18px;
-    font-weight: 600;
-    color: #fff;
-    background: #b455d4;
-    border: none;
-    border-radius: 12px;
+    font-size: 18px; font-weight: 600;
+    color: #fff; background: #b455d4;
+    border: none; border-radius: 12px;
   }
+
+  .leaflet-popup-content { font-family: -apple-system, sans-serif; }
+  .pop-titre { font-weight: 700; font-size: 15px; }
+  .pop-lieu  { color: #666; font-size: 12px; margin-top: 2px; }
+  .pop-mons  { margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -88,34 +87,82 @@
 
 <div id="hud">
   <div id="texte">Recherche de ta position...</div>
+  <div id="etat"></div>
   <button id="entrer">Entrer dans le donjon</button>
 </div>
 
 <div id="depart">
   <h1>ECHOS</h1>
-  <p>Marche dans le monde reel. Les donjons apparaissent la ou tu passes.</p>
+  <p>Les lieux du monde reel gardent chacun leur echo. Marche jusqu'a eux.</p>
   <button id="btn-depart">Commencer</button>
 </div>
 
 <script>
 /* ============================================================
-   1. REGLAGES : les valeurs a ajuster pendant les tests
+   1. REGLAGES
    ============================================================ */
 
-var TAILLE_CELLULE   = 0.0015;  // taille d'une cellule en degres (~150 m)
-var CHANCE_DONJON    = 0.3;     // 30 % des cellules contiennent un donjon
-var DISTANCE_ENTREE  = 30;      // metres a parcourir pour pouvoir entrer
-var RAYON_AFFICHAGE  = 3;       // cellules explorees autour de toi
-
-var MONSTRES = ["Gloubi", "Ombrelin", "Cendrec", "Bourgeon-dent", "Vieux Rat"];
+var RAYON_RECHERCHE  = 700;   // metres : zone interrogee autour de toi
+var DISTANCE_ENTREE  = 40;    // metres pour pouvoir entrer
+var DISTANCE_RELANCE = 350;   // on re-interroge OSM apres ce deplacement
+var URL_OVERPASS = "https://overpass-api.de/api/interpreter";
 
 
 /* ============================================================
-   2. GENERATION DETERMINISTE
-   Meme cellule = meme donjon, toujours. Aucune donnee stockee.
+   2. LES CATEGORIES DE LIEUX
+   Chaque type de lieu donne un nom de donjon et son bestiaire.
+   Ajoute librement des lignes ici : c'est le coeur du jeu.
    ============================================================ */
 
-// Transforme un texte ("1234_567") en un nombre unique
+var CATEGORIES = {
+  temple: {
+    prefixes: ["Sanctuaire de", "Autel de", "Reliquaire de"],
+    monstres: ["Gardien de cendre", "Moine sans visage", "Braise votive", "Ombre d'encens"]
+  },
+  tour: {
+    prefixes: ["Fleche de", "Sommet de", "Vigie de"],
+    monstres: ["Rapace de verre", "Vent hurleur", "Sentinelle d'acier", "Foudre nichee"]
+  },
+  parc: {
+    prefixes: ["Bosquet de", "Clairiere de", "Racines de"],
+    monstres: ["Bourgeon-dent", "Gloubi", "Vieux Rat", "Souche rampante"]
+  },
+  eau: {
+    prefixes: ["Rives de", "Miroir de", "Remous de"],
+    monstres: ["Ondin blafard", "Ecaille noire", "Brume stagnante"]
+  },
+  memoire: {
+    prefixes: ["Vestiges de", "Memoire de", "Ruines de"],
+    monstres: ["Cendrec", "Spectre grave", "Poussiere ancienne", "Statue fendue"]
+  },
+  savoir: {
+    prefixes: ["Archives de", "Galerie de", "Cabinet de"],
+    monstres: ["Ombrelin", "Rat d'encre", "Page affamee", "Silence epais"]
+  },
+  seuil: {
+    prefixes: ["Seuil de", "Passage de", "Carrefour de"],
+    monstres: ["Passant gris", "Echo perdu", "Traine-pas"]
+  }
+};
+
+// Traduit les etiquettes OSM en categorie de jeu
+function categorieDuLieu(tags) {
+  if (tags.amenity === "place_of_worship") return "temple";
+  if (tags.historic) return "memoire";
+  if (tags.man_made === "tower" || tags.tourism === "viewpoint") return "tour";
+  if (tags.tourism === "museum" || tags.amenity === "library") return "savoir";
+  if (tags.leisure === "park" || tags.leisure === "garden") return "parc";
+  if (tags.natural === "water" || tags.leisure === "nature_reserve") return "eau";
+  return "seuil";
+}
+
+
+/* ============================================================
+   3. GENERATION DETERMINISTE
+   La graine n'est plus la cellule GPS mais l'identifiant OSM
+   du lieu : le meme temple donnera toujours le meme donjon.
+   ============================================================ */
+
 function grainePourTexte(t) {
   var h = 2166136261;
   for (var i = 0; i < t.length; i++) {
@@ -125,7 +172,6 @@ function grainePourTexte(t) {
   return h >>> 0;
 }
 
-// Fabrique un tirage aleatoire reproductible a partir d'une graine
 function tirageAleatoire(graine) {
   var e = graine;
   return function () {
@@ -136,27 +182,159 @@ function tirageAleatoire(graine) {
   };
 }
 
-// Donne le donjon d'une cellule, ou null s'il n'y en a pas
-function donjonDeLaCellule(x, y) {
-  var a = tirageAleatoire(grainePourTexte(x + "_" + y));
+// Nom du lieu, en privilegiant le francais puis l'anglais
+function nomDuLieu(tags) {
+  return tags["name:fr"] || tags["name:en"] || tags.name || "";
+}
 
-  if (a() > CHANCE_DONJON) return null;
+// Construit un donjon a partir d'un element OSM
+function donjonDepuisLieu(element) {
+  var tags = element.tags || {};
+  var nom = nomDuLieu(tags);
+  if (!nom) return null;                 // sans nom, pas de donjon
 
-  var lat = (x + 0.2 + a() * 0.6) * TAILLE_CELLULE;
-  var lon = (y + 0.2 + a() * 0.6) * TAILLE_CELLULE;
+  // les surfaces (way/relation) renvoient leur centre dans "center"
+  var lat = element.lat || (element.center && element.center.lat);
+  var lon = element.lon || (element.center && element.center.lon);
+  if (!lat || !lon) return null;
+
+  var id = element.type + "/" + element.id;
+  var a = tirageAleatoire(grainePourTexte(id));
+
+  var cat = categorieDuLieu(tags);
+  var modele = CATEGORIES[cat];
+
+  var prefixe = modele.prefixes[Math.floor(a() * modele.prefixes.length)];
+  var monstre = modele.monstres[Math.floor(a() * modele.monstres.length)];
+  var niveau  = 1 + Math.floor(a() * 8);
 
   return {
-    id: x + "_" + y,
+    id: id,
     lat: lat,
     lon: lon,
-    monstre: MONSTRES[Math.floor(a() * MONSTRES.length)],
-    niveau: 1 + Math.floor(a() * 5)
+    lieu: nom,
+    categorie: cat,
+    nom: prefixe + " " + nom,
+    monstre: monstre,
+    niveau: niveau
   };
 }
 
 
 /* ============================================================
-   3. DISTANCE ENTRE DEUX POINTS GPS (formule de Haversine)
+   4. INTERROGATION D'OPENSTREETMAP (API Overpass, gratuite)
+   ============================================================ */
+
+function requeteOverpass(lat, lon) {
+  var autour = "(around:" + RAYON_RECHERCHE + "," + lat + "," + lon + ")";
+
+  var filtres = [
+    '["amenity"="place_of_worship"]',
+    '["historic"]',
+    '["man_made"="tower"]',
+    '["tourism"="viewpoint"]',
+    '["tourism"="museum"]',
+    '["tourism"="attraction"]',
+    '["tourism"="artwork"]',
+    '["amenity"="library"]',
+    '["leisure"="park"]',
+    '["leisure"="garden"]'
+  ];
+
+  // nwr = noeuds, surfaces et relations en une seule passe
+  var corps = "";
+  for (var i = 0; i < filtres.length; i++) {
+    corps += "nwr" + filtres[i] + autour + ";";
+  }
+
+  return "[out:json][timeout:25];(" + corps + ");out center 80;";
+}
+
+function chargerDonjons(lat, lon) {
+  etat("Consultation des lieux alentour...");
+
+  fetch(URL_OVERPASS, { method: "POST", body: requeteOverpass(lat, lon) })
+    .then(function (reponse) {
+      if (!reponse.ok) throw new Error("serveur OSM occupe (" + reponse.status + ")");
+      return reponse.json();
+    })
+    .then(function (donnees) {
+      var nouveaux = 0;
+
+      for (var i = 0; i < donnees.elements.length; i++) {
+        var d = donjonDepuisLieu(donnees.elements[i]);
+        if (!d) continue;
+        if (donjons[d.id]) continue;      // deja connu
+
+        donjons[d.id] = d;
+        poserMarqueur(d);
+        nouveaux++;
+      }
+
+      sauvegarder();
+      etat(nouveaux + " nouveau(x) lieu(x) eveille(s)");
+    })
+    .catch(function (err) {
+      etat("Lieux indisponibles : " + err.message);
+    });
+}
+
+
+/* ============================================================
+   5. LA CARTE
+   ============================================================ */
+
+var carte = L.map("carte", { zoomControl: false, attributionControl: false })
+             .setView([25.033, 121.565], 16);
+
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(carte);
+
+var joueur = L.circleMarker([25.033, 121.565], {
+  radius: 9, color: "#fff", weight: 3,
+  fillColor: "#3b82f6", fillOpacity: 1
+}).addTo(carte);
+
+var donjons = {};             // tous les donjons connus, par identifiant OSM
+var donjonProche = null;
+var dernierePosRequete = null;
+
+function poserMarqueur(d) {
+  L.circleMarker([d.lat, d.lon], {
+    radius: 11, color: "#fff", weight: 2,
+    fillColor: "#b455d4", fillOpacity: 0.9
+  }).addTo(carte).bindPopup(
+    '<div class="pop-titre">' + d.nom + '</div>' +
+    '<div class="pop-lieu">' + d.lieu + '</div>' +
+    '<div class="pop-mons">' + d.monstre + ' &middot; niveau ' + d.niveau + '</div>'
+  );
+}
+
+
+/* ============================================================
+   6. SAUVEGARDE LOCALE
+   Evite de re-interroger OSM a chaque ouverture du jeu.
+   ============================================================ */
+
+function sauvegarder() {
+  try {
+    localStorage.setItem("echos_donjons", JSON.stringify(donjons));
+  } catch (e) { /* memoire pleine : sans importance */ }
+}
+
+function charger() {
+  try {
+    var brut = localStorage.getItem("echos_donjons");
+    if (!brut) return;
+    donjons = JSON.parse(brut);
+    for (var id in donjons) poserMarqueur(donjons[id]);
+  } catch (e) {
+    donjons = {};
+  }
+}
+
+
+/* ============================================================
+   7. OUTILS
    ============================================================ */
 
 function distanceMetres(lat1, lon1, lat2, lon2) {
@@ -170,62 +348,13 @@ function distanceMetres(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-
-/* ============================================================
-   4. LA CARTE
-   ============================================================ */
-
-var carte = L.map("carte", { zoomControl: false, attributionControl: false })
-             .setView([48.8566, 2.3522], 17);
-
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19
-}).addTo(carte);
-
-// Le marqueur du joueur
-var joueur = L.circleMarker([48.8566, 2.3522], {
-  radius: 9,
-  color: "#fff",
-  weight: 3,
-  fillColor: "#3b82f6",
-  fillOpacity: 1
-}).addTo(carte);
-
-var donjonsAffiches = {};   // les donjons deja poses sur la carte
-var donjonProche = null;    // le plus proche de toi a cet instant
-
-
-/* ============================================================
-   5. AFFICHER LES DONJONS AUTOUR DU JOUEUR
-   ============================================================ */
-
-function afficherDonjonsAutour(lat, lon) {
-  var cx = Math.floor(lat / TAILLE_CELLULE);
-  var cy = Math.floor(lon / TAILLE_CELLULE);
-
-  for (var dx = -RAYON_AFFICHAGE; dx <= RAYON_AFFICHAGE; dx++) {
-    for (var dy = -RAYON_AFFICHAGE; dy <= RAYON_AFFICHAGE; dy++) {
-
-      var d = donjonDeLaCellule(cx + dx, cy + dy);
-      if (!d) continue;                      // pas de donjon ici
-      if (donjonsAffiches[d.id]) continue;   // deja affiche
-
-      L.circleMarker([d.lat, d.lon], {
-        radius: 11,
-        color: "#fff",
-        weight: 2,
-        fillColor: "#b455d4",
-        fillOpacity: 0.9
-      }).addTo(carte).bindPopup(d.monstre + " - niveau " + d.niveau);
-
-      donjonsAffiches[d.id] = d;
-    }
-  }
+function etat(message) {
+  document.getElementById("etat").textContent = message;
 }
 
 
 /* ============================================================
-   6. BOUCLE PRINCIPALE : appelee a chaque nouvelle position GPS
+   8. BOUCLE PRINCIPALE
    ============================================================ */
 
 function positionMiseAJour(position) {
@@ -235,14 +364,19 @@ function positionMiseAJour(position) {
   joueur.setLatLng([lat, lon]);
   carte.setView([lat, lon], carte.getZoom());
 
-  afficherDonjonsAutour(lat, lon);
+  // Faut-il redemander des lieux a OpenStreetMap ?
+  if (!dernierePosRequete ||
+      distanceMetres(lat, lon, dernierePosRequete[0], dernierePosRequete[1]) > DISTANCE_RELANCE) {
+    dernierePosRequete = [lat, lon];
+    chargerDonjons(lat, lon);
+  }
 
-  // On cherche le donjon le plus proche
+  // Donjon le plus proche
   donjonProche = null;
   var distanceMin = Infinity;
 
-  for (var id in donjonsAffiches) {
-    var d = donjonsAffiches[id];
+  for (var id in donjons) {
+    var d = donjons[id];
     var dist = distanceMetres(lat, lon, d.lat, d.lon);
     if (dist < distanceMin) {
       distanceMin = dist;
@@ -254,15 +388,15 @@ function positionMiseAJour(position) {
   var boutonEntrer = document.getElementById("entrer");
 
   if (donjonProche && distanceMin <= DISTANCE_ENTREE) {
-    texte.innerHTML = "Un donjon ! <b>" + donjonProche.monstre +
-                      "</b> niveau " + donjonProche.niveau + " rode ici.";
+    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>" +
+                      donjonProche.monstre + " &middot; niveau " + donjonProche.niveau;
     boutonEntrer.style.display = "block";
   } else if (donjonProche) {
-    texte.innerHTML = "Donjon le plus proche : <b>" +
-                      Math.round(distanceMin) + " m</b>";
+    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>" +
+                      Math.round(distanceMin) + " m";
     boutonEntrer.style.display = "none";
   } else {
-    texte.textContent = "Aucun donjon en vue. Continue de marcher.";
+    texte.textContent = "Aucun lieu eveille dans les environs.";
     boutonEntrer.style.display = "none";
   }
 }
@@ -274,11 +408,12 @@ function erreurPosition(err) {
 
 
 /* ============================================================
-   7. DEMARRAGE
+   9. DEMARRAGE
    ============================================================ */
 
 document.getElementById("btn-depart").addEventListener("click", function () {
   document.getElementById("depart").style.display = "none";
+  charger();
 
   navigator.geolocation.watchPosition(positionMiseAJour, erreurPosition, {
     enableHighAccuracy: true,
@@ -287,10 +422,10 @@ document.getElementById("btn-depart").addEventListener("click", function () {
   });
 });
 
-// Etape suivante : ici viendra l'ecran de combat.
+// Etape suivante : l'ecran de combat.
 document.getElementById("entrer").addEventListener("click", function () {
   if (donjonProche) {
-    alert("Combat contre " + donjonProche.monstre + " (a construire)");
+    alert(donjonProche.nom + "\n\nCombat contre " + donjonProche.monstre + " (a construire)");
   }
 });
 
