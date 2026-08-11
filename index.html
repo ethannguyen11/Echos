@@ -34,34 +34,25 @@
   #texte { font-size: 16px; line-height: 1.4; }
 
   #etat {
-    font-size: 12px;
-    color: #777;
-    margin-top: 6px;
-    min-height: 14px;
+    font-size: 12px; color: #777;
+    margin-top: 6px; min-height: 14px;
   }
 
   #entrer {
     display: none;
-    margin-top: 12px;
-    width: 100%;
+    margin-top: 12px; width: 100%;
     padding: 14px;
-    font-size: 17px;
-    font-weight: 600;
-    color: #fff;
-    background: #b455d4;
-    border: none;
-    border-radius: 12px;
+    font-size: 17px; font-weight: 600;
+    color: #fff; background: #b455d4;
+    border: none; border-radius: 12px;
   }
 
   #depart {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 2000;
-    background: #111;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    z-index: 2000; background: #111;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
     gap: 24px;
   }
 
@@ -102,65 +93,91 @@
    1. REGLAGES
    ============================================================ */
 
-var RAYON_RECHERCHE  = 700;   // metres : zone interrogee autour de toi
-var DISTANCE_ENTREE  = 40;    // metres pour pouvoir entrer
-var DISTANCE_RELANCE = 350;   // on re-interroge OSM apres ce deplacement
-var URL_OVERPASS = "https://overpass-api.de/api/interpreter";
+var RAYON_RECHERCHE   = 700;   // metres interroges autour de toi
+var DISTANCE_ENTREE   = 40;    // metres pour pouvoir entrer
+var DISTANCE_RELANCE  = 350;   // deplacement avant de re-interroger OSM
+var DISTANCE_DOUBLON  = 80;    // deux donjons de meme type plus proches = doublon
+var CLE_SAUVEGARDE    = "echos_donjons_v3";
+var URL_OVERPASS      = "https://overpass-api.de/api/interpreter";
 
 
 /* ============================================================
-   2. LES CATEGORIES DE LIEUX
-   Chaque type de lieu donne un nom de donjon et son bestiaire.
-   Ajoute librement des lignes ici : c'est le coeur du jeu.
+   2. LES QUATRE TYPES DE LIEUX
+   Un prefixe fixe par type, et son bestiaire.
+   C'est ici que tu enrichiras ton univers.
    ============================================================ */
 
 var CATEGORIES = {
-  temple: {
-    prefixes: ["Sanctuaire de", "Autel de", "Reliquaire de"],
-    monstres: ["Gardien de cendre", "Moine sans visage", "Braise votive", "Ombre d'encens"]
-  },
-  tour: {
-    prefixes: ["Fleche de", "Sommet de", "Vigie de"],
-    monstres: ["Rapace de verre", "Vent hurleur", "Sentinelle d'acier", "Foudre nichee"]
+  monument: {
+    prefixe: "Seuil de",
+    monstres: ["Cendrec", "Spectre grave", "Statue fendue", "Poussiere ancienne"]
   },
   parc: {
-    prefixes: ["Bosquet de", "Clairiere de", "Racines de"],
-    monstres: ["Bourgeon-dent", "Gloubi", "Vieux Rat", "Souche rampante"]
+    prefixe: "Clairiere du parc",
+    monstres: ["Bourgeon-dent", "Gloubi", "Souche rampante", "Vieux Rat"]
   },
-  eau: {
-    prefixes: ["Rives de", "Miroir de", "Remous de"],
-    monstres: ["Ondin blafard", "Ecaille noire", "Brume stagnante"]
+  metro: {
+    prefixe: "Tunnel d'entree de",
+    monstres: ["Passant gris", "Echo perdu", "Rat de quai", "Souffle d'acier"]
   },
-  memoire: {
-    prefixes: ["Vestiges de", "Memoire de", "Ruines de"],
-    monstres: ["Cendrec", "Spectre grave", "Poussiere ancienne", "Statue fendue"]
-  },
-  savoir: {
-    prefixes: ["Archives de", "Galerie de", "Cabinet de"],
-    monstres: ["Ombrelin", "Rat d'encre", "Page affamee", "Silence epais"]
-  },
-  seuil: {
-    prefixes: ["Seuil de", "Passage de", "Carrefour de"],
-    monstres: ["Passant gris", "Echo perdu", "Traine-pas"]
+  temple: {
+    prefixe: "Porte du Temple de",
+    monstres: ["Gardien de cendre", "Moine sans visage", "Braise votive", "Ombre d'encens"]
   }
 };
 
-// Traduit les etiquettes OSM en categorie de jeu
+// Traduit les etiquettes OSM en type de jeu. null = on ignore le lieu.
 function categorieDuLieu(tags) {
   if (tags.amenity === "place_of_worship") return "temple";
-  if (tags.historic) return "memoire";
-  if (tags.man_made === "tower" || tags.tourism === "viewpoint") return "tour";
-  if (tags.tourism === "museum" || tags.amenity === "library") return "savoir";
-  if (tags.leisure === "park" || tags.leisure === "garden") return "parc";
-  if (tags.natural === "water" || tags.leisure === "nature_reserve") return "eau";
-  return "seuil";
+  if (tags.leisure === "park") return "parc";
+
+  // Metro : plusieurs facons de l'etiqueter selon les villes
+  if (tags.station === "subway") return "metro";
+  if (tags.railway === "station" && tags.subway === "yes") return "metro";
+
+  // Monument : au sens large, ce qui se visite et fait repere
+  if (tags.historic) return "monument";
+  if (tags.man_made === "tower") return "monument";
+  if (tags.tourism === "attraction") return "monument";
+
+  return null;
 }
 
 
 /* ============================================================
-   3. GENERATION DETERMINISTE
-   La graine n'est plus la cellule GPS mais l'identifiant OSM
-   du lieu : le meme temple donnera toujours le meme donjon.
+   3. NETTOYAGE DU NOM
+   OSM ecrit "Songshan Ciyou Temple" ou "Xiangshan MRT Station".
+   On retire ces mots pour que le prefixe ne fasse pas doublon :
+   "Porte du Temple de Songshan Ciyou".
+   ============================================================ */
+
+var MOTS_A_RETIRER = [
+  "MRT Station", "Metro Station", "Subway Station", "Station",
+  "Temple", "Shrine", "Park", "Garden", "Memorial Hall"
+];
+
+function nettoyerNom(nom) {
+  var propre = nom;
+
+  for (var i = 0; i < MOTS_A_RETIRER.length; i++) {
+    var mot = MOTS_A_RETIRER[i];
+    // en fin de nom : "Songshan Park" -> "Songshan"
+    var finale = new RegExp("\\s+" + mot + "$", "i");
+    propre = propre.replace(finale, "");
+    // en debut de nom : "Temple Songshan" -> "Songshan"
+    var initiale = new RegExp("^" + mot + "\\s+", "i");
+    propre = propre.replace(initiale, "");
+  }
+
+  propre = propre.trim();
+  return propre.length > 0 ? propre : nom;   // jamais de nom vide
+}
+
+
+/* ============================================================
+   4. GENERATION DETERMINISTE
+   La graine est l'identifiant OSM : le meme temple donnera
+   toujours le meme monstre et le meme niveau.
    ============================================================ */
 
 function grainePourTexte(t) {
@@ -182,16 +199,18 @@ function tirageAleatoire(graine) {
   };
 }
 
-// Nom du lieu, en privilegiant le francais puis l'anglais
 function nomDuLieu(tags) {
   return tags["name:fr"] || tags["name:en"] || tags.name || "";
 }
 
-// Construit un donjon a partir d'un element OSM
 function donjonDepuisLieu(element) {
   var tags = element.tags || {};
-  var nom = nomDuLieu(tags);
-  if (!nom) return null;                 // sans nom, pas de donjon
+
+  var cat = categorieDuLieu(tags);
+  if (!cat) return null;                  // type de lieu non retenu
+
+  var brut = nomDuLieu(tags);
+  if (!brut) return null;                 // sans nom, pas de donjon
 
   // les surfaces (way/relation) renvoient leur centre dans "center"
   var lat = element.lat || (element.center && element.center.lat);
@@ -200,29 +219,24 @@ function donjonDepuisLieu(element) {
 
   var id = element.type + "/" + element.id;
   var a = tirageAleatoire(grainePourTexte(id));
-
-  var cat = categorieDuLieu(tags);
   var modele = CATEGORIES[cat];
-
-  var prefixe = modele.prefixes[Math.floor(a() * modele.prefixes.length)];
-  var monstre = modele.monstres[Math.floor(a() * modele.monstres.length)];
-  var niveau  = 1 + Math.floor(a() * 8);
+  var nom = nettoyerNom(brut);
 
   return {
     id: id,
     lat: lat,
     lon: lon,
-    lieu: nom,
+    lieu: brut,
     categorie: cat,
-    nom: prefixe + " " + nom,
-    monstre: monstre,
-    niveau: niveau
+    nom: modele.prefixe + " " + nom,
+    monstre: modele.monstres[Math.floor(a() * modele.monstres.length)],
+    niveau: 1 + Math.floor(a() * 8)
   };
 }
 
 
 /* ============================================================
-   4. INTERROGATION D'OPENSTREETMAP (API Overpass, gratuite)
+   5. INTERROGATION D'OPENSTREETMAP (API Overpass, gratuite)
    ============================================================ */
 
 function requeteOverpass(lat, lon) {
@@ -230,15 +244,12 @@ function requeteOverpass(lat, lon) {
 
   var filtres = [
     '["amenity"="place_of_worship"]',
+    '["leisure"="park"]',
+    '["station"="subway"]',
+    '["railway"="station"]["subway"="yes"]',
     '["historic"]',
     '["man_made"="tower"]',
-    '["tourism"="viewpoint"]',
-    '["tourism"="museum"]',
-    '["tourism"="attraction"]',
-    '["tourism"="artwork"]',
-    '["amenity"="library"]',
-    '["leisure"="park"]',
-    '["leisure"="garden"]'
+    '["tourism"="attraction"]'
   ];
 
   // nwr = noeuds, surfaces et relations en une seule passe
@@ -248,6 +259,18 @@ function requeteOverpass(lat, lon) {
   }
 
   return "[out:json][timeout:25];(" + corps + ");out center 80;";
+}
+
+// Evite d'empiler trois donjons sur le meme batiment
+function estUnDoublon(nouveau) {
+  for (var id in donjons) {
+    var d = donjons[id];
+    if (d.categorie !== nouveau.categorie) continue;
+    if (distanceMetres(d.lat, d.lon, nouveau.lat, nouveau.lon) < DISTANCE_DOUBLON) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function chargerDonjons(lat, lon) {
@@ -265,6 +288,7 @@ function chargerDonjons(lat, lon) {
         var d = donjonDepuisLieu(donnees.elements[i]);
         if (!d) continue;
         if (donjons[d.id]) continue;      // deja connu
+        if (estUnDoublon(d)) continue;    // meme lieu, autre fiche OSM
 
         donjons[d.id] = d;
         poserMarqueur(d);
@@ -273,6 +297,12 @@ function chargerDonjons(lat, lon) {
 
       sauvegarder();
       etat(nouveaux + " nouveau(x) lieu(x) eveille(s)");
+
+      // CORRECTION : on rafraichit le bandeau tout de suite,
+      // sans attendre le prochain signal GPS.
+      if (dernierePosition) {
+        mettreAJourHud(dernierePosition[0], dernierePosition[1]);
+      }
     })
     .catch(function (err) {
       etat("Lieux indisponibles : " + err.message);
@@ -281,7 +311,7 @@ function chargerDonjons(lat, lon) {
 
 
 /* ============================================================
-   5. LA CARTE
+   6. LA CARTE
    ============================================================ */
 
 var carte = L.map("carte", { zoomControl: false, attributionControl: false })
@@ -294,14 +324,23 @@ var joueur = L.circleMarker([25.033, 121.565], {
   fillColor: "#3b82f6", fillOpacity: 1
 }).addTo(carte);
 
-var donjons = {};             // tous les donjons connus, par identifiant OSM
+var COULEURS = {
+  monument: "#b455d4",
+  parc:     "#4ca85f",
+  metro:    "#d49a2a",
+  temple:   "#d4554a"
+};
+
+var donjons = {};
 var donjonProche = null;
+var dernierePosition = null;
 var dernierePosRequete = null;
 
 function poserMarqueur(d) {
   L.circleMarker([d.lat, d.lon], {
     radius: 11, color: "#fff", weight: 2,
-    fillColor: "#b455d4", fillOpacity: 0.9
+    fillColor: COULEURS[d.categorie] || "#b455d4",
+    fillOpacity: 0.9
   }).addTo(carte).bindPopup(
     '<div class="pop-titre">' + d.nom + '</div>' +
     '<div class="pop-lieu">' + d.lieu + '</div>' +
@@ -311,19 +350,18 @@ function poserMarqueur(d) {
 
 
 /* ============================================================
-   6. SAUVEGARDE LOCALE
-   Evite de re-interroger OSM a chaque ouverture du jeu.
+   7. SAUVEGARDE LOCALE
    ============================================================ */
 
 function sauvegarder() {
   try {
-    localStorage.setItem("echos_donjons", JSON.stringify(donjons));
+    localStorage.setItem(CLE_SAUVEGARDE, JSON.stringify(donjons));
   } catch (e) { /* memoire pleine : sans importance */ }
 }
 
 function charger() {
   try {
-    var brut = localStorage.getItem("echos_donjons");
+    var brut = localStorage.getItem(CLE_SAUVEGARDE);
     if (!brut) return;
     donjons = JSON.parse(brut);
     for (var id in donjons) poserMarqueur(donjons[id]);
@@ -334,7 +372,7 @@ function charger() {
 
 
 /* ============================================================
-   7. OUTILS
+   8. OUTILS
    ============================================================ */
 
 function distanceMetres(lat1, lon1, lat2, lon2) {
@@ -354,24 +392,11 @@ function etat(message) {
 
 
 /* ============================================================
-   8. BOUCLE PRINCIPALE
+   9. LE BANDEAU D'INFORMATION
+   Separe de la boucle GPS pour pouvoir etre rappele seul.
    ============================================================ */
 
-function positionMiseAJour(position) {
-  var lat = position.coords.latitude;
-  var lon = position.coords.longitude;
-
-  joueur.setLatLng([lat, lon]);
-  carte.setView([lat, lon], carte.getZoom());
-
-  // Faut-il redemander des lieux a OpenStreetMap ?
-  if (!dernierePosRequete ||
-      distanceMetres(lat, lon, dernierePosRequete[0], dernierePosRequete[1]) > DISTANCE_RELANCE) {
-    dernierePosRequete = [lat, lon];
-    chargerDonjons(lat, lon);
-  }
-
-  // Donjon le plus proche
+function mettreAJourHud(lat, lon) {
   donjonProche = null;
   var distanceMin = Infinity;
 
@@ -401,6 +426,29 @@ function positionMiseAJour(position) {
   }
 }
 
+
+/* ============================================================
+   10. BOUCLE PRINCIPALE
+   ============================================================ */
+
+function positionMiseAJour(position) {
+  var lat = position.coords.latitude;
+  var lon = position.coords.longitude;
+
+  dernierePosition = [lat, lon];
+  joueur.setLatLng([lat, lon]);
+  carte.setView([lat, lon], carte.getZoom());
+
+  // Faut-il redemander des lieux a OpenStreetMap ?
+  if (!dernierePosRequete ||
+      distanceMetres(lat, lon, dernierePosRequete[0], dernierePosRequete[1]) > DISTANCE_RELANCE) {
+    dernierePosRequete = [lat, lon];
+    chargerDonjons(lat, lon);
+  }
+
+  mettreAJourHud(lat, lon);
+}
+
 function erreurPosition(err) {
   document.getElementById("texte").textContent =
     "Position indisponible (" + err.message + ")";
@@ -408,7 +456,7 @@ function erreurPosition(err) {
 
 
 /* ============================================================
-   9. DEMARRAGE
+   11. DEMARRAGE
    ============================================================ */
 
 document.getElementById("btn-depart").addEventListener("click", function () {
