@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Echos</title>
+
+<!-- Leaflet : la bibliotheque de carte -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #111;
+    color: #eee;
+    font-family: -apple-system, sans-serif;
+    overflow: hidden;
+  }
+
+  /* La carte occupe tout l'ecran */
+  #carte {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+  }
+
+  /* Le bandeau d'information en bas */
+  #hud {
+    position: absolute;
+    left: 12px; right: 12px; bottom: 30px;
+    z-index: 1000;
+    background: rgba(20, 20, 25, 0.92);
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  #texte { font-size: 16px; line-height: 1.4; }
+
+  #entrer {
+    display: none;
+    margin-top: 12px;
+    width: 100%;
+    padding: 14px;
+    font-size: 17px;
+    font-weight: 600;
+    color: #fff;
+    background: #b455d4;
+    border: none;
+    border-radius: 12px;
+  }
+
+  /* L'ecran d'accueil, affiche avant le demarrage */
+  #depart {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 2000;
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  #depart h1 { font-size: 42px; margin: 0; letter-spacing: 4px; }
+  #depart p  { color: #888; margin: 0 40px; text-align: center; line-height: 1.5; }
+
+  #btn-depart {
+    padding: 16px 40px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    background: #b455d4;
+    border: none;
+    border-radius: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div id="carte"></div>
+
+<div id="hud">
+  <div id="texte">Recherche de ta position...</div>
+  <button id="entrer">Entrer dans le donjon</button>
+</div>
+
+<div id="depart">
+  <h1>ECHOS</h1>
+  <p>Marche dans le monde reel. Les donjons apparaissent la ou tu passes.</p>
+  <button id="btn-depart">Commencer</button>
+</div>
+
+<script>
+/* ============================================================
+   1. REGLAGES : les valeurs a ajuster pendant les tests
+   ============================================================ */
+
+var TAILLE_CELLULE   = 0.0015;  // taille d'une cellule en degres (~150 m)
+var CHANCE_DONJON    = 0.3;     // 30 % des cellules contiennent un donjon
+var DISTANCE_ENTREE  = 30;      // metres a parcourir pour pouvoir entrer
+var RAYON_AFFICHAGE  = 3;       // cellules explorees autour de toi
+
+var MONSTRES = ["Gloubi", "Ombrelin", "Cendrec", "Bourgeon-dent", "Vieux Rat"];
+
+
+/* ============================================================
+   2. GENERATION DETERMINISTE
+   Meme cellule = meme donjon, toujours. Aucune donnee stockee.
+   ============================================================ */
+
+// Transforme un texte ("1234_567") en un nombre unique
+function grainePourTexte(t) {
+  var h = 2166136261;
+  for (var i = 0; i < t.length; i++) {
+    h ^= t.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// Fabrique un tirage aleatoire reproductible a partir d'une graine
+function tirageAleatoire(graine) {
+  var e = graine;
+  return function () {
+    e = (e + 0x6D2B79F5) | 0;
+    var t = Math.imul(e ^ (e >>> 15), 1 | e);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Donne le donjon d'une cellule, ou null s'il n'y en a pas
+function donjonDeLaCellule(x, y) {
+  var a = tirageAleatoire(grainePourTexte(x + "_" + y));
+
+  if (a() > CHANCE_DONJON) return null;
+
+  var lat = (x + 0.2 + a() * 0.6) * TAILLE_CELLULE;
+  var lon = (y + 0.2 + a() * 0.6) * TAILLE_CELLULE;
+
+  return {
+    id: x + "_" + y,
+    lat: lat,
+    lon: lon,
+    monstre: MONSTRES[Math.floor(a() * MONSTRES.length)],
+    niveau: 1 + Math.floor(a() * 5)
+  };
+}
+
+
+/* ============================================================
+   3. DISTANCE ENTRE DEUX POINTS GPS (formule de Haversine)
+   ============================================================ */
+
+function distanceMetres(lat1, lon1, lat2, lon2) {
+  var R = 6371000;
+  var p = Math.PI / 180;
+  var dLat = (lat2 - lat1) * p;
+  var dLon = (lon2 - lon1) * p;
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * p) * Math.cos(lat2 * p) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+
+/* ============================================================
+   4. LA CARTE
+   ============================================================ */
+
+var carte = L.map("carte", { zoomControl: false, attributionControl: false })
+             .setView([48.8566, 2.3522], 17);
+
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19
+}).addTo(carte);
+
+// Le marqueur du joueur
+var joueur = L.circleMarker([48.8566, 2.3522], {
+  radius: 9,
+  color: "#fff",
+  weight: 3,
+  fillColor: "#3b82f6",
+  fillOpacity: 1
+}).addTo(carte);
+
+var donjonsAffiches = {};   // les donjons deja poses sur la carte
+var donjonProche = null;    // le plus proche de toi a cet instant
+
+
+/* ============================================================
+   5. AFFICHER LES DONJONS AUTOUR DU JOUEUR
+   ============================================================ */
+
+function afficherDonjonsAutour(lat, lon) {
+  var cx = Math.floor(lat / TAILLE_CELLULE);
+  var cy = Math.floor(lon / TAILLE_CELLULE);
+
+  for (var dx = -RAYON_AFFICHAGE; dx <= RAYON_AFFICHAGE; dx++) {
+    for (var dy = -RAYON_AFFICHAGE; dy <= RAYON_AFFICHAGE; dy++) {
+
+      var d = donjonDeLaCellule(cx + dx, cy + dy);
+      if (!d) continue;                      // pas de donjon ici
+      if (donjonsAffiches[d.id]) continue;   // deja affiche
+
+      L.circleMarker([d.lat, d.lon], {
+        radius: 11,
+        color: "#fff",
+        weight: 2,
+        fillColor: "#b455d4",
+        fillOpacity: 0.9
+      }).addTo(carte).bindPopup(d.monstre + " - niveau " + d.niveau);
+
+      donjonsAffiches[d.id] = d;
+    }
+  }
+}
+
+
+/* ============================================================
+   6. BOUCLE PRINCIPALE : appelee a chaque nouvelle position GPS
+   ============================================================ */
+
+function positionMiseAJour(position) {
+  var lat = position.coords.latitude;
+  var lon = position.coords.longitude;
+
+  joueur.setLatLng([lat, lon]);
+  carte.setView([lat, lon], carte.getZoom());
+
+  afficherDonjonsAutour(lat, lon);
+
+  // On cherche le donjon le plus proche
+  donjonProche = null;
+  var distanceMin = Infinity;
+
+  for (var id in donjonsAffiches) {
+    var d = donjonsAffiches[id];
+    var dist = distanceMetres(lat, lon, d.lat, d.lon);
+    if (dist < distanceMin) {
+      distanceMin = dist;
+      donjonProche = d;
+    }
+  }
+
+  var texte = document.getElementById("texte");
+  var boutonEntrer = document.getElementById("entrer");
+
+  if (donjonProche && distanceMin <= DISTANCE_ENTREE) {
+    texte.innerHTML = "Un donjon ! <b>" + donjonProche.monstre +
+                      "</b> niveau " + donjonProche.niveau + " rode ici.";
+    boutonEntrer.style.display = "block";
+  } else if (donjonProche) {
+    texte.innerHTML = "Donjon le plus proche : <b>" +
+                      Math.round(distanceMin) + " m</b>";
+    boutonEntrer.style.display = "none";
+  } else {
+    texte.textContent = "Aucun donjon en vue. Continue de marcher.";
+    boutonEntrer.style.display = "none";
+  }
+}
+
+function erreurPosition(err) {
+  document.getElementById("texte").textContent =
+    "Position indisponible (" + err.message + ")";
+}
+
+
+/* ============================================================
+   7. DEMARRAGE
+   ============================================================ */
+
+document.getElementById("btn-depart").addEventListener("click", function () {
+  document.getElementById("depart").style.display = "none";
+
+  navigator.geolocation.watchPosition(positionMiseAJour, erreurPosition, {
+    enableHighAccuracy: true,
+    maximumAge: 2000,
+    timeout: 20000
+  });
+});
+
+// Etape suivante : ici viendra l'ecran de combat.
+document.getElementById("entrer").addEventListener("click", function () {
+  if (donjonProche) {
+    alert("Combat contre " + donjonProche.monstre + " (a construire)");
+  }
+});
+
+</script>
+</body>
+</html>
