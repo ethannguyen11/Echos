@@ -342,9 +342,19 @@ var DISTANCE_RELANCE   = 350;
 var DISTANCE_DOUBLON   = 80;
 var EQUIPE_MAX         = 3;
 
-var CLE_DONJONS = "echos_donjons_v3";
+var CLE_DONJONS = "echos_donjons_v5";
 var CLE_JOUEUR  = "echos_joueur_v2";
-var URL_OVERPASS = "https://overpass-api.de/api/interpreter";
+
+// Overpass est gratuit et sature souvent. On essaie les miroirs
+// l'un apres l'autre ; le japonais est le plus proche de Taipei.
+var SERVEURS_OVERPASS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.osm.jp/api/interpreter"
+];
+
+var DELAI_NOUVEL_ESSAI = 20000;   // 20 s avant de retenter apres un echec total
 var DOSSIER_MONSTRES = "monstres/";
 
 
@@ -704,15 +714,43 @@ function estUnDoublon(nouveau) {
   return false;
 }
 
-function chargerDonjons(lat, lon) {
-  etat("Consultation des lieux alentour...");
+var chargementEnCours = false;
 
-  fetch(URL_OVERPASS, { method: "POST", body: requeteOverpass(lat, lon) })
+function chargerDonjons(lat, lon, indexServeur) {
+  if (indexServeur === undefined) indexServeur = 0;
+
+  // Tous les miroirs ont echoue : on retentera plus tard
+  if (indexServeur >= SERVEURS_OVERPASS.length) {
+    chargementEnCours = false;
+    dernierePosRequete = null;         // autorise une nouvelle tentative
+    etat("Serveurs OSM satures. Nouvel essai dans 20 s...");
+
+    setTimeout(function () {
+      if (dernierePosition && !chargementEnCours) {
+        chargerDonjons(dernierePosition[0], dernierePosition[1], 0);
+      }
+    }, DELAI_NOUVEL_ESSAI);
+    return;
+  }
+
+  chargementEnCours = true;
+
+  etat(indexServeur === 0 ?
+       "Consultation des lieux alentour..." :
+       "Serveur occupe, essai " + (indexServeur + 1) + "/" + SERVEURS_OVERPASS.length + "...");
+
+  fetch(SERVEURS_OVERPASS[indexServeur], {
+    method: "POST",
+    body: requeteOverpass(lat, lon)
+  })
     .then(function (r) {
-      if (!r.ok) throw new Error("serveur OSM occupe (" + r.status + ")");
+      if (!r.ok) throw new Error("statut " + r.status);
       return r.json();
     })
     .then(function (donnees) {
+      chargementEnCours = false;
+      dernierePosRequete = [lat, lon];   // succes : on note la position
+
       var nouveaux = 0;
 
       for (var i = 0; i < donnees.elements.length; i++) {
@@ -731,8 +769,9 @@ function chargerDonjons(lat, lon) {
 
       if (dernierePosition) mettreAJourHud(dernierePosition[0], dernierePosition[1]);
     })
-    .catch(function (err) {
-      etat("Lieux indisponibles : " + err.message);
+    .catch(function () {
+      // Ce miroir n'a pas repondu : on passe au suivant
+      chargerDonjons(lat, lon, indexServeur + 1);
     });
 }
 
@@ -1299,10 +1338,10 @@ function positionMiseAJour(position) {
 
   if (!combat) carte.setView([lat, lon], carte.getZoom());
 
-  if (!dernierePosRequete ||
-      distanceMetres(lat, lon, dernierePosRequete[0], dernierePosRequete[1]) > DISTANCE_RELANCE) {
-    dernierePosRequete = [lat, lon];
-    chargerDonjons(lat, lon);
+  if (!chargementEnCours &&
+      (!dernierePosRequete ||
+       distanceMetres(lat, lon, dernierePosRequete[0], dernierePosRequete[1]) > DISTANCE_RELANCE)) {
+    chargerDonjons(lat, lon, 0);
   }
 
   if (!combat) mettreAJourHud(lat, lon);
