@@ -299,7 +299,7 @@
 
   <div id="scout-bloc">
     <div class="jauge-nom">
-      <span>Emprise</span>
+      <span>Assimilation</span>
       <span id="s-val">0 %</span>
     </div>
     <div class="jauge"><span id="s-jauge" class="scout" style="width:0%"></span></div>
@@ -311,7 +311,7 @@
 
   <div id="combat-actions">
     <button id="btn-attaquer">Attaquer</button>
-    <button id="btn-scouter" class="scout">Scouter</button>
+    <button id="btn-scouter" class="scout">Assimiler</button>
     <button id="btn-fuir">Fuir</button>
   </div>
 </div>
@@ -326,7 +326,7 @@
 
 <div id="depart">
   <h1>ECHOS</h1>
-  <p>Les lieux gardent leurs echos. Tu ne combats pas : tu invoques.</p>
+  <p>Chaque lieu garde un savoir perdu. Tu ne combats pas : tu assimiles.</p>
   <button id="btn-depart">Commencer</button>
 </div>
 
@@ -821,8 +821,8 @@ function texteInfobulle(d) {
   var e = ESPECES[d.espece];
   var bas;
 
-  if (d.capture) bas = "Echo lie a toi";
-  else if (d.dissipe) bas = "Echo dissipe";
+  if (d.capture) bas = "Savoir assimile";
+  else if (d.dissipe) bas = "Savoir perdu";
   else bas = e.nom + ", " + e.titre + " &middot; niveau " + d.niveau;
 
   return '<div class="pop-titre">' + d.nom + '</div>' +
@@ -908,10 +908,10 @@ function mettreAJourHud(lat, lon) {
   }
 
   if (donjonProche.capture) {
-    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>Cet echo t'a deja rejoint.";
+    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>Ce savoir est deja tien.";
     bouton.style.display = "none";
   } else if (donjonProche.dissipe) {
-    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>L'echo s'est dissipe ici.";
+    texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>Le savoir s'est perdu ici.";
     bouton.style.display = "none";
   } else if (equipe.length === 0) {
     texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>Aucun echo dans ton equipe.";
@@ -937,7 +937,7 @@ function degats(atq, def, alea) {
   return Math.max(1, Math.round(base * (0.85 + alea * 0.3)));
 }
 
-// Chance de lier l'Echo, en pourcentage
+// Chance d'assimiler l'Echo, en pourcentage
 function chanceScout(c) {
   var a = c.adversaire;
 
@@ -1052,7 +1052,7 @@ function demarrerCombat(donjon, preemptif) {
 
   elem("combat-actions").innerHTML =
     '<button id="btn-attaquer">Attaquer</button>' +
-    '<button id="btn-scouter" class="scout">Scouter</button>' +
+    '<button id="btn-scouter" class="scout">Assimiler</button>' +
     '<button id="btn-fuir">Fuir</button>';
   brancherBoutonsCombat();
   boutonsActifs(true);
@@ -1104,12 +1104,12 @@ function actionScouter() {
   var e = ESPECES[combat.donjon.espece];
 
   if (Math.random() * 100 < chance) {
-    message("Ton equipe impose sa presence.<br><b>" + e.nom + "</b> incline la tete.");
+    message("Le savoir de <b>" + e.nom + "</b> se laisse enfin saisir.");
     setTimeout(capture, 800);
     return;
   }
 
-  message("Tu montres ta force (" + chance + " %).<br><b>" + e.nom + "</b> ne cede pas.");
+  message("Tu tentes d'assimiler <b>" + e.nom + "</b> (" + chance + " %).<br>Le savoir se derobe.");
   majAffichageCombat();
   setTimeout(tourAdverse, 900);
 }
@@ -1198,11 +1198,11 @@ function capture() {
   var txt;
 
   if (issue === "nouveau") {
-    txt = "<b>" + e.nom + "</b> rejoint ton grimoire !";
+    txt = "<b>" + e.nom + "</b> est assimile. Son savoir rejoint ton grimoire.";
   } else if (issue === "renforce") {
-    txt = "<b>" + e.nom + "</b> niveau " + d.niveau + " remplace le tien, plus faible.";
+    txt = "Le savoir de <b>" + e.nom + "</b> niveau " + d.niveau + " supplante celui que tu detenais.";
   } else {
-    txt = "<b>" + e.nom + "</b> se lie a toi, mais le tien est deja plus fort.";
+    txt = "<b>" + e.nom + "</b> se livre, mais tu en savais deja davantage.";
   }
 
   txt += "<br>+" + r.gain + " points d'echo" + (fortune ? " (Fortune)" : "") + ".";
@@ -1222,7 +1222,7 @@ function dissipation() {
   var r = distribuerXp(fortune);
 
   var txt = "<b>" + e.nom + "</b> se disloque et disparait.<br>" +
-            "<span style='color:#d4554a'>Tu ne pourras plus le lier ici.</span><br>" +
+            "<span style='color:#d4554a'>Son savoir est perdu a jamais.</span><br>" +
             "+" + r.gain + " points d'echo.";
   if (r.lignes.length) txt += "<br>" + r.lignes.join("<br>");
 
