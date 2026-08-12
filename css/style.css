@@ -1,0 +1,252 @@
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: #111; color: #eee;
+  font-family: -apple-system, sans-serif;
+  overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+}
+
+button { font-family: inherit; }
+
+#carte { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+
+/* ---------- Bandeau de la carte ---------- */
+
+#hud {
+  position: absolute; left: 12px; right: 12px; bottom: 30px;
+  z-index: 1000;
+  background: rgba(20, 20, 25, 0.92);
+  border: 1px solid #333; border-radius: 16px;
+  padding: 16px; text-align: center;
+}
+
+#texte { font-size: 16px; line-height: 1.4; }
+#etat { font-size: 12px; color: #777; margin-top: 6px; min-height: 14px; }
+
+#entrer {
+  display: none; margin-top: 12px; width: 100%;
+  padding: 14px; font-size: 17px; font-weight: 600;
+  color: #fff; background: #b455d4;
+  border: none; border-radius: 12px;
+}
+
+#barre-haut {
+  position: absolute; top: 60px; left: 12px; right: 12px;
+  z-index: 1000;
+  display: flex; gap: 8px; align-items: center;
+}
+
+#fiche {
+  background: rgba(20, 20, 25, 0.92);
+  border: 1px solid #333; border-radius: 12px;
+  padding: 8px 12px; font-size: 13px;
+}
+
+#btn-grimoire {
+  margin-left: auto;
+  background: rgba(20, 20, 25, 0.92);
+  border: 1px solid #333; border-radius: 12px;
+  padding: 8px 14px; font-size: 13px; color: #eee;
+}
+
+/* ---------- Accueil ---------- */
+
+#depart {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 3000; background: #111;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 24px;
+}
+
+#depart h1 { font-size: 42px; margin: 0; letter-spacing: 4px; }
+#depart p { color: #888; margin: 0 40px; text-align: center; line-height: 1.5; }
+
+#btn-depart {
+  padding: 16px 40px; font-size: 18px; font-weight: 600;
+  color: #fff; background: #b455d4;
+  border: none; border-radius: 12px;
+}
+
+/* ---------- Combat ---------- */
+
+#combat {
+  display: none;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 2000;
+  background: linear-gradient(#1a1024 0%, #2a1636 55%, #0d0812 100%);
+  flex-direction: column;
+}
+
+#combat.actif { display: flex; }
+
+#combat-lieu {
+  text-align: center; padding: 55px 20px 0;
+  font-size: 12px; color: #b98fd0; letter-spacing: 1px;
+}
+
+#scene {
+  flex: 1; min-height: 120px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+
+#monstre-img {
+  max-height: 100%; max-width: 65%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px rgba(180, 85, 212, 0.35));
+}
+
+#monstre-vide {
+  width: 130px; height: 130px;
+  border-radius: 50% 50% 42% 42%;
+  background: radial-gradient(circle at 40% 35%, #4a3060, #221430);
+  border: 2px solid #6b4a85;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px;
+  animation: flotter 3s ease-in-out infinite;
+}
+
+@keyframes flotter {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+.secoue { animation: secousse 0.3s; }
+
+@keyframes secousse {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+/* Jauge d'assimilation */
+#assimilation-bloc { display: none; padding: 0 20px 8px; }
+#assimilation-bloc.visible { display: block; }
+
+.jauge-bloc { padding: 0 20px 8px; }
+
+.jauge-nom {
+  display: flex; justify-content: space-between;
+  font-size: 14px; margin-bottom: 4px;
+}
+
+.jauge {
+  height: 9px; background: #241a2e;
+  border-radius: 6px; overflow: hidden;
+}
+
+.jauge span {
+  display: block; height: 100%;
+  background: #6ec06e; transition: width 0.35s;
+}
+
+.jauge span.bas { background: #d4a02a; }
+.jauge span.danger { background: #d4554a; }
+.jauge span.assimilation { background: #b455d4; }
+
+/* L'equipe, en bas */
+#equipe-combat {
+  display: flex; gap: 6px;
+  padding: 0 20px 8px;
+}
+
+.carte-echo {
+  flex: 1;
+  background: rgba(10, 6, 16, 0.7);
+  border: 1px solid #4a3060;
+  border-radius: 10px;
+  padding: 7px 6px;
+  font-size: 11px;
+  text-align: center;
+}
+
+.carte-echo.ko { opacity: 0.35; }
+.carte-echo b { display: block; font-size: 12px; margin-bottom: 3px; }
+
+.mini-jauge {
+  height: 5px; background: #241a2e;
+  border-radius: 3px; overflow: hidden; margin-top: 4px;
+}
+
+.mini-jauge span { display: block; height: 100%; background: #6ec06e; }
+
+#combat-message {
+  margin: 0 20px 10px; padding: 12px;
+  min-height: 60px;
+  background: rgba(10, 6, 16, 0.85);
+  border: 1px solid #4a3060; border-radius: 12px;
+  font-size: 14px; line-height: 1.45;
+}
+
+#combat-actions {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px; padding: 0 20px 40px;
+}
+
+#combat-actions button {
+  padding: 15px 4px; font-size: 15px; font-weight: 600;
+  color: #fff; background: #3d2452;
+  border: 1px solid #6b4a85; border-radius: 12px;
+}
+
+#combat-actions button:disabled { opacity: 0.35; }
+
+#combat-actions button.assimilation { background: #7a3d95; border-color: #b455d4; }
+
+#combat-actions button.sortie {
+  grid-column: 1 / -1;
+  background: #b455d4; border-color: #b455d4;
+}
+
+/* ---------- Grimoire ---------- */
+
+#grimoire {
+  display: none;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 2500; background: #14101a;
+  flex-direction: column;
+}
+
+#grimoire.actif { display: flex; }
+
+#grimoire h2 {
+  margin: 0; padding: 60px 20px 6px;
+  font-size: 22px; letter-spacing: 2px;
+}
+
+#grimoire .aide { padding: 0 20px 12px; color: #888; font-size: 13px; }
+
+#liste-echos { flex: 1; overflow-y: auto; padding: 0 20px 20px; }
+
+.ligne-echo {
+  display: flex; align-items: center; gap: 12px;
+  background: #1e1826; border: 1px solid #332a3f;
+  border-radius: 12px; padding: 12px; margin-bottom: 8px;
+}
+
+.ligne-echo.equipee { border-color: #b455d4; background: #251b30; }
+
+.ligne-echo .infos { flex: 1; min-width: 0; }
+.ligne-echo .nom { font-size: 15px; font-weight: 600; }
+.ligne-echo .titre { font-size: 12px; color: #999; }
+.ligne-echo .trait { font-size: 12px; color: #b98fd0; margin-top: 4px; line-height: 1.3; }
+.ligne-echo .stats { font-size: 12px; color: #777; margin-top: 3px; }
+
+.pastille {
+  width: 42px; height: 42px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff;
+  flex-shrink: 0;
+}
+
+#btn-fermer-grimoire {
+  margin: 0 20px 40px; padding: 15px;
+  font-size: 16px; font-weight: 600;
+  color: #fff; background: #b455d4;
+  border: none; border-radius: 12px;
+}
+
+.leaflet-popup-content { font-family: -apple-system, sans-serif; }
+.pop-titre { font-weight: 700; font-size: 15px; }
+.pop-lieu { color: #666; font-size: 12px; margin-top: 2px; }
+.pop-mons { margin-top: 6px; }

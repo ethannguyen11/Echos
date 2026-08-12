@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Echos - verification</title>
+<style>
+  body {
+    margin: 0; padding: 24px 18px 60px;
+    background: #14101a; color: #eee;
+    font-family: -apple-system, sans-serif;
+    line-height: 1.5;
+  }
+  h1 { font-size: 22px; letter-spacing: 2px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 28px 0 10px; color: #b98fd0; letter-spacing: 1px; }
+  p.aide { color: #888; font-size: 13px; margin: 0 0 18px; }
+
+  #verdict {
+    padding: 14px 16px; border-radius: 12px;
+    font-size: 16px; font-weight: 600; margin-bottom: 8px;
+  }
+  #verdict.vert { background: #1d3a24; border: 1px solid #4ca85f; }
+  #verdict.rouge { background: #3a1d1d; border: 1px solid #d4554a; }
+
+  .section { color: #777; font-size: 12px; letter-spacing: 1px; margin: 16px 0 6px; }
+
+  .test {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 7px 10px; border-radius: 8px;
+    background: #1e1826; margin-bottom: 4px; font-size: 14px;
+  }
+  .test.ko { background: #2c1a1a; }
+  .marque { font-weight: 700; flex-shrink: 0; }
+  .test .marque { color: #6ec06e; }
+  .test.ko .marque { color: #d4554a; }
+  .detail {
+    font-family: ui-monospace, monospace; font-size: 11px;
+    color: #d0a0a0; margin-top: 4px; word-break: break-all;
+  }
+
+  ol { padding-left: 22px; }
+  li { margin-bottom: 10px; }
+  li b { color: #b98fd0; }
+  code {
+    background: #241a2e; padding: 1px 5px; border-radius: 4px;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<h1>VERIFICATION</h1>
+<p class="aide">
+  Cette page rejoue les formules du jeu et compare chaque resultat a celui
+  releve avant le decoupage en modules. Elle ne touche jamais a ta partie.
+</p>
+
+<div id="verdict">Tests en cours...</div>
+<div id="resultats"></div>
+
+<h2>A FAIRE A LA MAIN</h2>
+<p class="aide">
+  Le reste ne se teste qu'en jouant : ouvre <code>index.html</code> sur ton
+  telephone (ou dans le navigateur) et deroule cette liste.
+</p>
+
+<ol>
+  <li><b>Accueil.</b> Le titre ECHOS s'affiche, le bouton "Commencer" fait
+      disparaitre l'ecran et la carte apparait.</li>
+  <li><b>Position.</b> Le point bleu se place sur toi, la carte se centre,
+      et le bandeau du bas annonce un lieu avec une distance en metres.</li>
+  <li><b>Lieux.</b> Des ronds de couleur apparaissent sur la carte. En
+      touchant l'un d'eux, une bulle donne le nom du lieu et l'Echo qui
+      l'habite.</li>
+  <li><b>Memoire.</b> Recharge la page : les memes lieux reviennent, avec les
+      memes Echos aux memes niveaux. C'est le point le plus important.</li>
+  <li><b>Grimoire.</b> Le bouton en haut a droite ouvre la liste. Toucher un
+      Echo le met dans l'equipe (bordure violette), le retoucher l'enleve, et
+      le 4e est refuse. Le bandeau en haut a gauche suit.</li>
+  <li><b>Combat.</b> Approche a moins de 40 m d'un lieu : le bouton
+      "Approcher" apparait, puis l'ecran de combat s'ouvre.</li>
+  <li><b>Les trois boutons.</b> "Attaquer" fait baisser la jauge verte et
+      secoue le monstre ; <b>"Assimiler"</b> affiche un pourcentage ;
+      "Fuir" te ramene a la carte.</li>
+  <li><b>Jauge d'assimilation.</b> La barre violette monte a mesure que
+      l'adversaire faiblit, et baisse a chaque tentative ratee.</li>
+  <li><b>Fin.</b> Apres une assimilation reussie, le rond du lieu devient
+      gris, et l'Echo apparait dans le grimoire.</li>
+</ol>
+
+<!-- On ne charge que les fichiers qui n'ont besoin ni de la carte
+     ni de la page du jeu : ils suffisent pour toutes les formules. -->
+<script src="../js/config.js"></script>
+<script src="../js/especes.js"></script>
+<script src="../js/lieux.js"></script>
+<script src="../js/joueur.js"></script>
+<script src="../js/combat.js"></script>
+<script src="../js/grimoire.js"></script>
+<script src="tests.js"></script>
+
+<script>
+(function () {
+  var verdict = document.getElementById("verdict");
+  var sortie = document.getElementById("resultats");
+  var resultats;
+
+  try {
+    resultats = lancerTests();
+  } catch (e) {
+    verdict.className = "rouge";
+    verdict.textContent = "Les tests n'ont pas pu tourner : " + e.message;
+    return;
+  }
+
+  var html = "", section = "", echecs = 0;
+
+  for (var i = 0; i < resultats.length; i++) {
+    var r = resultats[i];
+
+    if (r.section !== section) {
+      section = r.section;
+      html += '<div class="section">' + section.toUpperCase() + '</div>';
+    }
+
+    if (!r.ok) echecs++;
+
+    html += '<div class="test' + (r.ok ? '' : ' ko') + '">' +
+            '<span class="marque">' + (r.ok ? 'OK' : 'X') + '</span>' +
+            '<span>' + r.quoi +
+            (r.ok ? '' :
+              '<div class="detail">attendu : ' + r.attendu +
+              '<br>obtenu&nbsp;&nbsp;: ' + r.obtenu + '</div>') +
+            '</span></div>';
+  }
+
+  sortie.innerHTML = html;
+
+  verdict.className = echecs === 0 ? "vert" : "rouge";
+  verdict.textContent = echecs === 0
+    ? resultats.length + " tests passes. Le jeu se comporte comme avant."
+    : echecs + " test(s) en echec sur " + resultats.length + ".";
+})();
+</script>
+
+</body>
+</html>

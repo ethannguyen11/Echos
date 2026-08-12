@@ -1,0 +1,291 @@
+/* ============================================================
+   LES TESTS
+   Chaque test compare le resultat d'une fonction du jeu a une
+   valeur relevee AVANT le decoupage en modules. Si un test
+   passe au rouge, c'est que le comportement a change.
+
+   Ce fichier est utilise par verifier/index.html (navigateur)
+   et par verifier.js (Node). Il ne touche jamais a l'ecran.
+   ============================================================ */
+
+function lancerTests() {
+  var resultats = [];
+  var section = "";
+
+  function bloc(titre) { section = titre; }
+
+  function verifie(quoi, obtenu, attendu) {
+    var a = JSON.stringify(attendu);
+    var o = JSON.stringify(obtenu);
+    resultats.push({ section: section, quoi: quoi, ok: a === o, obtenu: o, attendu: a });
+  }
+
+  // Meme suite de nombres "au hasard" a chaque execution, pour que
+  // les formules qui tirent un alea restent verifiables.
+  function suite(graine) {
+    var e = graine;
+    return function () {
+      e = (e + 0x6D2B79F5) | 0;
+      var t = Math.imul(e ^ (e >>> 15), 1 | e);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+
+  /* --- Le bestiaire tient debout --- */
+
+  bloc("Bestiaire");
+
+  verifie("16 especes", Object.keys(ESPECES).length, 16);
+
+  var champsManquants = [];
+  for (var id in ESPECES) {
+    var e = ESPECES[id];
+    ["img", "famille", "nom", "titre", "pv", "atq", "def", "trait"].forEach(function (champ) {
+      if (e[champ] === undefined) champsManquants.push(id + "." + champ);
+    });
+    if (!COULEURS[e.famille]) champsManquants.push(id + " : famille sans couleur");
+  }
+  verifie("aucun champ manquant", champsManquants, []);
+
+  var especesIntrouvables = [];
+  for (var cat in ESPECES_PAR_LIEU) {
+    if (!CATEGORIES[cat]) especesIntrouvables.push("categorie " + cat + " sans prefixe");
+    ESPECES_PAR_LIEU[cat].forEach(function (nom) {
+      if (!ESPECES[nom]) especesIntrouvables.push(nom);
+    });
+  }
+  verifie("chaque lieu pointe vers des especes connues", especesIntrouvables, []);
+
+  verifie("4 categories de lieu", Object.keys(CATEGORIES).length, 4);
+  verifie("prefixes de nommage",
+    Object.keys(CATEGORIES).map(function (k) { return k + ":" + CATEGORIES[k].prefixe; }),
+    ["monument:Seuil de", "parc:Clairiere du parc",
+     "metro:Tunnel d'entree de", "temple:Porte du Temple de"]);
+
+
+  /* --- Statistiques par niveau --- */
+
+  bloc("Statistiques");
+
+  var stats = [];
+  ["komainu", "sunwukong", "jinchan", "mechadrill"].forEach(function (id) {
+    [1, 3, 8, 20, 50].forEach(function (n) {
+      var s = statsAuNiveau(id, n);
+      stats.push(id + "@" + n + " = " + s.pvMax + "/" + s.atq + "/" + s.def);
+    });
+  });
+  verifie("statsAuNiveau", stats, [
+    "komainu@1 = 26/5/9", "komainu@3 = 40/8/14", "komainu@8 = 73/14/25",
+    "komainu@20 = 154/30/53", "komainu@50 = 357/69/124",
+    "sunwukong@1 = 14/11/2", "sunwukong@3 = 21/17/3", "sunwukong@8 = 39/31/6",
+    "sunwukong@20 = 83/65/12", "sunwukong@50 = 192/151/27",
+    "jinchan@1 = 17/4/3", "jinchan@3 = 26/6/5", "jinchan@8 = 48/11/8",
+    "jinchan@20 = 101/24/18", "jinchan@50 = 234/55/41",
+    "mechadrill@1 = 31/8/6", "mechadrill@3 = 47/12/9", "mechadrill@8 = 87/23/17",
+    "mechadrill@20 = 184/48/36", "mechadrill@50 = 426/110/82"
+  ]);
+
+
+  /* --- Reconnaissance et nommage des lieux --- */
+
+  bloc("Lieux");
+
+  verifie("categorieDuLieu", [
+    categorieDuLieu({ amenity: "place_of_worship" }),
+    categorieDuLieu({ leisure: "park" }),
+    categorieDuLieu({ station: "subway" }),
+    categorieDuLieu({ railway: "station", subway: "yes" }),
+    categorieDuLieu({ historic: "memorial" }),
+    categorieDuLieu({ man_made: "tower" }),
+    categorieDuLieu({ tourism: "attraction" }),
+    categorieDuLieu({ shop: "bakery" })
+  ], ["temple", "parc", "metro", "metro", "monument", "monument", "monument", null]);
+
+  verifie("nettoyerNom", [
+    "Taipei 101", "Daan Forest Park", "Zhongxiao Fuxing MRT Station",
+    "Longshan Temple", "Temple Longshan", "Station", "Chiang Kai-shek Memorial Hall"
+  ].map(nettoyerNom),
+    ["Taipei 101", "Daan Forest", "Zhongxiao Fuxing",
+     "Longshan", "Longshan", "Station", "Chiang Kai-shek"]);
+
+  verifie("nomDuLieu prefere le francais puis l'anglais", [
+    nomDuLieu({ "name:fr": "Tour", "name:en": "Tower", name: "Ta" }),
+    nomDuLieu({ "name:en": "Tower", name: "Ta" }),
+    nomDuLieu({ name: "Ta" }),
+    nomDuLieu({})
+  ], ["Tour", "Tower", "Ta", ""]);
+
+
+  /* --- Generation deterministe : le coeur du jeu --- */
+
+  bloc("Generation deterministe");
+
+  verifie("grainePourTexte",
+    ["node/1", "way/42", "relation/7", ""].map(grainePourTexte),
+    [3771305237, 2687123831, 3644585095, 2166136261]);
+
+  var echantillons = [
+    { type: "node", id: 1, lat: 25.033, lon: 121.565,
+      tags: { name: "Longshan Temple", amenity: "place_of_worship" } },
+    { type: "way", id: 42, lat: 25.04, lon: 121.53,
+      tags: { name: "Daan Forest Park", leisure: "park" } },
+    { type: "node", id: 999999, lat: 25.05, lon: 121.51,
+      tags: { name: "Taipei Main Station", station: "subway" } },
+    { type: "relation", id: 7, center: { lat: 25.02, lon: 121.56 },
+      tags: { "name:fr": "Tour Taipei 101", name: "Taipei 101", man_made: "tower" } },
+    { type: "node", id: 123456789, lat: 25.01, lon: 121.54,
+      tags: { "name:en": "Sun Yat-sen Memorial Hall", historic: "memorial" } }
+  ];
+
+  verifie("donjonDepuisLieu (meme lieu, meme Echo, meme niveau)",
+    echantillons.map(function (el) {
+      var d = donjonDepuisLieu(el);
+      return d.id + " | " + d.nom + " | " + d.categorie + " | " + d.espece + " | niv " + d.niveau;
+    }), [
+      "node/1 | Porte du Temple de Longshan | temple | palantir | niv 3",
+      "way/42 | Clairiere du parc Daan Forest | parc | penghou | niv 8",
+      "node/999999 | Tunnel d'entree de Taipei Main | metro | mechadrill | niv 3",
+      "relation/7 | Seuil de Tour Taipei 101 | monument | tortuedragon | niv 7",
+      "node/123456789 | Seuil de Sun Yat-sen | monument | tortuedragon | niv 8"
+    ]);
+
+  verifie("un lieu sans nom ou sans categorie est ignore", [
+    donjonDepuisLieu({ type: "node", id: 5, lat: 25, lon: 121, tags: { shop: "bakery", name: "Boulangerie" } }),
+    donjonDepuisLieu({ type: "node", id: 6, lat: 25, lon: 121, tags: { leisure: "park" } }),
+    donjonDepuisLieu({ type: "node", id: 7, tags: { leisure: "park", name: "Parc" } })
+  ], [null, null, null]);
+
+  verifie("un donjon neuf n'est ni capture ni dissipe",
+    [donjonDepuisLieu(echantillons[0]).capture, donjonDepuisLieu(echantillons[0]).dissipe],
+    [false, false]);
+
+
+  /* --- Distances et doublons --- */
+
+  bloc("Distances");
+
+  verifie("distanceMetres", [
+    Math.round(distanceMetres(25.033, 121.565, 25.033, 121.565)),
+    Math.round(distanceMetres(25.033, 121.565, 25.043, 121.565)),
+    Math.round(distanceMetres(25.033, 121.565, 25.033, 121.575))
+  ], [0, 1112, 1007]);
+
+  var donjonsAvant = donjons;
+  donjons = { a: { categorie: "parc", lat: 25.0, lon: 121.0 } };
+  verifie("estUnDoublon", [
+    estUnDoublon({ categorie: "parc", lat: 25.0, lon: 121.0 }),
+    estUnDoublon({ categorie: "parc", lat: 25.0005, lon: 121.0 }),
+    estUnDoublon({ categorie: "parc", lat: 25.002, lon: 121.0 }),
+    estUnDoublon({ categorie: "temple", lat: 25.0, lon: 121.0 })
+  ], [true, true, false, false]);
+  donjons = donjonsAvant;
+
+  verifie("requeteOverpass", requeteOverpass(25.033, 121.565),
+    '[out:json][timeout:25];(nwr["amenity"="place_of_worship"](around:700,25.033,121.565);' +
+    'nwr["leisure"="park"](around:700,25.033,121.565);' +
+    'nwr["station"="subway"](around:700,25.033,121.565);' +
+    'nwr["railway"="station"]["subway"="yes"](around:700,25.033,121.565);' +
+    'nwr["historic"](around:700,25.033,121.565);' +
+    'nwr["man_made"="tower"](around:700,25.033,121.565);' +
+    'nwr["tourism"="attraction"](around:700,25.033,121.565););out center 80;');
+
+
+  /* --- Formules de combat --- */
+
+  bloc("Combat");
+
+  var alea = suite(1234);
+  var coups = [];
+  [[5, 9], [11, 2], [8, 6], [3, 20], [7, 4]].forEach(function (p) {
+    for (var i = 0; i < 3; i++) coups.push(degats(p[0], p[1], alea()));
+  });
+  verifie("degats", coups, [1, 1, 1, 11, 9, 9, 4, 5, 5, 1, 1, 1, 6, 5, 5]);
+
+  verifie("degats : jamais moins de 1", degats(1, 100, 0), 1);
+
+  verifie("adversaireDe (il se renforce avec la taille de l'equipe)",
+    [1, 2, 3].map(function (t) {
+      var adv = adversaireDe({ espece: "komainu", niveau: 5 }, t);
+      return t + " -> " + adv.pv + "/" + adv.atq + "/" + adv.def;
+    }), ["1 -> 53/10/18", "2 -> 90/12/18", "3 -> 127/13/18"]);
+
+  function faussCombat(pvAdv, pvMaxAdv, nivAdv, niveaux, tentatives) {
+    return {
+      adversaire: { pv: pvAdv, pvMax: pvMaxAdv, niveau: nivAdv },
+      equipe: niveaux.map(function (n) { return { niveau: n }; }),
+      tentatives: tentatives
+    };
+  }
+  verifie("chanceAssimilation", [
+    chanceAssimilation(faussCombat(30, 30, 5, [3], 0)),
+    chanceAssimilation(faussCombat(15, 30, 5, [3], 0)),
+    chanceAssimilation(faussCombat(1, 30, 5, [3], 0)),
+    chanceAssimilation(faussCombat(1, 30, 5, [3, 4, 5], 0)),
+    chanceAssimilation(faussCombat(1, 30, 5, [3, 4, 5], 6)),
+    chanceAssimilation(faussCombat(30, 30, 40, [1], 0)),
+    chanceAssimilation(faussCombat(0, 30, 1, [20, 20, 20], 0)),
+    chanceAssimilation(faussCombat(-5, 30, 5, [3], 1))
+  ], [2, 26, 51, 68, 44, 2, 95, 49]);
+
+  verifie("chanceAssimilation reste entre 2 et 95",
+    [chanceAssimilation(faussCombat(30, 30, 50, [1], 20)),
+     chanceAssimilation(faussCombat(0, 30, 1, [50, 50, 50], 0))],
+    [2, 95]);
+
+
+  /* --- Collection, equipe, experience --- */
+
+  bloc("Joueur");
+
+  var collectionAvant = collection, equipeAvant = equipe;
+  collection = {};
+  equipe = [];
+
+  verifie("ajouterAlaCollection", [
+    ajouterAlaCollection("komainu", 4),
+    ajouterAlaCollection("komainu", 2),
+    ajouterAlaCollection("komainu", 7),
+    ajouterAlaCollection("baku", 1),
+    ajouterAlaCollection("peng", 2),
+    ajouterAlaCollection("vinci", 9)
+  ], ["nouveau", "connu", "renforce", "nouveau", "nouveau", "nouveau"]);
+
+  verifie("l'equipe s'arrete a 3", equipe, ["komainu", "baku", "peng"]);
+  verifie("un doublon plus fort remplace l'ancien",
+    collection.komainu, { espece: "komainu", niveau: 7, xp: 0, pv: 67 });
+
+  verifie("xpRequis", [1, 2, 5, 10, 49].map(xpRequis), [26, 40, 82, 152, 698]);
+  verifie("gagnerXp (montees de niveau)",
+    [gagnerXp("baku", 25), gagnerXp("baku", 500), gagnerXp("inconnu", 10)],
+    [0, 7, null]);
+  verifie("gagnerXp soigne a la montee",
+    collection.baku, { espece: "baku", niveau: 8, xp: 49, pv: 65 });
+
+  // basculerEquipe ecrit normalement la sauvegarde et redessine le
+  // grimoire : on neutralise ces deux effets, pour que lancer les
+  // tests n'efface jamais une vraie partie.
+  var vraiSauver = sauverJoueur, vraieFiche = majFiche, vraiGrimoire = ouvrirGrimoire;
+  sauverJoueur = function () {};
+  majFiche = function () {};
+  ouvrirGrimoire = function () {};
+
+  equipe = [];
+  basculerEquipe("komainu");
+  basculerEquipe("baku");
+  basculerEquipe("peng");
+  basculerEquipe("vinci");                    // la 4e est refusee
+  verifie("basculerEquipe : 3 maximum", equipe.slice(), ["komainu", "baku", "peng"]);
+  basculerEquipe("baku");                     // un 2e appui retire l'Echo
+  verifie("basculerEquipe : retirer", equipe.slice(), ["komainu", "peng"]);
+
+  sauverJoueur = vraiSauver;
+  majFiche = vraieFiche;
+  ouvrirGrimoire = vraiGrimoire;
+
+  collection = collectionAvant;
+  equipe = equipeAvant;
+
+  return resultats;
+}
