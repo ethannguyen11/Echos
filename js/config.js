@@ -11,7 +11,14 @@ var DISTANCE_DOUBLON   = 80;
 var EQUIPE_MAX         = 3;
 
 var CLE_DONJONS = "echos_donjons_v5";
-var CLE_JOUEUR  = "echos_joueur_v2";
+
+// La sauvegarde du joueur passe en v3 : elle contient desormais
+// un bloc "joueur" (nom, genre, voie, lieu zero, intro vue).
+// L'ancienne cle n'est plus ecrite, seulement relue une fois
+// pour recuperer la collection et l'equipe.
+var CLE_JOUEUR          = "echos_joueur_v3";
+var CLE_JOUEUR_ANCIENNE = "echos_joueur_v2";
+var VERSION_JOUEUR      = 3;
 
 // Overpass est gratuit et sature souvent. On essaie les miroirs
 // l'un apres l'autre ; le japonais est le plus proche de Taipei.

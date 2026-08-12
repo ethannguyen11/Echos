@@ -27,6 +27,7 @@ var FICHIERS = [
   "js/joueur.js",
   "js/combat.js",
   "js/grimoire.js",
+  "js/intro.js",
   "js/jeu.js"
 ];
 
@@ -54,7 +55,7 @@ function ligne(ok, texte, detail) {
 
 titre("1. Syntaxe des fichiers");
 
-FICHIERS.concat(["verifier/tests.js"]).forEach(function (f) {
+FICHIERS.concat(["verifier/tests.js", "verifier/parcours.js"]).forEach(function (f) {
   try {
     new vm.Script(lire(f), { filename: f });
     ligne(true, f);
@@ -105,8 +106,10 @@ var ctx = {
   console: console,
   Math: Math, JSON: JSON, Object: Object, Array: Array, RegExp: RegExp,
   Error: Error, String: String, Number: Number, Symbol: Symbol,
-  Infinity: Infinity,
-  setTimeout: function () {},
+  Infinity: Infinity, Date: Date, isFinite: isFinite,
+  setTimeout: function () {}, clearTimeout: function () {},
+  setInterval: function () {}, clearInterval: function () {},
+  location: { reload: function () {} },
   fetch: function () {
     return { then: function () { return this; }, catch: function () { return this; } };
   },
@@ -193,12 +196,15 @@ ligne(manquants.length === 0,
       "chaque identifiant cherche par le JS existe",
       manquants.length ? "introuvable(s) : " + manquants.join(", ") : null);
 
-// Les classes CSS employees par le JS doivent exister dans la feuille
-var css = lire("css/style.css");
+// Les classes CSS employees par le JS doivent exister dans les feuilles
+var css = lire("css/style.css") + "\n" + lire("css/intro.css");
 var classesManquantes = [];
 ["actif", "visible", "secoue", "ko", "bas", "danger", "assimilation", "sortie",
  "carte-echo", "mini-jauge", "ligne-echo", "equipee", "pastille", "infos",
- "nom", "titre", "stats", "trait", "pop-titre", "pop-lieu", "pop-mons"].forEach(function (c) {
+ "nom", "titre", "stats", "trait", "pop-titre", "pop-lieu", "pop-mons",
+ "intro-ouverte", "sortant", "recit", "ico", "lieu", "echo", "nom-lieu",
+ "echo-depart", "echo-vignette", "echo-substitut", "echo-nom", "echo-titre",
+ "echo-niveau"].forEach(function (c) {
   if (css.indexOf("." + c) === -1) classesManquantes.push(c);
 });
 ligne(classesManquantes.length === 0,
@@ -206,11 +212,27 @@ ligne(classesManquantes.length === 0,
       classesManquantes.length ? "absente(s) du CSS : " + classesManquantes.join(", ") : null);
 
 // Tous les fichiers doivent etre appeles par index.html
-var oublies = FICHIERS.concat(["css/style.css"]).filter(function (f) {
+var oublies = FICHIERS.concat(["css/style.css", "css/intro.css"]).filter(function (f) {
   return html.indexOf(f) === -1;
 });
 ligne(oublies.length === 0, "index.html appelle bien tous les fichiers",
       oublies.length ? "non appele(s) : " + oublies.join(", ") : null);
+
+// jeu.js doit rester le dernier script de la page
+var scripts = tousLes(/<script src="(js\/[^"]+)"><\/script>/g, html);
+var dernierScript = scripts[scripts.length - 1];
+ligne(dernierScript === "js/jeu.js", "js/jeu.js est bien le dernier script",
+      dernierScript === "js/jeu.js" ? null : "dernier trouve : " + dernierScript);
+
+// Aucun module ES6 : le site est servi tel quel par GitHub Pages
+var modules = [];
+FICHIERS.forEach(function (f) {
+  var t = lire(f);
+  if (/^\s*(import|export)\s/m.test(t) || /\bfrom\s+["']\.\//.test(t)) modules.push(f);
+});
+if (/type="module"/.test(html)) modules.push("index.html");
+ligne(modules.length === 0, "aucun import / export / type=module",
+      modules.length ? modules.join(", ") : null);
 
 // Le mot "scout" ne doit plus apparaitre nulle part
 var restes = [];
@@ -222,6 +244,88 @@ FICHIERS.concat(["index.html", "css/style.css", "verifier/tests.js"]).forEach(fu
 });
 ligne(restes.length === 0, 'plus aucune trace du mot "scout"',
       restes.length ? restes.join(", ") : null);
+
+
+/* ------------------------------------------------------------
+   5. LE SCRIPT DE L'INTRO EST FIDELE AU TEXTE
+   On relit echos-ico-ouverture.md et on compare, replique par
+   replique, avec ce que js/intro.js va reellement afficher.
+   Une reformulation, une virgule deplacee, une ligne oubliee :
+   ca se voit ici.
+   ------------------------------------------------------------ */
+
+titre("5. Fidelite du script de l'intro");
+
+var CHEMIN_SCRIPT = "echos-ico-ouverture.md";
+
+if (!fs.existsSync(path.join(RACINE, CHEMIN_SCRIPT))) {
+  ligne(false, CHEMIN_SCRIPT + " est introuvable");
+} else if (!demarrageOk || !ctx.Intro) {
+  ligne(false, "js/intro.js n'a pas pu etre charge");
+} else {
+
+  // --- ce que dit le fichier de reference ---
+  var attendues = [];
+  lire(CHEMIN_SCRIPT).split("\n").forEach(function (l) {
+    l = l.replace(/\r$/, "");
+    var m;
+    if ((m = l.match(/^récit : \*(.+)\*$/)))            attendues.push("recit|" + m[1]);
+    else if ((m = l.match(/^Ico : (.+)$/)))             attendues.push("ico|" + m[1]);
+    else if ((m = l.match(/^- « (.+) » → `([a-z0-9]+)`$/))) attendues.push("option|" + m[1] + "|" + m[2]);
+  });
+
+  // --- ce que le moteur jouera ---
+  var jouees = [];
+  ctx.Intro.SCRIPT.forEach(function (e) {
+    if (e.type === "recit") jouees.push("recit|" + e.texte);
+    else if (e.type === "ico") jouees.push("ico|" + e.texte);
+    else if (e.type === "choix") {
+      e.options.forEach(function (o) { jouees.push("option|" + o.texte + "|" + o.valeur); });
+    }
+  });
+
+  ligne(attendues.length === jouees.length,
+        "meme nombre de repliques (" + attendues.length + " dans le .md)",
+        attendues.length === jouees.length ? null : jouees.length + " dans js/intro.js");
+
+  var ecarts = [];
+  for (var i = 0; i < Math.max(attendues.length, jouees.length); i++) {
+    if (attendues[i] !== jouees[i]) {
+      ecarts.push("ligne " + (i + 1) +
+                  "\n           .md : " + (attendues[i] === undefined ? "(rien)" : attendues[i]) +
+                  "\n           jeu : " + (jouees[i] === undefined ? "(rien)" : jouees[i]));
+      if (ecarts.length >= 3) break;
+    }
+  }
+
+  ligne(ecarts.length === 0, "chaque replique est reprise mot pour mot",
+        ecarts.length ? ecarts.join("\n        ") : null);
+}
+
+
+/* ------------------------------------------------------------
+   6. LA CINEMATIQUE SE JOUE VRAIMENT
+   verifier/parcours.js deroule l'intro du debut a la fin dans un
+   faux navigateur : taps, choix, saisie, GPS present ou absent,
+   vieille sauvegarde. C'est le seul test qui la joue reellement.
+   ------------------------------------------------------------ */
+
+titre("6. Parcours complet de l'intro");
+
+try {
+  var parcours = require("./verifier/parcours.js").lancerParcours();
+  var sectionParcours = "";
+
+  parcours.forEach(function (r) {
+    if (r.section !== sectionParcours) {
+      sectionParcours = r.section;
+      console.log(GRIS + "  [" + sectionParcours + "]" + NORMAL);
+    }
+    ligne(r.ok, r.quoi, r.detail);
+  });
+} catch (e) {
+  ligne(false, "le parcours de l'intro n'a pas pu aller au bout", e.message);
+}
 
 
 /* ------------------------------------------------------------

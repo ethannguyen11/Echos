@@ -37,9 +37,20 @@ elem("btn-depart").addEventListener("click", function () {
   chargerJoueur();
   charger();
 
+  // La permission de geolocalisation exige un geste utilisateur sur
+  // iOS : cet appel doit rester dans le clic, avant toute autre chose.
   navigator.geolocation.watchPosition(positionMiseAJour, erreurPosition, {
     enableHighAccuracy: true, maximumAge: 2000, timeout: 20000
   });
+
+  // Premier lancement : la cinematique, puis la carte.
+  // Ensuite : la carte directement.
+  if (!profil.introVue) {
+    Intro.demarrer(function () {
+      majFiche();
+      if (dernierePosition) mettreAJourHud(dernierePosition[0], dernierePosition[1]);
+    });
+  }
 });
 
 elem("entrer").addEventListener("click", function () {

@@ -64,6 +64,41 @@
   telephone (ou dans le navigateur) et deroule cette liste.
 </p>
 
+<p class="aide">
+  Pour rejouer l'intro autant de fois que tu veux : ouvre la console et tape
+  <code>Intro.reinitialiser()</code>. La page se recharge, la collection reste.
+</p>
+
+<h2>L'INTRO</h2>
+
+<ol>
+  <li><b>Depart.</b> Le bouton "Commencer" fait disparaitre l'accueil, et la
+      cinematique demarre (au tout premier lancement seulement).</li>
+  <li><b>Permission GPS.</b> La boite de dialogue iOS s'affiche par-dessus les
+      premieres lignes. Accepte : l'intro continue normalement dessous.</li>
+  <li><b>Une phrase a la fois.</b> Le texte s'ecrit lettre par lettre. Un tap
+      pendant l'ecriture complete la ligne ; un tap sur une ligne finie passe a
+      la suivante. L'ecran ne se remplit jamais.</li>
+  <li><b>Recit et Ico.</b> Le recit est gris, italique, centre ; les repliques
+      d'Ico sont blanches, a gauche, avec un trait vertical. La silhouette
+      d'Ico apparait en fondu a la scene 2.</li>
+  <li><b>Le lieu.</b> Dehors, ton lieu reel s'affiche en grand, avec un leger
+      tremblement. En interieur, sans reseau ou si tu refuses la permission,
+      deux lignes de recit le remplacent : ca doit passer pour une intention
+      d'ecriture, jamais pour une panne.</li>
+  <li><b>Le clavier.</b> A la question du nom, le champ apparait et le clavier
+      s'ouvre. <b>La page ne doit pas zoomer.</b> Valider a vide ne fait rien,
+      sans message d'erreur.</li>
+  <li><b>Les choix.</b> Genre puis trois questions : boutons pleine largeur,
+      confortables au pouce, un seul tap suffit.</li>
+  <li><b>L'encoche.</b> Rien n'est coupe en haut, rien ne passe sous la barre
+      d'accueil en bas, pendant toute l'intro.</li>
+  <li><b>La fin.</b> Apres la derniere replique, la carte apparait avec le
+      bandeau d'equipe. Recharge la page : l'intro ne se rejoue pas.</li>
+</ol>
+
+<h2>LE JEU</h2>
+
 <ol>
   <li><b>Accueil.</b> Le titre ECHOS s'affiche, le bouton "Commencer" fait
       disparaitre l'ecran et la carte apparait.</li>
@@ -96,6 +131,7 @@
 <script src="../js/joueur.js"></script>
 <script src="../js/combat.js"></script>
 <script src="../js/grimoire.js"></script>
+<script src="../js/intro.js"></script>
 <script src="tests.js"></script>
 
 <script>

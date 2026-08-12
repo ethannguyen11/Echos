@@ -1,0 +1,179 @@
+/* ============================================================
+   LA CINEMATIQUE D'OUVERTURE
+   Un seul ecran, noir, au-dessus de tout le reste :
+   la carte monte a 1000, le combat a 2000, l'accueil a 3000.
+   ============================================================ */
+
+body.intro-ouverte { overflow: hidden; }
+
+#intro {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 4000;
+  background: #000;
+  color: #eee;
+  font-family: -apple-system, sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  /* L'encoche en haut, la barre d'accueil en bas */
+  padding: calc(env(safe-area-inset-top) + 28px)
+           calc(env(safe-area-inset-right) + 26px)
+           calc(env(safe-area-inset-bottom) + 28px)
+           calc(env(safe-area-inset-left) + 26px);
+
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+
+/* ---------- La silhouette d'Ico ---------- */
+
+/* Placeholder en attendant l'illustration. L'attribut
+   data-defigement servira a la faire evoluer plus tard. */
+#intro-ico {
+  width: 100px; height: 130px;
+  margin-bottom: 26px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 1.6s ease, transform 1.6s ease;
+}
+
+#intro-ico.visible { opacity: 1; transform: translateY(0); }
+
+#intro-ico svg { width: 100%; height: 100%; display: block; }
+#intro-ico svg ellipse, #intro-ico svg path { fill: #1b1b20; stroke: #34343d; stroke-width: 1.5; }
+
+
+/* ---------- La ligne de texte ---------- */
+
+#intro-texte {
+  max-width: 30em;
+  min-height: 8.5em;
+  width: 100%;
+  font-size: 17px;
+  line-height: 1.6;
+  opacity: 1;
+  transition: opacity 0.22s ease;
+}
+
+#intro-texte.sortant { opacity: 0; }
+
+/* Recit : italique, gris, centre */
+#intro-texte.recit {
+  font-style: italic;
+  color: #9a9aa4;
+  text-align: center;
+}
+
+/* Ico : romain, blanc, a gauche, leger retrait */
+#intro-texte.ico {
+  font-style: normal;
+  color: #fff;
+  text-align: left;
+  padding-left: 14px;
+  border-left: 2px solid #2e2e36;
+}
+
+/* Le nom du lieu reel : plus grand, centre, et il tremble */
+#intro-texte.lieu { text-align: center; }
+
+.nom-lieu {
+  display: inline-block;
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #fff;
+  animation: apparitionLieu 1.1s ease both, tremblement 3.4s ease-in-out 1.1s infinite;
+}
+
+@keyframes apparitionLieu {
+  from { opacity: 0; filter: blur(6px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+
+@keyframes tremblement {
+  0%, 100%  { transform: translate(0, 0); }
+  20%       { transform: translate(0.7px, -0.5px); }
+  40%       { transform: translate(-0.6px, 0.4px); }
+  60%       { transform: translate(0.5px, 0.6px); }
+  80%       { transform: translate(-0.4px, -0.6px); }
+}
+
+
+/* ---------- L'Echo de depart ---------- */
+
+#intro-texte.echo { text-align: center; }
+
+.echo-depart {
+  animation: apparitionLieu 0.9s ease both;
+}
+
+.echo-vignette {
+  width: 116px; height: 116px;
+  margin: 0 auto 12px;
+  border: 2px solid #b455d4;
+  border-radius: 18px;
+  background: radial-gradient(circle at 40% 35%, #241830, #120d18);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+.echo-vignette img { max-width: 100%; max-height: 100%; display: none; }
+.echo-substitut { font-size: 44px; }
+
+.echo-nom { font-size: 20px; font-weight: 600; color: #fff; }
+.echo-titre { font-size: 14px; color: #9a9aa4; font-style: italic; margin-top: 2px; }
+.echo-niveau { font-size: 13px; color: #777; margin-top: 4px; }
+
+
+/* ---------- La saisie du nom ---------- */
+
+#intro-saisie { display: none; width: 100%; max-width: 30em; }
+#intro-saisie.visible { display: block; }
+
+/* 16px minimum : en dessous, Safari iOS zoome tout seul au focus */
+#intro-champ {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 4px;
+  font-family: inherit;
+  font-size: 21px;
+  text-align: center;
+  color: #fff;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #34343d;
+  outline: none;
+  caret-color: #b455d4;
+  -webkit-user-select: text; user-select: text;
+}
+
+
+/* ---------- Les choix ---------- */
+
+#intro-choix { display: none; width: 100%; max-width: 30em; margin-top: 22px; }
+#intro-choix.visible { display: block; }
+
+#intro-choix button {
+  display: block;
+  width: 100%;
+  min-height: 52px;              /* au-dela des 44 px tactiles */
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+  text-align: left;
+  color: #eee;
+  background: #16161c;
+  border: 1px solid #2e2e36;
+  border-radius: 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#intro-choix button:active { background: #241b2e; border-color: #b455d4; }

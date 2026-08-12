@@ -287,5 +287,93 @@ function lancerTests() {
   collection = collectionAvant;
   equipe = equipeAvant;
 
+
+  /* --- Cinematique d'ouverture --- */
+
+  bloc("Intro");
+
+  var f = Intro.formater;
+
+  verifie("formater : accord de genre",
+    ["m", "f", "n"].map(function (g) { return f("Tu es un[|e|·e] {voie}.", { genre: g, voie: "archiviste" }); }),
+    ["Tu es un archiviste.", "Tu es une archiviste.", "Tu es un·e archiviste."]);
+
+  verifie("formater : les quatre lignes accordees au feminin",
+    ["Tu n'étais pas réveillé[|e|·e] non plus.",
+     "Tu es sûr[|e|·e] de l'avoir connu.",
+     "Tu es un[|e|·e] {voie}.",
+     "Tu n'iras pas seul[|e|·e]."].map(function (t) { return f(t, { genre: "f", voie: "gardien" }); }),
+    ["Tu n'étais pas réveillée non plus.",
+     "Tu es sûre de l'avoir connu.",
+     "Tu es une gardien.",
+     "Tu n'iras pas seule."]);
+
+  verifie("formater : {nom} et {voie}",
+    f("Et {nom} — tu es un[|e|·e] {voie}.", { nom: "Ethan", genre: "n", voie: "arpenteur" }),
+    "Et Ethan — tu es un·e arpenteur.");
+
+  verifie("formater : un genre absent retombe sur le masculin, sans casser",
+    [f("seul[|e|·e]", {}), f("seul[|e|·e]", { genre: "?" }), f("rien a formater", { genre: "f" })],
+    ["seul", "seul", "rien a formater"]);
+
+  verifie("formater : ce qui n'est pas un accord n'est pas touche",
+    f("un tableau [1|2] et [a|b|c|d]", { genre: "f" }),
+    "un tableau [1|2] et [a|b|c|d]");
+
+  var voie = Intro.calculerVoie;
+  verifie("calculerVoie : majorite et egalite", [
+    voie("archiviste", "archiviste", "gardien"),      // 2 sur 3
+    voie("gardien", "arpenteur", "gardien"),          // 2 sur 3, non adjacentes
+    voie("arpenteur", "arpenteur", "arpenteur"),      // unanimite
+    voie("archiviste", "arpenteur", "gardien"),       // egalite parfaite : la 3e tranche
+    voie("gardien", "archiviste", "arpenteur")        // egalite parfaite : la 3e tranche
+  ], ["archiviste", "gardien", "arpenteur", "gardien", "arpenteur"]);
+
+  // Toutes les lignes du script doivent se formater completement,
+  // quel que soit le genre : aucun {...} ni [...] ne doit survivre.
+  var restes = [];
+  ["m", "f", "n"].forEach(function (g) {
+    Intro.SCRIPT.forEach(function (e, i) {
+      var textes = [];
+      if (e.texte) textes.push(e.texte);
+      if (e.options) e.options.forEach(function (o) { textes.push(o.texte); });
+
+      textes.forEach(function (t) {
+        var sortie = f(t, { genre: g, nom: "Ethan", voie: "archiviste" });
+        if (/[\[\]]/.test(sortie) || /\{[a-z]+\}/.test(sortie)) restes.push(g + " #" + i + " : " + sortie);
+      });
+    });
+  });
+  verifie("aucun accord ni {nom} oublie dans tout le script", restes, []);
+
+  // Le moteur ne sait traiter que ces types-la
+  var TYPES = ["pause", "recit", "ico", "lieu", "apparition", "saisie",
+               "choix", "calculVoie", "echoDepart", "musique", "fin"];
+  var malFormees = [];
+  Intro.SCRIPT.forEach(function (e, i) {
+    if (TYPES.indexOf(e.type) === -1) malFormees.push("#" + i + " type " + e.type);
+    if (e.type === "pause" && !(e.duree > 0)) malFormees.push("#" + i + " sans duree");
+    if (e.type === "saisie" && (!e.cle || !(e.max > 0))) malFormees.push("#" + i + " saisie incomplete");
+    if (e.type === "choix") {
+      if (!e.cle) malFormees.push("#" + i + " choix sans cle");
+      if (!e.options || e.options.length < 2) malFormees.push("#" + i + " choix sans options");
+      (e.options || []).forEach(function (o) {
+        if (!o.texte || !o.valeur) malFormees.push("#" + i + " option incomplete");
+      });
+    }
+  });
+  verifie("chaque etape est bien formee", malFormees, []);
+
+  var parType = {};
+  Intro.SCRIPT.forEach(function (e) { parType[e.type] = (parType[e.type] || 0) + 1; });
+  verifie("le script contient bien une saisie, quatre choix et une fin",
+    [parType.saisie, parType.choix, parType.calculVoie, parType.echoDepart, parType.fin],
+    [1, 4, 1, 1, 1]);
+
+  var blocs = { lieu: 0, repli: 0 };
+  Intro.SCRIPT.forEach(function (e) { if (e.bloc) blocs[e.bloc]++; });
+  verifie("la bifurcation lieu / repli existe des deux cotes",
+    [blocs.lieu > 0, blocs.repli > 0], [true, true]);
+
   return resultats;
 }
