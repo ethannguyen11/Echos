@@ -6,8 +6,8 @@
 
 var CATEGORIES = {
   monument: { prefixe: "Seuil de" },
-  parc:     { prefixe: "Clairiere du parc" },
-  metro:    { prefixe: "Tunnel d'entree de" },
+  parc:     { prefixe: "Clairière du parc" },
+  metro:    { prefixe: "Tunnel d'entrée de" },
   temple:   { prefixe: "Porte du Temple de" }
 };
 
@@ -148,7 +148,7 @@ function chargerDonjons(lat, lon, indexServeur) {
   if (indexServeur >= SERVEURS_OVERPASS.length) {
     chargementEnCours = false;
     dernierePosRequete = null;         // autorise une nouvelle tentative
-    etat("Serveurs OSM satures. Nouvel essai dans 20 s...");
+    etat("Serveurs OSM saturés. Nouvel essai dans 20 s...");
 
     setTimeout(function () {
       if (dernierePosition && !chargementEnCours) {
@@ -162,7 +162,7 @@ function chargerDonjons(lat, lon, indexServeur) {
 
   etat(indexServeur === 0 ?
        "Consultation des lieux alentour..." :
-       "Serveur occupe, essai " + (indexServeur + 1) + "/" + SERVEURS_OVERPASS.length + "...");
+       "Serveur occupé, essai " + (indexServeur + 1) + "/" + SERVEURS_OVERPASS.length + "...");
 
   fetch(SERVEURS_OVERPASS[indexServeur], {
     method: "POST",
@@ -190,7 +190,7 @@ function chargerDonjons(lat, lon, indexServeur) {
       }
 
       sauvegarder();
-      etat(nouveaux + " nouveau(x) lieu(x) eveille(s)");
+      etat(nouveaux + " nouveau(x) lieu(x) éveillé(s)");
 
       if (dernierePosition) mettreAJourHud(dernierePosition[0], dernierePosition[1]);
     })

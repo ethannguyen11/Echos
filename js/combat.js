@@ -193,7 +193,7 @@ function actionAssimiler() {
     return;
   }
 
-  message("Tu tentes d'assimiler <b>" + e.nom + "</b> (" + chance + " %).<br>Le savoir se derobe.");
+  message("Tu tentes d'assimiler <b>" + e.nom + "</b> (" + chance + " %).<br>Le savoir se dérobe.");
   majAffichageCombat();
   setTimeout(tourAdverse, 900);
 }
@@ -208,12 +208,12 @@ function actionFuir() {
   var chance = 0.5 + (moyenne - combat.adversaire.niveau) * 0.07;
 
   if (Math.random() < chance) {
-    message("Tu rappelles tes echos et t'eloignes.<br>Le lieu garde le sien.");
+    message("Tu rappelles tes échos et t'éloignes.<br>Le lieu garde le sien.");
     finDeCombat();
     return;
   }
 
-  message("L'echo te barre le passage !");
+  message("L'écho te barre le passage !");
   setTimeout(tourAdverse, 900);
 }
 
@@ -239,7 +239,7 @@ function tourAdverse() {
   cible.pv -= d;
 
   var txt = "<b>" + ESPECES[combat.donjon.espece].nom + "</b> frappe " +
-            ESPECES[cible.espece].nom + " : " + d + " degats.";
+            ESPECES[cible.espece].nom + " : " + d + " dégâts.";
 
   if (cible.pv <= 0) {
     cible.pv = 0;
@@ -287,14 +287,14 @@ function capture() {
   var txt;
 
   if (issue === "nouveau") {
-    txt = "<b>" + e.nom + "</b> est assimile. Son savoir rejoint ton grimoire.";
+    txt = "<b>" + e.nom + "</b> est assimilé. Son savoir rejoint ton grimoire.";
   } else if (issue === "renforce") {
-    txt = "Le savoir de <b>" + e.nom + "</b> niveau " + d.niveau + " supplante celui que tu detenais.";
+    txt = "Le savoir de <b>" + e.nom + "</b> niveau " + d.niveau + " supplante celui que tu détenais.";
   } else {
-    txt = "<b>" + e.nom + "</b> se livre, mais tu en savais deja davantage.";
+    txt = "<b>" + e.nom + "</b> se livre, mais tu en savais déjà davantage.";
   }
 
-  txt += "<br>+" + r.gain + " points d'echo" + (fortune ? " (Fortune)" : "") + ".";
+  txt += "<br>+" + r.gain + " points d'écho" + (fortune ? " (Fortune)" : "") + ".";
   if (r.lignes.length) txt += "<br>" + r.lignes.join("<br>");
 
   d.capture = true;
@@ -310,9 +310,9 @@ function dissipation() {
   var fortune = equipe.indexOf("jinchan") !== -1;
   var r = distribuerXp(fortune);
 
-  var txt = "<b>" + e.nom + "</b> se disloque et disparait.<br>" +
-            "<span style='color:#d4554a'>Son savoir est perdu a jamais.</span><br>" +
-            "+" + r.gain + " points d'echo.";
+  var txt = "<b>" + e.nom + "</b> se disloque et disparaît.<br>" +
+            "<span style='color:#d4554a'>Son savoir est perdu à jamais.</span><br>" +
+            "+" + r.gain + " points d'écho.";
   if (r.lignes.length) txt += "<br>" + r.lignes.join("<br>");
 
   combat.donjon.dissipe = true;
@@ -324,7 +324,7 @@ function dissipation() {
 }
 
 function defaite() {
-  message("Tes echos sont epuises.<br>Tu recules. Le lieu garde le sien.");
+  message("Tes échos sont épuisés.<br>Tu recules. Le lieu garde le sien.");
   finDeCombat();
 }
 
@@ -340,7 +340,7 @@ function finDeCombat() {
   majFiche();
 
   elem("combat-actions").innerHTML =
-    '<button class="sortie" id="btn-sortir">Revenir a la carte</button>';
+    '<button class="sortie" id="btn-sortir">Revenir à la carte</button>';
 
   elem("btn-sortir").addEventListener("click", function () {
     elem("combat").classList.remove("actif");

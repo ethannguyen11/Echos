@@ -61,8 +61,8 @@ function lancerTests() {
   verifie("4 categories de lieu", Object.keys(CATEGORIES).length, 4);
   verifie("prefixes de nommage",
     Object.keys(CATEGORIES).map(function (k) { return k + ":" + CATEGORIES[k].prefixe; }),
-    ["monument:Seuil de", "parc:Clairiere du parc",
-     "metro:Tunnel d'entree de", "temple:Porte du Temple de"]);
+    ["monument:Seuil de", "parc:Clairière du parc",
+     "metro:Tunnel d'entrée de", "temple:Porte du Temple de"]);
 
 
   /* --- Statistiques par niveau --- */
@@ -145,8 +145,8 @@ function lancerTests() {
       return d.id + " | " + d.nom + " | " + d.categorie + " | " + d.espece + " | niv " + d.niveau;
     }), [
       "node/1 | Porte du Temple de Longshan | temple | palantir | niv 3",
-      "way/42 | Clairiere du parc Daan Forest | parc | penghou | niv 8",
-      "node/999999 | Tunnel d'entree de Taipei Main | metro | mechadrill | niv 3",
+      "way/42 | Clairière du parc Daan Forest | parc | penghou | niv 8",
+      "node/999999 | Tunnel d'entrée de Taipei Main | metro | mechadrill | niv 3",
       "relation/7 | Seuil de Tour Taipei 101 | monument | tortuedragon | niv 7",
       "node/123456789 | Seuil de Sun Yat-sen | monument | tortuedragon | niv 8"
     ]);

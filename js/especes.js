@@ -72,7 +72,7 @@ var ESPECES = {
   },
   hephaistos: {
     img: "hephaistos", famille: "monument",
-    nom: "Héphaïston", titre: "le Marteau",
+    nom: "Héphaïstos", titre: "le Marteau",
     pv: 22, atq: 7, def: 6,
     trait: "Enclume : rend d'un coup tout ce qu'il a encaissé."
   },
