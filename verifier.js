@@ -202,6 +202,8 @@ var classesManquantes = [];
 ["actif", "visible", "secoue", "ko", "bas", "danger", "assimilation", "sortie",
  "carte-echo", "mini-jauge", "ligne-echo", "equipee", "pastille", "infos",
  "nom", "titre", "stats", "trait", "pop-titre", "pop-lieu", "pop-mons",
+ "figement", "grosse", "fleche-haut", "fleche-bas",
+ "affinite", "affinite-plus", "affinite-moins",
  "intro-ouverte", "intro-overlay", "intro-visuel", "intro-dialogue",
  "sortant", "recit", "ico", "lieu", "nom-lieu", "parti",
  "echo-depart", "echo-vignette", "echo-substitut", "echo-nom", "echo-titre",

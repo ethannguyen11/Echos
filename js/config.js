@@ -43,6 +43,81 @@ var COULEURS = {
 
 
 /* ============================================================
+   LE FIGEMENT
+   Un lieu trop regarde et pas assez compris se fige : ses
+   creatures se recouvrent de metal. Pendant un combat, l'arene
+   se mecanise tour apres tour, et ca change qui est fort.
+
+   Toutes les valeurs du systeme sont ici, aucune dans combat.js :
+   on regle l'equilibrage sans toucher a la logique.
+   ============================================================ */
+
+/* --- L'echelle ---
+   Le Figement est un nombre de 0 a 100. On ne s'en sert jamais
+   directement : on le convertit en palier de 0 a 10, et c'est le
+   palier qui pilote les multiplicateurs. */
+var FIGEMENT_MAX          = 100;   // valeur maximale du compteur
+var FIGEMENT_PAR_PALIER   = 10;    // points de compteur dans un palier
+var FIGEMENT_PALIER_MAX   = 10;    // palier maximal
+
+/* Paliers gagnes a la fin de chaque tour.
+   POINT D'ACCROCHE : le futur systeme de Clarte (issu du quiz)
+   viendra reduire cette vitesse. Rien ne le fait aujourd'hui. */
+var VITESSE_FIGEMENT      = 1;
+
+/* Multiplicateur de degats de l'ATTAQUANT, selon sa nature.
+   multiplicateur = base + pas x palier
+     organique  1.25 -> 1.00 -> 0.75   (fort tot, s'essouffle)
+     mecanique  0.75 -> 1.00 -> 1.25   (faible tot, monte en puissance)
+     hybride    1.00 partout           (ni puni ni recompense) */
+var FIGEMENT_NATURES = {
+  organique: { base: 1.25, pas: -0.05 },
+  mecanique: { base: 0.75, pas:  0.05 },
+  hybride:   { base: 1.00, pas:  0.00 }
+};
+
+/* Niveau du joueur a partir duquel le chiffre exact s'affiche.
+   En dessous, il ne lit qu'une impression. */
+var SEUIL_LECTURE_FIGEMENT = 10;
+
+/* Ce que le joueur lit tant qu'il est sous le seuil : une phrase
+   par tranche de paliers, de la plus vivante a la plus morte. */
+var LIBELLES_FIGEMENT = [
+  { jusqua: 3,  texte: "Lieu presque vivant" },
+  { jusqua: 7,  texte: "Quelque chose s'est éteint ici" },
+  { jusqua: 10, texte: "Plus rien ne respire" }
+];
+
+
+/* ============================================================
+   LES AFFINITES
+   Un triangle, comme pierre-feuille-ciseaux :
+     matiere bat recit, recit bat oubli, oubli bat matiere.
+   ============================================================ */
+
+var AFFINITE_BAT = {
+  matiere: "recit",
+  recit:   "oubli",
+  oubli:   "matiere"
+};
+
+var AFFINITE_AVANTAGE    = 1.3;
+var AFFINITE_NEUTRE      = 1.0;
+var AFFINITE_DESAVANTAGE = 0.75;
+
+// Matiere = ocre / gris pierre, Recit = or terni / pourpre,
+// Oubli = vert-de-gris / bleu delave.
+var COULEURS_AFFINITE = {
+  matiere: "#b08d5a",
+  recit:   "#c9a227",
+  oubli:   "#7fa6a0"
+};
+
+var LIBELLES_AFFINITE = { matiere: "Matière", recit: "Récit", oubli: "Oubli" };
+var LIBELLES_NATURE   = { organique: "organique", mecanique: "mécanique", hybride: "hybride" };
+
+
+/* ============================================================
    OUTILS COMMUNS
    Trois raccourcis dont tous les fichiers se servent.
    ============================================================ */

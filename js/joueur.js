@@ -44,6 +44,17 @@ function ajouterAlaCollection(especeId, niveau) {
   return "connu";
 }
 
+/* Le niveau du joueur : celui de son Echo le plus avance.
+   Il n'y a pas d'autre notion de progression dans le jeu ; c'est
+   elle qui decide de ce qu'il sait lire du Figement en combat. */
+function niveauDuJoueur() {
+  var max = 0;
+  for (var id in collection) {
+    if (collection[id].niveau > max) max = collection[id].niveau;
+  }
+  return max;
+}
+
 function xpRequis(niveau) { return 12 + niveau * 14; }
 
 function gagnerXp(especeId, gain) {

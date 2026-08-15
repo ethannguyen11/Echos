@@ -64,13 +64,141 @@ function adversaireDe(donjon, tailleEquipe) {
 
 
 /* ------------------------------------------------------------
+   LE FIGEMENT ET LES AFFINITES
+
+   Deux multiplicateurs, appliques APRES la formule de degats.
+   La fonction degats() plus haut n'est jamais touchee : on prend
+   ce qu'elle rend et on le module. L'ordre est toujours
+
+     degatsFinaux = arrondi(degatsDeBase x affinite x figement)
+     minimum 1
+
+   Tous les nombres viennent de config.js.
+   ------------------------------------------------------------ */
+
+/* Le Figement de depart du lieu.
+
+   Si le lieu porte deja la valeur, on la respecte. Sinon on la
+   retrouve a partir de son identifiant OSM, avec la graine qui a
+   deja servi a tirer son espece et son niveau (voir lieux.js) :
+   c'est le troisieme tirage de la meme suite. Meme lieu, meme
+   Figement, sur tous les appareils, et rien de plus a stocker. */
+function figementDuLieu(donjon) {
+  if (!donjon) return 0;
+
+  if (typeof donjon.figement === "number" && isFinite(donjon.figement)) {
+    return Math.max(0, Math.min(FIGEMENT_MAX, Math.round(donjon.figement)));
+  }
+
+  if (!donjon.id) return 0;
+
+  var a = tirageAleatoire(grainePourTexte(donjon.id));
+  a();                                        // 1er tirage : l'espece
+  a();                                        // 2e  tirage : le niveau
+  return Math.floor(a() * (FIGEMENT_MAX + 1));
+}
+
+// Le compteur va de 0 a 100, le palier de 0 a 10.
+function palierFigement(valeur) {
+  var p = Math.floor(valeur / FIGEMENT_PAR_PALIER);
+  return Math.max(0, Math.min(FIGEMENT_PALIER_MAX, p));
+}
+
+/* Multiplicateur de l'ATTAQUANT, joueur comme adversaire.
+   L'arrondi a deux decimales n'est pas cosmetique : sans lui,
+   0.05 x 5 donne 0.2500000000000001 et l'organique se retrouve
+   a 0.9999 au palier 5, la ou il doit valoir exactement 1. */
+function multiplicateurFigement(especeId, palier) {
+  var e = ESPECES[especeId];
+  var n = (e && FIGEMENT_NATURES[e.nature]) || FIGEMENT_NATURES.hybride;
+  return Math.round((n.base + n.pas * palier) * 100) / 100;
+}
+
+// Le triangle : matiere bat recit, recit bat oubli, oubli bat matiere.
+function multiplicateurAffinite(especeAttaquant, especeCible) {
+  var a = ESPECES[especeAttaquant], c = ESPECES[especeCible];
+  if (!a || !c || !a.affinite || !c.affinite) return AFFINITE_NEUTRE;
+
+  if (AFFINITE_BAT[a.affinite] === c.affinite) return AFFINITE_AVANTAGE;
+  if (AFFINITE_BAT[c.affinite] === a.affinite) return AFFINITE_DESAVANTAGE;
+  return AFFINITE_NEUTRE;
+}
+
+// Le seul endroit ou les deux multiplicateurs se rencontrent.
+function degatsAjustes(base, especeAttaquant, especeCible, palier) {
+  var m = multiplicateurAffinite(especeAttaquant, especeCible) *
+          multiplicateurFigement(especeAttaquant, palier);
+  return Math.max(1, Math.round(base * m));
+}
+
+// Le lieu se mecanise d'un palier a la fin de chaque tour.
+function avancerFigement() {
+  if (!combat) return;
+  combat.figement = Math.min(FIGEMENT_MAX,
+                             combat.figement + VITESSE_FIGEMENT * FIGEMENT_PAR_PALIER);
+}
+
+
+/* ------------------------------------------------------------
    AFFICHAGE
    ------------------------------------------------------------ */
 
 function message(t) { elem("combat-message").innerHTML = t; }
 
+/* La fleche d'un combattant : montante s'il est avantage par le
+   Figement en cours, descendante s'il est desavantage, rien s'il
+   est hybride ou pile a l'equilibre. Aucun chiffre. */
+function flecheFigement(especeId, palier) {
+  var m = multiplicateurFigement(especeId, palier);
+  if (m > 1) return ' <span class="fleche-haut">&#9650;</span>';
+  if (m < 1) return ' <span class="fleche-bas">&#9660;</span>';
+  return "";
+}
+
+/* Ce que le joueur lit sous le seuil : une impression, pas un chiffre. */
+function libelleFigement(palier) {
+  for (var i = 0; i < LIBELLES_FIGEMENT.length; i++) {
+    if (palier <= LIBELLES_FIGEMENT[i].jusqua) return LIBELLES_FIGEMENT[i].texte;
+  }
+  return LIBELLES_FIGEMENT[LIBELLES_FIGEMENT.length - 1].texte;
+}
+
+/* La barre de Figement. Au-dessus du seuil de lecture, le joueur
+   voit la valeur exacte ; en dessous, seulement la phrase. */
+function majFigement(valeur, palier) {
+  elem("f-jauge").style.width = Math.round(valeur / FIGEMENT_MAX * 100) + "%";
+
+  if (niveauDuJoueur() >= SEUIL_LECTURE_FIGEMENT) {
+    elem("f-libelle").textContent = "Figement";
+    elem("f-val").textContent = Math.round(valeur) + " % — palier " + palier;
+  } else {
+    elem("f-libelle").textContent = libelleFigement(palier);
+    elem("f-val").textContent = "";
+  }
+}
+
+/* Une mention courte dans le journal quand l'affinite joue.
+   Rien du tout quand elle est neutre : le journal reste lisible. */
+function mentionAffinite(especeAttaquant, especeCible) {
+  var m = multiplicateurAffinite(especeAttaquant, especeCible);
+
+  if (m > AFFINITE_NEUTRE) {
+    return ' <span class="affinite-plus">&mdash; ' +
+           LIBELLES_AFFINITE[ESPECES[especeAttaquant].affinite] + ' domine</span>';
+  }
+  if (m < AFFINITE_NEUTRE) {
+    return ' <span class="affinite-moins">&mdash; ' +
+           LIBELLES_AFFINITE[ESPECES[especeCible].affinite] + ' resiste</span>';
+  }
+  return "";
+}
+
 function majAffichageCombat() {
   var a = combat.adversaire;
+  var palier = palierFigement(combat.figement);
+
+  majFigement(combat.figement, palier);
+  elem("m-fleche").innerHTML = flecheFigement(a.espece, palier);
 
   elem("m-pv").textContent = Math.max(0, a.pv) + "/" + a.pvMax;
   var pc = Math.max(0, a.pv) / a.pvMax * 100;
@@ -91,7 +219,7 @@ function majAffichageCombat() {
     var e = ESPECES[c.espece];
     var pct = Math.max(0, c.pv) / c.pvMax * 100;
     html += '<div class="carte-echo' + (c.pv <= 0 ? " ko" : "") + '">' +
-            '<b>' + e.nom + '</b>' +
+            '<b>' + e.nom + flecheFigement(c.espece, palier) + '</b>' +
             'niv. ' + c.niveau + ' &middot; ' + Math.max(0, c.pv) + ' PV' +
             '<div class="mini-jauge"><span style="width:' + pct + '%"></span></div>' +
             '</div>';
@@ -119,7 +247,8 @@ function demarrerCombat(donjon, preemptif) {
     equipe: mesEchos,
     tentatives: 0,
     fini: false,
-    preemptif: preemptif
+    preemptif: preemptif,
+    figement: figementDuLieu(donjon)   // 0 a 100, monte a chaque tour
   };
 
   var e = ESPECES[donjon.espece];
@@ -158,13 +287,20 @@ function actionAttaquer() {
   boutonsActifs(false);
 
   var lignes = [];
+  var palier = palierFigement(combat.figement);
+
   for (var i = 0; i < combat.equipe.length; i++) {
     var c = combat.equipe[i];
     if (c.pv <= 0) continue;
 
-    var d = degats(c.atq, combat.adversaire.def, Math.random());
+    // degats() reste la formule d'origine ; les multiplicateurs
+    // viennent apres, dans degatsAjustes().
+    var brut = degats(c.atq, combat.adversaire.def, Math.random());
+    var d = degatsAjustes(brut, c.espece, combat.adversaire.espece, palier);
+
     combat.adversaire.pv -= d;
-    lignes.push(ESPECES[c.espece].nom + " frappe : " + d);
+    lignes.push(ESPECES[c.espece].nom + " frappe : " + d +
+                mentionAffinite(c.espece, combat.adversaire.espece));
 
     if (combat.adversaire.pv <= 0) break;
   }
@@ -223,7 +359,7 @@ function tourAdverse() {
   // Tour d'ouverture offert par l'approche discrete
   if (combat.preemptif) {
     combat.preemptif = false;
-    boutonsActifs(true);
+    finDeTour();
     return;
   }
 
@@ -235,11 +371,14 @@ function tourAdverse() {
 
   if (!cible) { defaite(); return; }
 
-  var d = degats(combat.adversaire.atq, cible.def, Math.random());
+  var brut = degats(combat.adversaire.atq, cible.def, Math.random());
+  var d = degatsAjustes(brut, combat.adversaire.espece, cible.espece,
+                        palierFigement(combat.figement));
   cible.pv -= d;
 
   var txt = "<b>" + ESPECES[combat.donjon.espece].nom + "</b> frappe " +
-            ESPECES[cible.espece].nom + " : " + d + " dégâts.";
+            ESPECES[cible.espece].nom + " : " + d + " dégâts." +
+            mentionAffinite(combat.adversaire.espece, cible.espece);
 
   if (cible.pv <= 0) {
     cible.pv = 0;
@@ -250,6 +389,14 @@ function tourAdverse() {
   majAffichageCombat();
 
   if (!equipeDebout()) { setTimeout(defaite, 800); return; }
+  finDeTour();
+}
+
+/* Le tour est termine : le lieu se fige d'un cran, l'affichage
+   suit, et la main revient au joueur. */
+function finDeTour() {
+  avancerFigement();
+  majAffichageCombat();
   boutonsActifs(true);
 }
 
@@ -354,3 +501,69 @@ function brancherBoutonsCombat() {
   elem("btn-assimiler").addEventListener("click", actionAssimiler);
   elem("btn-fuir").addEventListener("click", actionFuir);
 }
+
+
+/* ------------------------------------------------------------
+   OUTIL DE CONSOLE
+   Ouvre la console et tape :   Combat.testerFigement()
+   Le tableau sort les multiplicateurs palier par palier, plus
+   un exemple chiffre sur une frappe de base a 10 degats, pour
+   voir d'un coup d'oeil si l'equilibrage tient.
+   ------------------------------------------------------------ */
+
+function testerFigement(degatsDeBase) {
+  var base = degatsDeBase || 10;
+  var natures = ["organique", "mecanique", "hybride"];
+
+  function colonne(t, largeur) {
+    t = String(t);
+    while (t.length < largeur) t += " ";
+    return t;
+  }
+
+  console.log("FIGEMENT — multiplicateur de l'attaquant, par palier");
+  console.log("(entre parentheses : degats finaux pour une frappe de base a " + base + ")");
+  console.log("");
+  console.log(colonne("palier", 8) + natures.map(function (n) {
+    return colonne(n, 20);
+  }).join(""));
+
+  for (var p = 0; p <= FIGEMENT_PALIER_MAX; p++) {
+    var ligne = colonne(p, 8);
+    for (var i = 0; i < natures.length; i++) {
+      // On passe par une espece reelle de chaque nature : c'est le
+      // meme chemin de code que le combat, pas une formule recopiee.
+      var espece = especeDeNature(natures[i]);
+      var m = multiplicateurFigement(espece, p);
+      var d = Math.max(1, Math.round(base * m));
+      ligne += colonne(m.toFixed(2) + "   (" + d + ")", 20);
+    }
+    console.log(ligne);
+  }
+
+  console.log("");
+  console.log("AFFINITES — matiere bat recit, recit bat oubli, oubli bat matiere");
+  console.log("  avantage " + AFFINITE_AVANTAGE +
+              "   neutre " + AFFINITE_NEUTRE +
+              "   desavantage " + AFFINITE_DESAVANTAGE);
+  console.log("");
+  console.log("Vitesse : +" + VITESSE_FIGEMENT + " palier par tour" +
+              "   |   chiffre exact affiche a partir du niveau " + SEUIL_LECTURE_FIGEMENT);
+}
+
+// La premiere espece du bestiaire qui porte cette nature.
+function especeDeNature(nature) {
+  for (var id in ESPECES) if (ESPECES[id].nature === nature) return id;
+  return null;
+}
+
+/* Le seul global que ce fichier expose. Le reste du jeu continue
+   d'appeler les fonctions directement, rien n'a change pour lui. */
+window.Combat = {
+  testerFigement: testerFigement,
+  figementDuLieu: figementDuLieu,
+  palierFigement: palierFigement,
+  multiplicateurFigement: multiplicateurFigement,
+  multiplicateurAffinite: multiplicateurAffinite,
+  degatsAjustes: degatsAjustes
+};

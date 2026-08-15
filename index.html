@@ -32,6 +32,16 @@
 <div id="combat">
   <div id="combat-lieu"></div>
 
+  <!-- Le Figement du lieu : la seule jauge lisible d'un coup d'oeil,
+       donc la premiere de l'ecran. -->
+  <div id="figement-bloc">
+    <div class="jauge-nom">
+      <span id="f-libelle">Figement</span>
+      <span id="f-val"></span>
+    </div>
+    <div class="jauge grosse"><span id="f-jauge" class="figement" style="width:0%"></span></div>
+  </div>
+
   <div id="scene">
     <img id="monstre-img" alt="">
     <div id="monstre-vide">&#128128;</div>
@@ -39,7 +49,7 @@
 
   <div class="jauge-bloc">
     <div class="jauge-nom">
-      <span id="m-nom">Écho</span>
+      <span><span id="m-nom">Écho</span><span id="m-fleche"></span></span>
       <span id="m-pv">0/0</span>
     </div>
     <div class="jauge"><span id="m-jauge" style="width:100%"></span></div>

@@ -42,10 +42,13 @@ function lancerTests() {
   var champsManquants = [];
   for (var id in ESPECES) {
     var e = ESPECES[id];
-    ["img", "famille", "nom", "titre", "pv", "atq", "def", "trait"].forEach(function (champ) {
+    ["img", "famille", "nom", "titre", "pv", "atq", "def", "trait",
+     "affinite", "nature"].forEach(function (champ) {
       if (e[champ] === undefined) champsManquants.push(id + "." + champ);
     });
     if (!COULEURS[e.famille]) champsManquants.push(id + " : famille sans couleur");
+    if (!AFFINITE_BAT[e.affinite]) champsManquants.push(id + " : affinite inconnue");
+    if (!FIGEMENT_NATURES[e.nature]) champsManquants.push(id + " : nature inconnue");
   }
   verifie("aucun champ manquant", champsManquants, []);
 
@@ -233,6 +236,99 @@ function lancerTests() {
     [chanceAssimilation(faussCombat(30, 30, 50, [1], 20)),
      chanceAssimilation(faussCombat(0, 30, 1, [50, 50, 50], 0))],
     [2, 95]);
+
+
+  /* --- Le Figement --- */
+
+  bloc("Figement");
+
+  // komainu organique, eiffel mecanique, jinchan hybride
+  verifie("multiplicateur organique : 1.25 -> 1.00 -> 0.75",
+    [0, 5, 10].map(function (p) { return multiplicateurFigement("komainu", p); }),
+    [1.25, 1, 0.75]);
+
+  verifie("multiplicateur mecanique : 0.75 -> 1.00 -> 1.25",
+    [0, 5, 10].map(function (p) { return multiplicateurFigement("eiffel", p); }),
+    [0.75, 1, 1.25]);
+
+  verifie("multiplicateur hybride : 1.00 partout",
+    [0, 3, 5, 8, 10].map(function (p) { return multiplicateurFigement("jinchan", p); }),
+    [1, 1, 1, 1, 1]);
+
+  verifie("le palier va de 0 a 10 et ne deborde jamais",
+    [-30, 0, 9, 10, 74, 99, 100, 250].map(palierFigement),
+    [0, 0, 0, 1, 7, 9, 10, 10]);
+
+  // matiere bat recit, recit bat oubli, oubli bat matiere
+  verifie("triangle d'affinites : les trois avantages",
+    [multiplicateurAffinite("komainu", "sunwukong"),    // matiere frappe recit
+     multiplicateurAffinite("sunwukong", "baku"),       // recit   frappe oubli
+     multiplicateurAffinite("baku", "komainu")          // oubli   frappe matiere
+    ], [1.3, 1.3, 1.3]);
+
+  verifie("triangle d'affinites : les trois desavantages",
+    [multiplicateurAffinite("sunwukong", "komainu"),    // recit   frappe matiere
+     multiplicateurAffinite("baku", "sunwukong"),       // oubli   frappe recit
+     multiplicateurAffinite("komainu", "baku")          // matiere frappe oubli
+    ], [0.75, 0.75, 0.75]);
+
+  verifie("meme affinite : rien ne change",
+    [multiplicateurAffinite("komainu", "tortuedragon"),
+     multiplicateurAffinite("baku", "penghou")],
+    [1, 1]);
+
+  // L'ordre impose : base x affinite x figement, arrondi, plancher a 1
+  verifie("degatsAjustes suit l'ordre de calcul",
+    [degatsAjustes(10, "komainu", "tortuedragon", 0),   // 10 x 1    x 1.25
+     degatsAjustes(10, "komainu", "tortuedragon", 10),  // 10 x 1    x 0.75
+     degatsAjustes(10, "eiffel", "tortuedragon", 0),    // 10 x 1    x 0.75
+     degatsAjustes(10, "eiffel", "tortuedragon", 10),   // 10 x 1    x 1.25
+     degatsAjustes(10, "komainu", "sunwukong", 0),      // 10 x 1.3  x 1.25
+     degatsAjustes(10, "sunwukong", "komainu", 10)      // 10 x 0.75 x 0.75
+    ], [13, 8, 8, 13, 16, 6]);
+
+  verifie("les degats ne descendent jamais sous 1",
+    [degatsAjustes(1, "sunwukong", "komainu", 10),
+     degatsAjustes(0, "eiffel", "tortuedragon", 0)],
+    [1, 1]);
+
+  // Criteres d'acceptation : l'organique faiblit, le mecanique monte
+  verifie("un organique frappe moins fort au tour 8 qu'au tour 1",
+    degatsAjustes(20, "komainu", "tortuedragon", 8) <
+    degatsAjustes(20, "komainu", "tortuedragon", 1), true);
+
+  verifie("un mecanique frappe plus fort au tour 8 qu'au tour 1",
+    degatsAjustes(20, "eiffel", "tortuedragon", 8) >
+    degatsAjustes(20, "eiffel", "tortuedragon", 1), true);
+
+  // Le meme lieu doit toujours rendre le meme Figement de depart
+  var lieuTemoin = { id: "node/1", espece: "komainu", niveau: 3 };
+  verifie("un meme lieu donne toujours le meme Figement",
+    [figementDuLieu(lieuTemoin), figementDuLieu(lieuTemoin), figementDuLieu({ id: "node/1" })],
+    [figementDuLieu({ id: "node/1" }), figementDuLieu({ id: "node/1" }),
+     figementDuLieu({ id: "node/1" })]);
+
+  verifie("des lieux differents donnent des Figements differents",
+    ["node/1", "way/42", "relation/7", "node/999999"].map(function (id) {
+      return figementDuLieu({ id: id });
+    }), [55, 24, 54, 53]);
+
+  verifie("une valeur deja posee sur le lieu l'emporte",
+    [figementDuLieu({ id: "node/1", figement: 90 }),
+     figementDuLieu({ id: "node/1", figement: 150 }),   // borne haute
+     figementDuLieu({ id: "node/1", figement: -5 })],   // borne basse
+    [90, 100, 0]);
+
+  verifie("un lieu sans identifiant ne casse rien", figementDuLieu({}), 0);
+
+  // avancerFigement travaille sur la variable globale combat
+  var combatAvant = combat;
+  combat = { figement: 74 };
+  var montee = [];
+  for (var t = 0; t < 4; t++) { avancerFigement(); montee.push(combat.figement); }
+  combat = combatAvant;
+  verifie("le Figement monte d'un palier par tour et plafonne a 100",
+    montee, [84, 94, 100, 100]);
 
 
   /* --- Collection, equipe, experience --- */

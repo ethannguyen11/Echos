@@ -26,6 +26,8 @@ function ouvrirGrimoire() {
             '<div class="nom">' + e.nom + '</div>' +
             '<div class="titre">' + e.titre + '</div>' +
             '<div class="stats">' + s.pvMax + ' PV &middot; ATQ ' + s.atq + ' &middot; DEF ' + s.def + '</div>' +
+            '<div class="affinite" style="color:' + COULEURS_AFFINITE[e.affinite] + '">' +
+            LIBELLES_AFFINITE[e.affinite] + ' &middot; ' + LIBELLES_NATURE[e.nature] + '</div>' +
             '<div class="trait">' + e.trait + '</div>' +
             '</div></div>';
   }

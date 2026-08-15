@@ -8,24 +8,28 @@ var ESPECES = {
   /* --- TEMPLES --- */
   komainu: {
     img: "komainu", famille: "temple",
+    affinite: "matiere", nature: "organique",
     nom: "Komainu", titre: "le Lion Gardien",
     pv: 26, atq: 5, def: 9,
     trait: "Garde du Seuil : annule les dégâts d'un tour et en renvoie la moitié."
   },
   chiguo: {
     img: "chiguo", famille: "temple",
+    affinite: "matiere", nature: "hybride",
     nom: "Chi Guo", titre: "Gardien des Terres",
     pv: 23, atq: 4, def: 7,
     trait: "Souffle d'Encens : empoisonne l'adversaire pendant 4 tours."
   },
   sunwukong: {
     img: "sunwukong", famille: "temple",
+    affinite: "recit", nature: "organique",
     nom: "Sun Wukong", titre: "l'Esprit Enchaîné",
     pv: 14, atq: 11, def: 2,
     trait: "Bond du Singe : frappe deux fois, mais subit un contrecoup."
   },
   palantir: {
     img: "palantir", famille: "temple",
+    affinite: "recit", nature: "mecanique",
     nom: "Palantir", titre: "la Sphère de Vide",
     pv: 20, atq: 3, def: 6,
     trait: "Question du Vide : pose une question ; l'échec coûte la moitié des PV."
@@ -34,24 +38,28 @@ var ESPECES = {
   /* --- METRO --- */
   mechadrill: {
     img: "mechadrill", famille: "metro",
+    affinite: "matiere", nature: "mecanique",
     nom: "Mecha Drill", titre: "la Foreuse",
     pv: 31, atq: 8, def: 6,
     trait: "Percée : charge un tour, puis frappe au triple."
   },
   teketeke: {
     img: "teketeke", famille: "metro",
+    affinite: "oubli", nature: "mecanique",
     nom: "Teke Teke", titre: "l'Onryo",
     pv: 16, atq: 7, def: 3,
     trait: "Rampe : trois frappes qui ignorent la défense."
   },
   zhanxiyuan: {
     img: "zhanxiyuan", famille: "metro",
+    affinite: "oubli", nature: "hybride",
     nom: "Zhan Xiyuan", titre: "l'Inventeur",
     pv: 19, atq: 5, def: 5,
     trait: "Aiguillage : l'adversaire saute son prochain tour."
   },
   baku: {
     img: "baku", famille: "metro",
+    affinite: "oubli", nature: "organique",
     nom: "Baku", titre: "le Mange-Rêve",
     pv: 23, atq: 6, def: 4,
     trait: "Dévorer : vole des PV à l'adversaire."
@@ -60,24 +68,28 @@ var ESPECES = {
   /* --- MONUMENTS --- */
   eiffel: {
     img: "eiffel", famille: "monument",
+    affinite: "matiere", nature: "mecanique",
     nom: "Eiffel", titre: "l'Architecte",
     pv: 24, atq: 5, def: 7,
     trait: "Charpente : la défense monte à chaque tour."
   },
   tortuedragon: {
     img: "tortuedragon", famille: "monument",
+    affinite: "matiere", nature: "organique",
     nom: "Tortue Dragon", titre: "le Maître des Fondations",
     pv: 29, atq: 6, def: 9,
     trait: "Ancrage : renonce à fuir, mais double ses dégâts."
   },
   hephaistos: {
     img: "hephaistos", famille: "monument",
+    affinite: "matiere", nature: "mecanique",
     nom: "Héphaïstos", titre: "le Marteau",
     pv: 22, atq: 7, def: 6,
     trait: "Enclume : rend d'un coup tout ce qu'il a encaissé."
   },
   vinci: {
     img: "vinci", famille: "monument",
+    affinite: "recit", nature: "mecanique",
     nom: "Vinci", titre: "le Savoir",
     pv: 18, atq: 8, def: 3,
     trait: "Mesure : ses coups ignorent la défense pendant 3 tours."
@@ -86,24 +98,28 @@ var ESPECES = {
   /* --- PARCS --- */
   hinezumi: {
     img: "hinezumi", famille: "parc",
+    affinite: "recit", nature: "organique",
     nom: "Hinezumi", titre: "le Rat de Feu",
     pv: 18, atq: 6, def: 3,
     trait: "Robe de Flammes : brûlure qui s'aggrave chaque tour."
   },
   penghou: {
     img: "penghou", famille: "parc",
+    affinite: "oubli", nature: "organique",
     nom: "Penghou", titre: "le Chien",
     pv: 21, atq: 4, def: 5,
     trait: "Sève : régénère des PV à chaque tour."
   },
   peng: {
     img: "peng", famille: "parc",
+    affinite: "recit", nature: "organique",
     nom: "Peng", titre: "l'Oiseau Colossal",
     pv: 20, atq: 7, def: 4,
     trait: "Envol : esquive garantie, puis contre-attaque."
   },
   jinchan: {
     img: "jinchan", famille: "parc",
+    affinite: "recit", nature: "hybride",
     nom: "Jin Chan", titre: "le Crapaud",
     pv: 17, atq: 4, def: 3,
     trait: "Fortune : double les points d'écho gagnés."
