@@ -288,15 +288,25 @@ function resoudreLieuZero(surResultat) {
    ------------------------------------------------------------ */
 
 var couche = null;      // l'overlay plein ecran
+var zoneVisuel = null;  // la moitie haute : ce qu'on voit
+var zoneDialogue = null;// la moitie basse : ce qu'on lit
 var zoneTexte = null;
 var zoneChoix = null;
 var zoneSaisie = null;
 var champ = null;
 var silhouette = null;
 
+/* L'ecran est fait de deux zones empilees, jamais superposees :
+   la zone haute (silhouette, puis Echo de depart) et la zone
+   basse (replique, saisie, choix). Le partage de la hauteur est
+   decrit dans css/intro.css ; ici on ne fait que les emboiter. */
 function construireEcran() {
   couche = document.createElement("div");
   couche.id = "intro";
+  couche.className = "intro-overlay";
+
+  zoneVisuel = document.createElement("div");
+  zoneVisuel.className = "intro-visuel";
 
   silhouette = document.createElement("div");
   silhouette.id = "intro-ico";
@@ -306,6 +316,10 @@ function construireEcran() {
     '<ellipse cx="50" cy="34" rx="20" ry="23"></ellipse>' +
     '<path d="M50 57 C22 57 14 82 14 130 L86 130 C86 82 78 57 50 57 Z"></path>' +
     '</svg>';
+  zoneVisuel.appendChild(silhouette);
+
+  zoneDialogue = document.createElement("div");
+  zoneDialogue.className = "intro-dialogue";
 
   zoneTexte = document.createElement("div");
   zoneTexte.id = "intro-texte";
@@ -324,10 +338,12 @@ function construireEcran() {
   zoneChoix = document.createElement("div");
   zoneChoix.id = "intro-choix";
 
-  couche.appendChild(silhouette);
-  couche.appendChild(zoneTexte);
-  couche.appendChild(zoneSaisie);
-  couche.appendChild(zoneChoix);
+  zoneDialogue.appendChild(zoneTexte);
+  zoneDialogue.appendChild(zoneSaisie);
+  zoneDialogue.appendChild(zoneChoix);
+
+  couche.appendChild(zoneVisuel);
+  couche.appendChild(zoneDialogue);
 
   document.body.appendChild(couche);
   document.body.classList.add("intro-ouverte");
@@ -342,7 +358,8 @@ function detruireEcran() {
   if (!couche) return;
   couche.parentNode.removeChild(couche);
   document.body.classList.remove("intro-ouverte");
-  couche = zoneTexte = zoneChoix = zoneSaisie = champ = silhouette = null;
+  couche = zoneVisuel = zoneDialogue = null;
+  zoneTexte = zoneChoix = zoneSaisie = champ = silhouette = null;
 }
 
 
@@ -459,7 +476,7 @@ function jouerEtape() {
       break;
 
     case "apparition":
-      silhouette.classList.add("visible");
+      if (silhouette) silhouette.classList.add("visible");
       suivant();
       break;
 
@@ -477,7 +494,7 @@ function jouerEtape() {
       break;
 
     case "echoDepart":
-      afficherBloc(carteEchoDepart(), "echo");
+      montrerEchoDepart();
       break;
 
     case "musique":
@@ -560,6 +577,26 @@ function echoDeDepart() {
   if (!id && typeof collection !== "undefined") id = Object.keys(collection)[0];
   if (!id || !collection[id]) return null;
   return collection[id];
+}
+
+/* Scene 6 : l'Echo prend la place d'Ico dans la zone haute.
+   Ico s'efface d'abord, l'Echo arrive ensuite : les deux ne
+   sont jamais a l'ecran en meme temps. La replique en cours
+   reste lisible en dessous, dans la zone de dialogue. */
+function montrerEchoDepart() {
+  var html = carteEchoDepart();
+  if (!html) return suivant();        // aucun Echo a montrer : on passe
+
+  verrou = true;
+  etat = "transition";
+  if (silhouette) silhouette.classList.add("parti");
+
+  setTimeout(function () {
+    zoneVisuel.innerHTML = html;      // remplace la silhouette
+    silhouette = null;
+    etat = "ligne";
+    verrou = false;
+  }, DUREE_FONDU);
 }
 
 function carteEchoDepart() {

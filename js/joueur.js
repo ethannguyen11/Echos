@@ -186,7 +186,7 @@ function majFiche() {
   var f = document.getElementById("fiche");
 
   if (equipe.length === 0) {
-    f.textContent = "Equipe vide";
+    f.textContent = "Équipe vide";
     return;
   }
 

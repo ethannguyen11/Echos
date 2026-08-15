@@ -10,7 +10,7 @@ var ESPECES = {
     img: "komainu", famille: "temple",
     nom: "Komainu", titre: "le Lion Gardien",
     pv: 26, atq: 5, def: 9,
-    trait: "Garde du Seuil : annule les degats d'un tour et en renvoie la moitie."
+    trait: "Garde du Seuil : annule les dégâts d'un tour et en renvoie la moitié."
   },
   chiguo: {
     img: "chiguo", famille: "temple",
@@ -20,15 +20,15 @@ var ESPECES = {
   },
   sunwukong: {
     img: "sunwukong", famille: "temple",
-    nom: "Sun Wukong", titre: "l'Esprit Enchaine",
+    nom: "Sun Wukong", titre: "l'Esprit Enchaîné",
     pv: 14, atq: 11, def: 2,
     trait: "Bond du Singe : frappe deux fois, mais subit un contrecoup."
   },
   palantir: {
     img: "palantir", famille: "temple",
-    nom: "Palantir", titre: "la Sphere de Vide",
+    nom: "Palantir", titre: "la Sphère de Vide",
     pv: 20, atq: 3, def: 6,
-    trait: "Question du Vide : pose une question ; l'echec coute la moitie des PV."
+    trait: "Question du Vide : pose une question ; l'échec coûte la moitié des PV."
   },
 
   /* --- METRO --- */
@@ -36,13 +36,13 @@ var ESPECES = {
     img: "mechadrill", famille: "metro",
     nom: "Mecha Drill", titre: "la Foreuse",
     pv: 31, atq: 8, def: 6,
-    trait: "Percee : charge un tour, puis frappe au triple."
+    trait: "Percée : charge un tour, puis frappe au triple."
   },
   teketeke: {
     img: "teketeke", famille: "metro",
     nom: "Teke Teke", titre: "l'Onryo",
     pv: 16, atq: 7, def: 3,
-    trait: "Rampe : trois frappes qui ignorent la defense."
+    trait: "Rampe : trois frappes qui ignorent la défense."
   },
   zhanxiyuan: {
     img: "zhanxiyuan", famille: "metro",
@@ -52,9 +52,9 @@ var ESPECES = {
   },
   baku: {
     img: "baku", famille: "metro",
-    nom: "Baku", titre: "le Mange-Reve",
+    nom: "Baku", titre: "le Mange-Rêve",
     pv: 23, atq: 6, def: 4,
-    trait: "Devorer : vole des PV a l'adversaire."
+    trait: "Dévorer : vole des PV à l'adversaire."
   },
 
   /* --- MONUMENTS --- */
@@ -62,25 +62,25 @@ var ESPECES = {
     img: "eiffel", famille: "monument",
     nom: "Eiffel", titre: "l'Architecte",
     pv: 24, atq: 5, def: 7,
-    trait: "Charpente : la defense monte a chaque tour."
+    trait: "Charpente : la défense monte à chaque tour."
   },
   tortuedragon: {
     img: "tortuedragon", famille: "monument",
-    nom: "Tortue Dragon", titre: "le Maitre des Fondations",
+    nom: "Tortue Dragon", titre: "le Maître des Fondations",
     pv: 29, atq: 6, def: 9,
-    trait: "Ancrage : renonce a fuir, mais double ses degats."
+    trait: "Ancrage : renonce à fuir, mais double ses dégâts."
   },
   hephaistos: {
     img: "hephaistos", famille: "monument",
-    nom: "Hephaiston", titre: "le Marteau",
+    nom: "Héphaïston", titre: "le Marteau",
     pv: 22, atq: 7, def: 6,
-    trait: "Enclume : rend d'un coup tout ce qu'il a encaisse."
+    trait: "Enclume : rend d'un coup tout ce qu'il a encaissé."
   },
   vinci: {
     img: "vinci", famille: "monument",
     nom: "Vinci", titre: "le Savoir",
     pv: 18, atq: 8, def: 3,
-    trait: "Mesure : ses coups ignorent la defense pendant 3 tours."
+    trait: "Mesure : ses coups ignorent la défense pendant 3 tours."
   },
 
   /* --- PARCS --- */
@@ -88,13 +88,13 @@ var ESPECES = {
     img: "hinezumi", famille: "parc",
     nom: "Hinezumi", titre: "le Rat de Feu",
     pv: 18, atq: 6, def: 3,
-    trait: "Robe de Flammes : brulure qui s'aggrave chaque tour."
+    trait: "Robe de Flammes : brûlure qui s'aggrave chaque tour."
   },
   penghou: {
     img: "penghou", famille: "parc",
     nom: "Penghou", titre: "le Chien",
     pv: 21, atq: 4, def: 5,
-    trait: "Seve : regenere des PV a chaque tour."
+    trait: "Sève : régénère des PV à chaque tour."
   },
   peng: {
     img: "peng", famille: "parc",
@@ -106,7 +106,7 @@ var ESPECES = {
     img: "jinchan", famille: "parc",
     nom: "Jin Chan", titre: "le Crapaud",
     pv: 17, atq: 4, def: 3,
-    trait: "Fortune : double les points d'echo gagnes."
+    trait: "Fortune : double les points d'écho gagnés."
   }
 };
 

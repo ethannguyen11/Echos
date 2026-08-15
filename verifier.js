@@ -202,7 +202,8 @@ var classesManquantes = [];
 ["actif", "visible", "secoue", "ko", "bas", "danger", "assimilation", "sortie",
  "carte-echo", "mini-jauge", "ligne-echo", "equipee", "pastille", "infos",
  "nom", "titre", "stats", "trait", "pop-titre", "pop-lieu", "pop-mons",
- "intro-ouverte", "sortant", "recit", "ico", "lieu", "echo", "nom-lieu",
+ "intro-ouverte", "intro-overlay", "intro-visuel", "intro-dialogue",
+ "sortant", "recit", "ico", "lieu", "nom-lieu", "parti",
  "echo-depart", "echo-vignette", "echo-substitut", "echo-nom", "echo-titre",
  "echo-niveau"].forEach(function (c) {
   if (css.indexOf("." + c) === -1) classesManquantes.push(c);

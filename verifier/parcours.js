@@ -177,11 +177,31 @@ function creerMonde(options) {
 
 function couche(m) { return m.corps.enfants[m.corps.enfants.length - 1]; }
 
-function partie(m, id) {
-  var c = couche(m);
-  if (!c) return null;
-  for (var i = 0; i < c.enfants.length; i++) if (c.enfants[i].id === id) return c.enfants[i];
+// L'overlay est fait de zones emboitees (intro-visuel, intro-dialogue) :
+// on cherche donc en profondeur, pas seulement chez les enfants directs.
+function chercher(noeud, correspond) {
+  if (!noeud) return null;
+  for (var i = 0; i < noeud.enfants.length; i++) {
+    var e = noeud.enfants[i];
+    if (correspond(e)) return e;
+    var trouve = chercher(e, correspond);
+    if (trouve) return trouve;
+  }
   return null;
+}
+
+function partie(m, id) {
+  return chercher(couche(m), function (e) { return e.id === id; });
+}
+
+function zone(m, classe) {
+  return chercher(couche(m), function (e) { return e.className === classe; });
+}
+
+// Ce que montre la zone haute : la silhouette, puis l'Echo de depart.
+function visuelAffiche(m) {
+  var z = zone(m, "intro-visuel");
+  return z ? z.textContent : "";
 }
 
 function tap(m, cible) {
@@ -199,6 +219,7 @@ function jouerIntro(m, reponses, options) {
   options = options || {};
   var nbTaps = options.taps || 1;
   var vues = [], fini = false, tours = 0;
+  var dernierTexte = "";      // la derniere replique lue, pour ne pas la compter deux fois
 
   m.ctx.Intro.demarrer(function () { fini = true; });
 
@@ -232,8 +253,12 @@ function jouerIntro(m, reponses, options) {
       continue;
     }
 
+    // La zone haute change une fois : quand l'Echo remplace Ico.
+    var visuel = visuelAffiche(m);
+    if (visuel && vues.indexOf("[visuel] " + visuel) === -1) vues.push("[visuel] " + visuel);
+
     var vue = texteAffiche(m);
-    if (vue && vues[vues.length - 1] !== vue) vues.push(vue);
+    if (vue && vue !== dernierTexte) { vues.push(vue); dernierTexte = vue; }
     for (var k = 0; k < nbTaps; k++) tap(m);
   }
 
@@ -339,6 +364,10 @@ function lancerParcours() {
           m2.ctx.profil.voie === "gardien", m2.ctx.profil.voie);
   verifie("l'Echo de depart est bien celui du jeu",
           vues2.some(function (l) { return l.indexOf("Jin Chan") !== -1; }),
+          vues2.filter(function (l) { return /Chan|Crapaud/.test(l); }).join(" | "));
+  verifie("l'Echo de depart s'affiche dans la zone haute, pas dans le texte",
+          vues2.some(function (l) { return l.indexOf("[visuel] ") === 0 && l.indexOf("Jin Chan") !== -1; }) &&
+          !vues2.some(function (l) { return l.indexOf("[visuel] ") !== 0 && l.indexOf("Jin Chan") !== -1; }),
           vues2.filter(function (l) { return /Chan|Crapaud/.test(l); }).join(" | "));
 
 

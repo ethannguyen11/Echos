@@ -6,29 +6,72 @@
 
 body.intro-ouverte { overflow: hidden; }
 
+/* #intro place l'ecran par-dessus la page.
+   Sa mise en page interne, elle, tient dans les trois classes
+   qui suivent : intro-overlay, intro-visuel, intro-dialogue. */
 #intro {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0; left: 0; right: 0;
   z-index: 4000;
   background: #000;
   color: #eee;
   font-family: -apple-system, sans-serif;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  /* L'encoche en haut, la barre d'accueil en bas */
-  padding: calc(env(safe-area-inset-top) + 28px)
-           calc(env(safe-area-inset-right) + 26px)
-           calc(env(safe-area-inset-bottom) + 28px)
-           calc(env(safe-area-inset-left) + 26px);
-
   -webkit-user-select: none; user-select: none;
   -webkit-tap-highlight-color: transparent;
   cursor: pointer;
 }
+
+
+/* ---------- Les deux zones ----------
+   L'ecran est coupe en deux dans le sens de la hauteur. Aucune
+   des deux zones n'est en position absolue : elles se partagent
+   la place, donc elles ne peuvent pas se recouvrir, quelle que
+   soit la longueur du texte. */
+
+.intro-overlay {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;      /* la hauteur ci-dessous inclut le padding */
+
+  height: 100vh;               /* repli pour les navigateurs sans dvh */
+  height: 100dvh;              /* la barre d'adresse de Safari iOS bouge : dvh la suit */
+
+  /* L'encoche en haut, la barre d'accueil en bas */
+  padding: calc(env(safe-area-inset-top) + 20px)
+           calc(env(safe-area-inset-right) + 26px)
+           calc(env(safe-area-inset-bottom) + 20px)
+           calc(env(safe-area-inset-left) + 26px);
+}
+
+/* Zone haute : la silhouette d'Ico, puis l'Echo de depart.
+   Hauteur fixe, contenu centre, rien n'en sort. */
+.intro-visuel {
+  flex: 0 0 42vh;
+  flex-basis: 42dvh;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Zone basse : la replique en cours, la saisie, les choix.
+   Elle prend tout ce qui reste. Le texte part du haut et defile
+   s'il est trop long : rien ne se retrouve coupe hors de l'ecran. */
+.intro-dialogue {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 18px;
+}
+
+/* Rien ne se laisse ecraser : si le texte et les boutons ne
+   tiennent pas, la zone defile au lieu de tout comprimer. */
+.intro-dialogue > * { flex-shrink: 0; }
 
 
 /* ---------- La silhouette d'Ico ---------- */
@@ -37,13 +80,18 @@ body.intro-ouverte { overflow: hidden; }
    data-defigement servira a la faire evoluer plus tard. */
 #intro-ico {
   width: 100px; height: 130px;
-  margin-bottom: 26px;
+  max-height: 100%;
+  flex-shrink: 0;
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 1.6s ease, transform 1.6s ease;
 }
 
 #intro-ico.visible { opacity: 1; transform: translateY(0); }
+
+/* Scene 6 : Ico s'efface pour laisser la place a l'Echo.
+   Cette regle vient apres .visible, sinon elle ne l'emporterait pas. */
+#intro-ico.parti { opacity: 0; transition: opacity 0.22s ease; }
 
 #intro-ico svg { width: 100%; height: 100%; display: block; }
 #intro-ico svg ellipse, #intro-ico svg path { fill: #1b1b20; stroke: #34343d; stroke-width: 1.5; }
@@ -55,6 +103,7 @@ body.intro-ouverte { overflow: hidden; }
   max-width: 30em;
   min-height: 8.5em;
   width: 100%;
+  box-sizing: border-box;   /* le retrait de la variante "ico" ne deborde pas */
   font-size: 17px;
   line-height: 1.6;
   opacity: 1;
@@ -105,11 +154,12 @@ body.intro-ouverte { overflow: hidden; }
 }
 
 
-/* ---------- L'Echo de depart ---------- */
-
-#intro-texte.echo { text-align: center; }
+/* ---------- L'Echo de depart ----------
+   Il s'affiche dans la zone haute, a la place d'Ico. */
 
 .echo-depart {
+  max-height: 100%;
+  text-align: center;
   animation: apparitionLieu 0.9s ease both;
 }
 

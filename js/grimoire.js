@@ -9,7 +9,7 @@ function ouvrirGrimoire() {
   var ids = Object.keys(collection);
 
   if (ids.length === 0) {
-    html = '<div style="color:#888">Aucun echo lie pour le moment.</div>';
+    html = '<div style="color:#888">Aucun écho lié pour le moment.</div>';
   }
 
   for (var i = 0; i < ids.length; i++) {
