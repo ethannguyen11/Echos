@@ -44,15 +44,19 @@ function ajouterAlaCollection(especeId, niveau) {
   return "connu";
 }
 
-/* Le niveau du joueur : celui de son Echo le plus avance.
-   Il n'y a pas d'autre notion de progression dans le jeu ; c'est
-   elle qui decide de ce qu'il sait lire du Figement en combat. */
-function niveauDuJoueur() {
-  var max = 0;
-  for (var id in collection) {
-    if (collection[id].niveau > max) max = collection[id].niveau;
-  }
-  return max;
+/* L'experience du gardien : le nombre d'especes DISTINCTES qu'il a
+   assimilees, pas le niveau de son meilleur Echo. Ce qui compte
+   n'est pas d'avoir pousse une creature loin, c'est d'avoir compris
+   beaucoup de choses differentes.
+
+   La collection est indexee par espece : une espece = une entree,
+   les doublons n'y sont jamais ajoutes (voir ajouterAlaCollection).
+   Il suffit donc de compter les entrees.
+
+   C'est cette valeur qui decide de ce que le joueur sait lire du
+   Figement en combat. */
+function experienceDuGardien() {
+  return Object.keys(collection).length;
 }
 
 function xpRequis(niveau) { return 12 + niveau * 14; }

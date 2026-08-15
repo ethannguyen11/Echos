@@ -76,9 +76,14 @@ var FIGEMENT_NATURES = {
   hybride:   { base: 1.00, pas:  0.00 }
 };
 
-/* Niveau du joueur a partir duquel le chiffre exact s'affiche.
-   En dessous, il ne lit qu'une impression. */
-var SEUIL_LECTURE_FIGEMENT = 10;
+/* A partir de quand le joueur lit le chiffre exact du Figement.
+   L'unite est un NOMBRE D'ESPECES DISTINCTES assimilees, pas un
+   niveau d'Echo : ce qui apprend a lire un lieu, c'est d'en avoir
+   compris beaucoup de differents. Voir experienceDuGardien()
+   dans js/joueur.js. En dessous du seuil, le joueur ne lit qu'une
+   impression, jamais un nombre.
+   Il y a 16 especes en tout : 8 represente la moitie du bestiaire. */
+var SEUIL_LECTURE_FIGEMENT = 8;
 
 /* Ce que le joueur lit tant qu'il est sous le seuil : une phrase
    par tranche de paliers, de la plus vivante a la plus morte. */

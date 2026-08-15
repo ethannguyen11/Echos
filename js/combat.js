@@ -168,7 +168,7 @@ function libelleFigement(palier) {
 function majFigement(valeur, palier) {
   elem("f-jauge").style.width = Math.round(valeur / FIGEMENT_MAX * 100) + "%";
 
-  if (niveauDuJoueur() >= SEUIL_LECTURE_FIGEMENT) {
+  if (experienceDuGardien() >= SEUIL_LECTURE_FIGEMENT) {
     elem("f-libelle").textContent = "Figement";
     elem("f-val").textContent = Math.round(valeur) + " % — palier " + palier;
   } else {
@@ -548,7 +548,8 @@ function testerFigement(degatsDeBase) {
               "   desavantage " + AFFINITE_DESAVANTAGE);
   console.log("");
   console.log("Vitesse : +" + VITESSE_FIGEMENT + " palier par tour" +
-              "   |   chiffre exact affiche a partir du niveau " + SEUIL_LECTURE_FIGEMENT);
+              "   |   chiffre exact affiche a partir de " + SEUIL_LECTURE_FIGEMENT +
+              " especes assimilees");
 }
 
 // La premiere espece du bestiaire qui porte cette nature.
