@@ -23,6 +23,9 @@ button { font-family: inherit; }
 #texte { font-size: 16px; line-height: 1.4; }
 #etat { font-size: 12px; color: #777; margin-top: 6px; min-height: 14px; }
 
+/* La difficulte du lieu, annoncee avant d'y entrer */
+.difficulte { font-size: 13px; color: #9aa0ad; }
+
 #entrer {
   display: none; margin-top: 12px; width: 100%;
   padding: 14px; font-size: 17px; font-weight: 600;
@@ -122,7 +125,8 @@ button { font-family: inherit; }
 /* ---------- Le Figement ----------
    Elle doit se lire en plein soleil, bras tendu : barre epaisse,
    fort contraste, libelle en gras. */
-#figement-bloc { padding: 10px 20px 10px; }
+#figement-bloc { display: none; padding: 10px 20px 10px; }
+#figement-bloc.visible { display: block; }
 
 #figement-bloc .jauge-nom {
   font-size: 13px; font-weight: 600;
@@ -206,15 +210,20 @@ button { font-family: inherit; }
   font-size: 14px; line-height: 1.45;
 }
 
+/* Les quatre commandes : pleine largeur, empilees, 52 px de haut.
+   Le jeu se joue debout, dehors, au pouce : 44 px est le minimum
+   tactile, on prend de la marge. */
 #combat-actions {
-  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  display: flex; flex-direction: column;
   gap: 8px; padding: 0 20px 40px;
 }
 
 #combat-actions button {
-  padding: 15px 4px; font-size: 15px; font-weight: 600;
+  width: 100%; min-height: 52px;
+  padding: 15px 12px; font-size: 16px; font-weight: 600;
   color: #fff; background: #3d2452;
   border: 1px solid #6b4a85; border-radius: 12px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #combat-actions button:disabled { opacity: 0.35; }
@@ -222,8 +231,54 @@ button { font-family: inherit; }
 #combat-actions button.assimilation { background: #7a3d95; border-color: #b455d4; }
 
 #combat-actions button.sortie {
-  grid-column: 1 / -1;
   background: #b455d4; border-color: #b455d4;
+}
+
+/* ---------- Le menu d'aptitudes ----------
+   Il se pose par-dessus l'ecran de combat, sans le remplacer :
+   le joueur garde les PV et le journal sous les yeux. */
+#aptitudes {
+  display: none;
+  position: absolute; left: 0; right: 0; bottom: 0;
+  z-index: 2100;
+  max-height: 72%;
+  padding: 14px 20px calc(env(safe-area-inset-bottom) + 20px);
+  box-sizing: border-box;
+  background: #170f20;
+  border-top: 1px solid #6b4a85;
+  border-radius: 18px 18px 0 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#aptitudes.actif { display: block; }
+
+.apt-echo {
+  margin: 10px 0 6px;
+  font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+  color: #b98fd0;
+}
+
+.apt-ligne {
+  display: block; width: 100%;
+  min-height: 52px;
+  margin-bottom: 8px; padding: 10px 14px;
+  font-family: inherit; text-align: left;
+  color: #eee; background: #241b30;
+  border: 1px solid #4a3060; border-radius: 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.apt-ligne:disabled { opacity: 0.4; }
+.apt-nom { display: block; font-size: 15px; font-weight: 600; }
+.apt-texte { display: block; margin-top: 3px; font-size: 12px; color: #9a90a8; line-height: 1.35; }
+.apt-attente { font-weight: 400; font-size: 12px; color: #d4a02a; }
+
+#btn-fermer-aptitudes {
+  width: 100%; min-height: 52px; margin-top: 6px;
+  font-family: inherit; font-size: 16px; font-weight: 600;
+  color: #fff; background: #3d2452;
+  border: 1px solid #6b4a85; border-radius: 12px;
 }
 
 /* ---------- Grimoire ---------- */

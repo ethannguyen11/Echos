@@ -66,6 +66,23 @@ function rafraichirMarqueur(d) {
    BANDEAU DE LA CARTE
    ------------------------------------------------------------ */
 
+/* La difficulte du lieu, lue AVANT d'y entrer.
+
+   C'est le nouveau role du Figement : il ne pese plus sur le combat,
+   il annonce ce qui attend le joueur. Il reste soumis a la lecture
+   progressive : sous le seuil, une impression ; au-dessus, le
+   chiffre exact. Il n'apparait jamais pendant un combat. */
+function ligneDifficulte(d) {
+  var valeur = figementDuLieu(d);
+  var palier = palierFigement(valeur);
+
+  var texte = experienceDuGardien() >= SEUIL_LECTURE_FIGEMENT ?
+              "Figement " + Math.round(valeur) + " % — palier " + palier :
+              libelleFigement(palier);
+
+  return '<span class="difficulte">' + texte + '</span>';
+}
+
 function mettreAJourHud(lat, lon) {
   donjonProche = null;
   distanceProche = Infinity;
@@ -105,6 +122,7 @@ function mettreAJourHud(lat, lon) {
   } else {
     texte.innerHTML = "<b>" + e.nom + "</b>, " + e.titre +
                       "<br>niveau " + donjonProche.niveau +
+                      "<br>" + ligneDifficulte(donjonProche) +
                       (distanceProche <= DISTANCE_PREEMPTIF ?
                        "<br><span style='color:#b455d4'>Il ne t'a pas vu venir.</span>" : "");
     bouton.style.display = "block";

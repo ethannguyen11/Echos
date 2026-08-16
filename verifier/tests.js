@@ -214,46 +214,213 @@ function lancerTests() {
       return t + " -> " + adv.pv + "/" + adv.atq + "/" + adv.def;
     }), ["1 -> 53/10/18", "2 -> 90/12/18", "3 -> 127/13/18"]);
 
-  function faussCombat(pvAdv, pvMaxAdv, nivAdv, niveaux, tentatives) {
+  /* --- Assimiler ---
+     Nouvelle formule, visible sur le bouton :
+       socle 30 + PV manquants x 0.4 + ecart de niveau x 3 (borne +/-20)
+       + Appel + Defendre - malus de rang, borne entre 5 et 95.
+     Les rangs viennent des especes : jinchan D, vinci C, baku B,
+     komainu A, tortuedragon S. */
+
+  function faussCombat(espece, pv, pvMax, nivCible, niveaux, bonusAppel, bonusDefense) {
     return {
-      adversaire: { pv: pvAdv, pvMax: pvMaxAdv, niveau: nivAdv },
-      equipe: niveaux.map(function (n) { return { niveau: n }; }),
-      tentatives: tentatives
+      adversaire: { espece: espece, pv: pv, pvMax: pvMax, niveau: nivCible },
+      equipe: niveaux.map(function (n) { return { niveau: n, pv: 1 }; }),
+      bonusAppel: bonusAppel || 0,
+      bonusDefense: bonusDefense || 0
     };
   }
-  verifie("chanceAssimilation", [
-    chanceAssimilation(faussCombat(30, 30, 5, [3], 0)),
-    chanceAssimilation(faussCombat(15, 30, 5, [3], 0)),
-    chanceAssimilation(faussCombat(1, 30, 5, [3], 0)),
-    chanceAssimilation(faussCombat(1, 30, 5, [3, 4, 5], 0)),
-    chanceAssimilation(faussCombat(1, 30, 5, [3, 4, 5], 6)),
-    chanceAssimilation(faussCombat(30, 30, 40, [1], 0)),
-    chanceAssimilation(faussCombat(0, 30, 1, [20, 20, 20], 0)),
-    chanceAssimilation(faussCombat(-5, 30, 5, [3], 1))
-  ], [2, 26, 51, 68, 44, 2, 95, 49]);
 
-  verifie("chanceAssimilation reste entre 2 et 95",
-    [chanceAssimilation(faussCombat(30, 30, 50, [1], 20)),
-     chanceAssimilation(faussCombat(0, 30, 1, [50, 50, 50], 0))],
-    [2, 95]);
+  // Cible rang D, meme niveau que l'equipe : on isole le poids des PV
+  verifie("assimiler : le taux monte quand la cible faiblit",
+    [chanceAssimilation(faussCombat("jinchan", 100, 100, 10, [10])),   // 30 + 0
+     chanceAssimilation(faussCombat("jinchan", 50, 100, 10, [10])),    // 30 + 20
+     chanceAssimilation(faussCombat("jinchan", 10, 100, 10, [10])),    // 30 + 36
+     chanceAssimilation(faussCombat("jinchan", 0, 100, 10, [10]))],    // 30 + 40
+    [30, 50, 66, 70]);
+
+  verifie("assimiler : c'est le meilleur Echo DEBOUT qui mene l'appel",
+    [chanceAssimilation(faussCombat("jinchan", 100, 100, 10, [10, 14])),   // +4 x 3 = +12
+     chanceAssimilation(faussCombat("jinchan", 100, 100, 10, [6]))],       // -4 x 3 = -12
+    [42, 18]);
+
+  verifie("assimiler : l'ecart de niveau est borne a +/- 20",
+    [chanceAssimilation(faussCombat("jinchan", 100, 100, 1, [50])),
+     chanceAssimilation(faussCombat("jinchan", 100, 100, 50, [1]))],
+    [50, 10]);
+
+  verifie("assimiler : le malus de rang D C B A S",
+    ["jinchan", "vinci", "baku", "komainu", "tortuedragon"].map(function (id) {
+      return chanceAssimilation(faussCombat(id, 100, 100, 10, [10]));
+    }), [30, 25, 20, 15, 5]);
+
+  verifie("assimiler : Appel et Defendre s'ajoutent",
+    [chanceAssimilation(faussCombat("baku", 50, 100, 10, [10])),
+     chanceAssimilation(faussCombat("baku", 50, 100, 10, [10], 20)),
+     chanceAssimilation(faussCombat("baku", 50, 100, 10, [10], 0, 10)),
+     chanceAssimilation(faussCombat("baku", 50, 100, 10, [10], 20, 10))],
+    [40, 60, 50, 70]);
+
+  verifie("assimiler : le taux ne sort jamais de 5 - 95",
+    [chanceAssimilation(faussCombat("tortuedragon", 100, 100, 50, [1])),
+     chanceAssimilation(faussCombat("jinchan", 0, 100, 1, [50], 20, 10))],
+    [ASSIMILATION_MIN, ASSIMILATION_MAX]);
+
+  verifie("assimiler : aucune espece n'est de rang X aujourd'hui",
+    Object.keys(ESPECES).filter(function (id) {
+      return ESPECES[id].rang === RANG_INASSIMILABLE;
+    }), []);
+
+  verifie("assimiler : un lieu marque rang X refuse la commande",
+    [assimilable({ espece: "jinchan" }),
+     assimilable({ espece: "jinchan", rang: RANG_INASSIMILABLE }),
+     assimilable(null)],
+    [true, false, false]);
+
+
+  /* --- Les aptitudes --- */
+
+  verifie("les 8 archetypes existent",
+    Object.keys(APTITUDES).sort(),
+    ["appel", "doubleFrappe", "fissure", "frappeLourde",
+     "percee", "rempart", "sceau", "seve"]);
+
+  var aptitudesInconnues = [];
+  for (var idEspece in ESPECES) {
+    var listeApt = ESPECES[idEspece].aptitudes;
+    if (!listeApt || listeApt.length !== 3) { aptitudesInconnues.push(idEspece + " : pas 3 aptitudes"); continue; }
+    listeApt.forEach(function (cle) {
+      if (!APTITUDES[cle]) aptitudesInconnues.push(idEspece + " : " + cle + " inconnue");
+    });
+    // Attention : le malus du rang D vaut 0, donc on teste l'absence
+    // et pas la faussete, sinon D passerait pour un rang inconnu.
+    if (ASSIMILATION_MALUS_RANG[ESPECES[idEspece].rang] === undefined) {
+      aptitudesInconnues.push(idEspece + " : rang " + ESPECES[idEspece].rang + " inconnu");
+    }
+  }
+  verifie("chaque espece a 3 aptitudes connues et un rang valide", aptitudesInconnues, []);
+
+  verifie("deblocage : rien avant 5, une a 5, deux a 10, trois a 15",
+    [1, 4, 5, 9, 10, 14, 15, 40].map(function (n) {
+      return aptitudesConnues("komainu", n).length;
+    }), [0, 0, 1, 1, 2, 2, 3, 3]);
+
+  verifie("deblocage : c'est bien l'ordre du bestiaire qui est suivi",
+    [aptitudesConnues("komainu", 5), aptitudesConnues("komainu", 10),
+     aptitudesConnues("komainu", 15)],
+    [["rempart"], ["rempart", "sceau"], ["rempart", "sceau", "fissure"]]);
+
+  verifie("Peng n'a plus le kit de Sun Wukong",
+    [ESPECES.peng.aptitudes, ESPECES.sunwukong.aptitudes],
+    [["percee", "sceau", "frappeLourde"],
+     ["doubleFrappe", "percee", "frappeLourde"]]);
+
+  // La recharge : 3 tours, et une aptitude en recharge n'est pas jouable
+  verifie("recharge : indisponible 3 tours, puis de nouveau prete", (function () {
+    var c = { pv: 10, immobilise: 0, recharges: {} };
+    var vus = [aptitudeDisponible(c, "rempart")];      // avant emploi
+    c.recharges.rempart = APTITUDE_RECHARGE;
+    for (var t = 0; t < 4; t++) {
+      vus.push(rechargeRestante(c, "rempart"));
+      if (c.recharges.rempart > 0) c.recharges.rempart--;
+    }
+    vus.push(aptitudeDisponible(c, "rempart"));        // apres 3 tours
+    return vus;
+  })(), [true, 3, 2, 1, 0, true]);
+
+  verifie("un Echo immobilise ou a terre ne peut rien employer",
+    [aptitudeDisponible({ pv: 10, immobilise: 0, recharges: {} }, "rempart"),
+     aptitudeDisponible({ pv: 10, immobilise: 1, recharges: {} }, "rempart"),
+     aptitudeDisponible({ pv: 0,  immobilise: 0, recharges: {} }, "rempart")],
+    [true, false, false]);
+
+  // Les aptitudes se deduisent de l'espece et du niveau : rien en sauvegarde
+  verifie("les aptitudes ne sont jamais ecrites dans la sauvegarde", (function () {
+    var avant = collection;
+    collection = {};
+    ajouterAlaCollection("komainu", 20);
+    var champs = Object.keys(collection.komainu).sort();
+    collection = avant;
+    return champs;
+  })(), ["espece", "niveau", "pv", "xp"]);
 
 
   /* --- Le Figement --- */
 
   bloc("Figement");
 
+  /* Le Figement est en sommeil (VITESSE_FIGEMENT = 0). Les tests qui
+     suivent le rallument le temps de verifier que le code dort mais
+     n'est pas casse, puis le rendorment. C'est ce va-et-vient qui
+     garantit qu'on peut revenir en arriere d'une seule constante. */
+
+  var vitesseReglee = VITESSE_FIGEMENT, barreReglee = AFFICHER_BARRE_FIGEMENT;
+
+  function avecFigement(actif, f) {
+    VITESSE_FIGEMENT = actif ? 1 : 0;
+    AFFICHER_BARRE_FIGEMENT = actif;
+    try { return f(); }
+    finally { VITESSE_FIGEMENT = vitesseReglee; AFFICHER_BARRE_FIGEMENT = barreReglee; }
+  }
+
+  verifie("en sommeil : le reglage livre est bien a l'arret",
+    [vitesseReglee, barreReglee], [0, false]);
+
+  verifie("en sommeil : tous les multiplicateurs valent 1.00",
+    ["komainu", "eiffel", "jinchan"].map(function (id) {
+      return [0, 5, 10].map(function (p) { return multiplicateurFigement(id, p); });
+    }), [[1, 1, 1], [1, 1, 1], [1, 1, 1]]);
+
+  verifie("en sommeil : aucune fleche",
+    [flecheFigement("komainu", 0), flecheFigement("eiffel", 10)], ["", ""]);
+
+  verifie("en sommeil : le compteur ne bouge plus", (function () {
+    var avant = combat;
+    combat = { figement: 40 };
+    avancerFigement(); avancerFigement();
+    var apres = combat.figement;
+    combat = avant;
+    return apres;
+  })(), 40);
+
+  verifie("en sommeil : les degats ne dependent plus que de l'affinite",
+    [degatsAjustes(10, "komainu", "tortuedragon", 0),    // neutre
+     degatsAjustes(10, "komainu", "tortuedragon", 10),   // neutre, palier max
+     degatsAjustes(10, "komainu", "sunwukong", 0),       // avantage 1.3
+     degatsAjustes(10, "sunwukong", "komainu", 10)],     // desavantage 0.75
+    [10, 10, 13, 8]);
+
+  // Et maintenant : rallume, tout doit revenir exactement comme avant
+  verifie("rallume : l'ancien comportement revient a l'identique",
+    avecFigement(true, function () {
+      return [multiplicateurFigement("komainu", 0),
+              multiplicateurFigement("komainu", 10),
+              multiplicateurFigement("eiffel", 0),
+              multiplicateurFigement("eiffel", 10),
+              degatsAjustes(10, "komainu", "sunwukong", 0),
+              flecheFigement("komainu", 0) !== ""];
+    }), [1.25, 0.75, 0.75, 1.25, 16, true]);
+
+
+  /* Les tests qui suivent decrivent la mecanique telle qu'elle
+     fonctionne quand elle tourne : ils la rallument le temps de
+     l'appel. Ils restent la meme garantie qu'avant sa mise en
+     sommeil, et ce sont eux qui rendent le retour en arriere sur. */
+
   // komainu organique, eiffel mecanique, jinchan hybride
   verifie("multiplicateur organique : 1.25 -> 1.00 -> 0.75",
-    [0, 5, 10].map(function (p) { return multiplicateurFigement("komainu", p); }),
-    [1.25, 1, 0.75]);
+    avecFigement(true, function () {
+      return [0, 5, 10].map(function (p) { return multiplicateurFigement("komainu", p); });
+    }), [1.25, 1, 0.75]);
 
   verifie("multiplicateur mecanique : 0.75 -> 1.00 -> 1.25",
-    [0, 5, 10].map(function (p) { return multiplicateurFigement("eiffel", p); }),
-    [0.75, 1, 1.25]);
+    avecFigement(true, function () {
+      return [0, 5, 10].map(function (p) { return multiplicateurFigement("eiffel", p); });
+    }), [0.75, 1, 1.25]);
 
   verifie("multiplicateur hybride : 1.00 partout",
-    [0, 3, 5, 8, 10].map(function (p) { return multiplicateurFigement("jinchan", p); }),
-    [1, 1, 1, 1, 1]);
+    avecFigement(true, function () {
+      return [0, 3, 5, 8, 10].map(function (p) { return multiplicateurFigement("jinchan", p); });
+    }), [1, 1, 1, 1, 1]);
 
   verifie("le palier va de 0 a 10 et ne deborde jamais",
     [-30, 0, 9, 10, 74, 99, 100, 250].map(palierFigement),
@@ -279,27 +446,33 @@ function lancerTests() {
 
   // L'ordre impose : base x affinite x figement, arrondi, plancher a 1
   verifie("degatsAjustes suit l'ordre de calcul",
-    [degatsAjustes(10, "komainu", "tortuedragon", 0),   // 10 x 1    x 1.25
-     degatsAjustes(10, "komainu", "tortuedragon", 10),  // 10 x 1    x 0.75
-     degatsAjustes(10, "eiffel", "tortuedragon", 0),    // 10 x 1    x 0.75
-     degatsAjustes(10, "eiffel", "tortuedragon", 10),   // 10 x 1    x 1.25
-     degatsAjustes(10, "komainu", "sunwukong", 0),      // 10 x 1.3  x 1.25
-     degatsAjustes(10, "sunwukong", "komainu", 10)      // 10 x 0.75 x 0.75
-    ], [13, 8, 8, 13, 16, 6]);
+    avecFigement(true, function () {
+      return [degatsAjustes(10, "komainu", "tortuedragon", 0),   // 10 x 1    x 1.25
+              degatsAjustes(10, "komainu", "tortuedragon", 10),  // 10 x 1    x 0.75
+              degatsAjustes(10, "eiffel", "tortuedragon", 0),    // 10 x 1    x 0.75
+              degatsAjustes(10, "eiffel", "tortuedragon", 10),   // 10 x 1    x 1.25
+              degatsAjustes(10, "komainu", "sunwukong", 0),      // 10 x 1.3  x 1.25
+              degatsAjustes(10, "sunwukong", "komainu", 10)];    // 10 x 0.75 x 0.75
+    }), [13, 8, 8, 13, 16, 6]);
 
   verifie("les degats ne descendent jamais sous 1",
-    [degatsAjustes(1, "sunwukong", "komainu", 10),
-     degatsAjustes(0, "eiffel", "tortuedragon", 0)],
-    [1, 1]);
+    avecFigement(true, function () {
+      return [degatsAjustes(1, "sunwukong", "komainu", 10),
+              degatsAjustes(0, "eiffel", "tortuedragon", 0)];
+    }), [1, 1]);
 
   // Criteres d'acceptation : l'organique faiblit, le mecanique monte
   verifie("un organique frappe moins fort au tour 8 qu'au tour 1",
-    degatsAjustes(20, "komainu", "tortuedragon", 8) <
-    degatsAjustes(20, "komainu", "tortuedragon", 1), true);
+    avecFigement(true, function () {
+      return degatsAjustes(20, "komainu", "tortuedragon", 8) <
+             degatsAjustes(20, "komainu", "tortuedragon", 1);
+    }), true);
 
   verifie("un mecanique frappe plus fort au tour 8 qu'au tour 1",
-    degatsAjustes(20, "eiffel", "tortuedragon", 8) >
-    degatsAjustes(20, "eiffel", "tortuedragon", 1), true);
+    avecFigement(true, function () {
+      return degatsAjustes(20, "eiffel", "tortuedragon", 8) >
+             degatsAjustes(20, "eiffel", "tortuedragon", 1);
+    }), true);
 
   // Le meme lieu doit toujours rendre le meme Figement de depart
   var lieuTemoin = { id: "node/1", espece: "komainu", niveau: 3 };
@@ -322,13 +495,15 @@ function lancerTests() {
   verifie("un lieu sans identifiant ne casse rien", figementDuLieu({}), 0);
 
   // avancerFigement travaille sur la variable globale combat
-  var combatAvant = combat;
-  combat = { figement: 74 };
-  var montee = [];
-  for (var t = 0; t < 4; t++) { avancerFigement(); montee.push(combat.figement); }
-  combat = combatAvant;
   verifie("le Figement monte d'un palier par tour et plafonne a 100",
-    montee, [84, 94, 100, 100]);
+    avecFigement(true, function () {
+      var combatAvant = combat;
+      combat = { figement: 74 };
+      var montee = [];
+      for (var t = 0; t < 4; t++) { avancerFigement(); montee.push(combat.figement); }
+      combat = combatAvant;
+      return montee;
+    }), [84, 94, 100, 100]);
 
 
   /* --- Collection, equipe, experience --- */

@@ -11,24 +11,45 @@ function degats(atq, def, alea) {
   return Math.max(1, Math.round(base * (0.85 + alea * 0.3)));
 }
 
-// Chance d'assimiler l'Echo, en pourcentage
+/* Chance d'assimiler l'Echo, en pourcentage.
+   Le joueur la lit sur le bouton avant de confirmer : c'est tout
+   l'interet du systeme, il choisit son moment. Toutes les valeurs
+   viennent de config.js. */
 function chanceAssimilation(c) {
   var a = c.adversaire;
+  var e = ESPECES[a.espece] || {};
 
-  // Plus il est affaibli, plus il ecoute
-  var affaibli = 1 - Math.max(0, a.pv) / a.pvMax;
+  // Plus il est affaibli, plus il ecoute : 0 a 100 % de PV manquants
+  var manquants = (1 - Math.max(0, a.pv) / a.pvMax) * 100;
 
-  var moyenneEquipe = 0;
-  for (var i = 0; i < c.equipe.length; i++) moyenneEquipe += c.equipe[i].niveau;
-  moyenneEquipe = moyenneEquipe / c.equipe.length;
+  // C'est le plus avance des Echos debout qui mene l'appel
+  var meilleur = 0;
+  for (var i = 0; i < c.equipe.length; i++) {
+    if (c.equipe[i].pv > 0 && c.equipe[i].niveau > meilleur) meilleur = c.equipe[i].niveau;
+  }
 
-  var p = 8;                                   // socle
-  p += affaibli * 55;                          // jusqu'a +55 s'il est exsangue
-  p += (moyenneEquipe - a.niveau) * 5;         // ecart de niveau
-  p += (c.equipe.length - 1) * 6;              // le nombre impressionne
-  p -= c.tentatives * 4;                       // il se mefie a chaque essai
+  var ecart = (meilleur - a.niveau) * ASSIMILATION_POIDS_NIVEAU;
+  ecart = Math.max(-ASSIMILATION_ECART_MAX, Math.min(ASSIMILATION_ECART_MAX, ecart));
 
-  return Math.max(2, Math.min(95, Math.round(p)));
+  var taux = ASSIMILATION_SOCLE
+           + manquants * ASSIMILATION_POIDS_PV
+           + ecart
+           + (c.bonusAppel || 0)                       // aptitude Appel
+           + (c.bonusDefense || 0)                     // Defendre au tour precedent
+           - (ASSIMILATION_MALUS_RANG[e.rang] || 0);   // plus il est rare, moins il cede
+
+  return Math.max(ASSIMILATION_MIN, Math.min(ASSIMILATION_MAX, Math.round(taux)));
+}
+
+/* Les Gardiens de donjon et les Echos de rang X n'ecoutent personne.
+   POINT D'ACCROCHE : aucune espece ne porte X aujourd'hui, et rien
+   ne pose encore rang: "X" sur un lieu. Le jour ou les Gardiens
+   arriveront, il n'y aura rien a changer ici. */
+function assimilable(donjon) {
+  if (!donjon) return false;
+  if (donjon.rang === RANG_INASSIMILABLE) return false;
+  var e = ESPECES[donjon.espece];
+  return !!e && e.rang !== RANG_INASSIMILABLE;
 }
 
 function combattantsEquipe() {
@@ -39,7 +60,13 @@ function combattantsEquipe() {
     var s = statsAuNiveau(e.espece, e.niveau);
     liste.push({
       espece: e.espece, niveau: e.niveau,
-      pv: s.pvMax, pvMax: s.pvMax, atq: s.atq, def: s.def
+      pv: s.pvMax, pvMax: s.pvMax, atq: s.atq, def: s.def,
+
+      // L'etat de combat de cet Echo, remis a zero a chaque rencontre
+      recharges: {},      // { cleAptitude: tours restants }
+      immobilise: 0,      // tours pendant lesquels il ne peut plus agir
+      garde: 1,           // multiplicateur des degats qu'il subit
+      gardeTours: 0
     });
   }
   return liste;
@@ -58,8 +85,114 @@ function adversaireDe(donjon, tailleEquipe) {
     pv:    Math.round(s.pvMax * facteurPv),
     pvMax: Math.round(s.pvMax * facteurPv),
     atq:   Math.round(s.atq * facteurAtq),
-    def:   s.def
+    def:   s.def,
+
+    sceau: 1,        // multiplicateur de son ATQ, pose par l'aptitude Sceau
+    sceauTours: 0
   };
+}
+
+
+/* ------------------------------------------------------------
+   LES APTITUDES
+
+   Huit archetypes definis dans config.js, trois par espece.
+   Elles se DEDUISENT de l'espece et du niveau : rien n'est jamais
+   ecrit dans la sauvegarde, et normaliserCollection() n'a pas
+   bouge d'une ligne.
+   ------------------------------------------------------------ */
+
+/* Les aptitudes que cette espece connait a ce niveau.
+   La premiere s'ouvre au niveau 5, la deuxieme a 10, la troisieme
+   a 15 (APTITUDE_NIVEAUX). En dessous de 5 : aucune. */
+function aptitudesConnues(especeId, niveau) {
+  var e = ESPECES[especeId];
+  if (!e || !e.aptitudes) return [];
+
+  var connues = [];
+  for (var i = 0; i < e.aptitudes.length; i++) {
+    if (niveau >= APTITUDE_NIVEAUX[i]) connues.push(e.aptitudes[i]);
+  }
+  return connues;
+}
+
+// Tours restants avant de pouvoir relancer cette aptitude.
+function rechargeRestante(combattant, cle) {
+  return (combattant.recharges && combattant.recharges[cle]) || 0;
+}
+
+function aptitudeDisponible(combattant, cle) {
+  return combattant.pv > 0 &&
+         combattant.immobilise <= 0 &&
+         rechargeRestante(combattant, cle) === 0;
+}
+
+/* Ce qu'une aptitude fait au moment ou on l'emploie.
+   Elle rend les lignes a ecrire dans le journal. Les degats
+   passent toujours par degats() puis degatsAjustes() : la formule
+   de base n'est jamais recalculee ici. */
+function employerAptitude(combattant, cle, palier) {
+  var a = APTITUDES[cle];
+  var nom = ESPECES[combattant.espece].nom;
+  var adv = combat.adversaire;
+  var lignes = [];
+
+  combattant.recharges[cle] = APTITUDE_RECHARGE;
+
+  // --- Les aptitudes qui ne frappent pas ---
+
+  if (a.soin) {
+    var rendu = Math.max(1, Math.round(combattant.pvMax * a.soin));
+    combattant.pv = Math.min(combattant.pvMax, combattant.pv + rendu);
+    lignes.push(nom + " emploie <b>" + a.nom + "</b> : +" + rendu + " PV.");
+    return lignes;
+  }
+
+  if (a.garde) {
+    combattant.garde = a.garde;
+    combattant.gardeTours = a.tours;
+    lignes.push(nom + " emploie <b>" + a.nom + "</b> : il encaisse beaucoup moins.");
+    return lignes;
+  }
+
+  if (a.affaiblit) {
+    adv.sceau = a.affaiblit;
+    adv.sceauTours = a.tours;
+    lignes.push(nom + " emploie <b>" + a.nom + "</b> : l'adversaire frappe moins fort.");
+    return lignes;
+  }
+
+  if (a.bonusAssimilation) {
+    combat.bonusAppel += a.bonusAssimilation;
+    lignes.push(nom + " emploie <b>" + a.nom + "</b> : l'adversaire tend l'oreille.");
+    return lignes;
+  }
+
+  // --- Les aptitudes qui frappent ---
+
+  var multi = a.multi;
+  if (a.multiAvantage &&
+      multiplicateurAffinite(combattant.espece, adv.espece) > AFFINITE_NEUTRE) {
+    multi = a.multiAvantage;
+  }
+
+  var defense = a.ignoreDef ? 0 : adv.def;
+  var coups = a.coups || 1;
+  var total = 0;
+
+  for (var i = 0; i < coups && adv.pv > 0; i++) {
+    var brut = degats(combattant.atq, defense, Math.random());
+    var d = degatsAjustes(Math.round(brut * multi), combattant.espece, adv.espece, palier);
+    adv.pv -= d;
+    total += d;
+  }
+
+  if (a.immobilise) combattant.immobilise = a.immobilise + 1;   // +1 : le tour en cours ne compte pas
+
+  lignes.push(nom + " emploie <b>" + a.nom + "</b> : " + total +
+              (coups > 1 ? " en " + coups + " coups" : "") +
+              mentionAffinite(combattant.espece, adv.espece));
+  return lignes;
 }
 
 
@@ -75,6 +208,21 @@ function adversaireDe(donjon, tailleEquipe) {
 
    Tous les nombres viennent de config.js.
    ------------------------------------------------------------ */
+
+/* Les deux interrupteurs du Figement.
+
+   Tout le code qui suit reste en place et continue de fonctionner ;
+   ces deux fonctions decident seulement s'il pese sur le combat et
+   s'il se voit. Elles sont le seul endroit a consulter pour savoir
+   pourquoi la mecanique est muette. */
+
+// Le Figement ne pese sur les degats que si le compteur avance.
+function figementActif() { return VITESSE_FIGEMENT > 0; }
+
+// La barre et les fleches ne s'affichent que si la mecanique tourne
+// ET qu'on a demande a la voir.
+function figementVisible() { return AFFICHER_BARRE_FIGEMENT && figementActif(); }
+
 
 /* Le Figement de depart du lieu.
 
@@ -109,6 +257,8 @@ function palierFigement(valeur) {
    0.05 x 5 donne 0.2500000000000001 et l'organique se retrouve
    a 0.9999 au palier 5, la ou il doit valoir exactement 1. */
 function multiplicateurFigement(especeId, palier) {
+  if (!figementActif()) return 1;      // mecanique en sommeil : aucun effet
+
   var e = ESPECES[especeId];
   var n = (e && FIGEMENT_NATURES[e.nature]) || FIGEMENT_NATURES.hybride;
   return Math.round((n.base + n.pas * palier) * 100) / 100;
@@ -149,6 +299,8 @@ function message(t) { elem("combat-message").innerHTML = t; }
    Figement en cours, descendante s'il est desavantage, rien s'il
    est hybride ou pile a l'equilibre. Aucun chiffre. */
 function flecheFigement(especeId, palier) {
+  if (!figementVisible()) return "";   // mecanique en sommeil : aucune fleche
+
   var m = multiplicateurFigement(especeId, palier);
   if (m > 1) return ' <span class="fleche-haut">&#9650;</span>';
   if (m < 1) return ' <span class="fleche-bas">&#9660;</span>';
@@ -166,6 +318,10 @@ function libelleFigement(palier) {
 /* La barre de Figement. Au-dessus du seuil de lecture, le joueur
    voit la valeur exacte ; en dessous, seulement la phrase. */
 function majFigement(valeur, palier) {
+  // En sommeil, le bloc entier reste hors de l'ecran de combat.
+  elem("figement-bloc").classList[figementVisible() ? "add" : "remove"]("visible");
+  if (!figementVisible()) return;
+
   elem("f-jauge").style.width = Math.round(valeur / FIGEMENT_MAX * 100) + "%";
 
   if (experienceDuGardien() >= SEUIL_LECTURE_FIGEMENT) {
@@ -206,11 +362,8 @@ function majAffichageCombat() {
   jm.style.width = pc + "%";
   jm.className = pc < 20 ? "danger" : (pc < 50 ? "bas" : "");
 
-  // Jauge d'emprise
-  var chance = chanceAssimilation(combat);
-  elem("a-val").textContent = chance + " %";
-  elem("a-jauge").style.width = chance + "%";
-  elem("assimilation-bloc").classList.add("visible");
+  // Le taux d'Assimilation se lit sur le bouton, nulle part ailleurs.
+  majBoutonAssimiler();
 
   // Cartes de l'equipe
   var html = "";
@@ -227,10 +380,106 @@ function majAffichageCombat() {
   elem("equipe-combat").innerHTML = html;
 }
 
+/* A la fin du combat, les quatre boutons sont remplaces par un seul :
+   d'ou les gardes. elem() rend null si le bouton n'est plus la. */
 function boutonsActifs(a) {
-  elem("btn-attaquer").disabled = !a;
-  elem("btn-assimiler").disabled = !a;
-  elem("btn-fuir").disabled = !a;
+  function regler(id, actif) {
+    var b = elem(id);
+    if (b) b.disabled = !actif;
+  }
+
+  regler("btn-attaquer", a);
+  regler("btn-defendre", a);
+
+  // Ces deux-la ont leurs propres raisons d'etre grises
+  regler("btn-aptitude", a && aptitudesJouables().length > 0);
+  regler("btn-assimiler", a && assimilable(combat.donjon));
+}
+
+/* Le taux d'Assimilation, sur le bouton, avant confirmation.
+   Un Echo qui n'ecoutera jamais le dit franchement. */
+function majBoutonAssimiler() {
+  var b = elem("btn-assimiler");
+  if (!b) return;
+
+  if (!assimilable(combat.donjon)) {
+    b.textContent = "Il ne t'écoutera pas.";
+    return;
+  }
+  b.textContent = "Assimiler " + chanceAssimilation(combat) + " %";
+}
+
+/* Toutes les aptitudes que l'equipe peut employer maintenant :
+   celles de TOUS les Echos debout, pas seulement du premier.
+   Rend une liste plate de { indice, cle, pret, restant }. */
+function aptitudesJouables() {
+  var liste = [];
+  if (!combat) return liste;
+
+  for (var i = 0; i < combat.equipe.length; i++) {
+    var c = combat.equipe[i];
+    if (c.pv <= 0) continue;
+
+    var connues = aptitudesConnues(c.espece, c.niveau);
+    for (var j = 0; j < connues.length; j++) {
+      liste.push({
+        indice: i, cle: connues[j],
+        pret: aptitudeDisponible(c, connues[j]),
+        restant: rechargeRestante(c, connues[j])
+      });
+    }
+  }
+  return liste;
+}
+
+/* Le menu d'aptitudes : une ligne par aptitude, groupee par Echo.
+   Une aptitude en recharge reste visible, mais grisee et chiffree :
+   le joueur doit voir combien de tours il lui reste a attendre. */
+function ouvrirAptitudes() {
+  var liste = aptitudesJouables();
+  var html = "";
+  var dernierIndice = -1;
+
+  for (var i = 0; i < liste.length; i++) {
+    var it = liste[i];
+    var c = combat.equipe[it.indice];
+    var a = APTITUDES[it.cle];
+
+    if (it.indice !== dernierIndice) {
+      dernierIndice = it.indice;
+      html += '<div class="apt-echo">' + ESPECES[c.espece].nom +
+              (c.immobilise > 0 ? " <span class=\"apt-attente\">immobilisé</span>" : "") +
+              '</div>';
+    }
+
+    html += '<button class="apt-ligne" data-indice="' + it.indice +
+            '" data-cle="' + it.cle + '"' + (it.pret ? "" : " disabled") + '>' +
+            '<span class="apt-nom">' + a.nom +
+            (it.pret ? "" : ' <span class="apt-attente">' +
+              (it.restant > 0 ? it.restant + " tour" + (it.restant > 1 ? "s" : "") : "indisponible") +
+              '</span>') +
+            '</span>' +
+            '<span class="apt-texte">' + a.texte + '</span>' +
+            '</button>';
+  }
+
+  if (!html) html = '<div class="apt-echo">Aucune aptitude connue</div>';
+
+  elem("liste-aptitudes").innerHTML = html;
+
+  var boutons = document.querySelectorAll(".apt-ligne");
+  for (var k = 0; k < boutons.length; k++) {
+    boutons[k].addEventListener("click", function () {
+      if (this.disabled) return;
+      actionAptitude(Number(this.getAttribute("data-indice")), this.getAttribute("data-cle"));
+    });
+  }
+
+  elem("aptitudes").classList.add("actif");
+}
+
+function fermerAptitudes() {
+  elem("aptitudes").classList.remove("actif");
 }
 
 
@@ -248,7 +497,11 @@ function demarrerCombat(donjon, preemptif) {
     tentatives: 0,
     fini: false,
     preemptif: preemptif,
-    figement: figementDuLieu(donjon)   // 0 a 100, monte a chaque tour
+    figement: figementDuLieu(donjon),  // 0 a 100, en sommeil par defaut
+
+    bonusAppel: 0,          // cumule par l'aptitude Appel, jusqu'a la fin
+    bonusDefense: 0,        // ouvert par Defendre, le temps d'un tour
+    defenseEnAttente: false
   };
 
   var e = ESPECES[donjon.espece];
@@ -263,14 +516,17 @@ function demarrerCombat(donjon, preemptif) {
   img.onerror = function () { img.style.display = "none"; vide.style.display = "flex"; };
   img.src = DOSSIER_MONSTRES + e.img + ".png";
 
+  // Les quatre commandes, toujours les memes, toujours au meme endroit.
   elem("combat-actions").innerHTML =
     '<button id="btn-attaquer">Attaquer</button>' +
+    '<button id="btn-aptitude">Aptitude</button>' +
     '<button id="btn-assimiler" class="assimilation">Assimiler</button>' +
-    '<button id="btn-fuir">Fuir</button>';
+    '<button id="btn-defendre">Défendre</button>';
+  fermerAptitudes();
   brancherBoutonsCombat();
-  boutonsActifs(true);
 
   majAffichageCombat();
+  boutonsActifs(true);
 
   message("<b>" + e.nom + "</b>, " + e.titre + ", se manifeste." +
           (preemptif ? "<br><span style='color:#b455d4'>Tu l'as surpris : il perd son premier tour.</span>" : ""));
@@ -283,7 +539,16 @@ function equipeDebout() {
   return false;
 }
 
-function actionAttaquer() {
+/* Le tour de l'equipe.
+
+   Les trois Echos agissent, comme avant. La seule nouveaute : l'un
+   d'eux peut employer une aptitude AU LIEU de son attaque de base.
+   Les deux autres frappent normalement. C'est pour ca que le menu
+   d'aptitudes liste tous les Echos debout et pas seulement le
+   premier : sinon les Echos 2 et 3 n'en emploieraient jamais.
+
+   choix vaut null (tout le monde attaque) ou { indice, cle }. */
+function tourEquipe(choix) {
   boutonsActifs(false);
 
   var lignes = [];
@@ -293,14 +558,23 @@ function actionAttaquer() {
     var c = combat.equipe[i];
     if (c.pv <= 0) continue;
 
-    // degats() reste la formule d'origine ; les multiplicateurs
-    // viennent apres, dans degatsAjustes().
-    var brut = degats(c.atq, combat.adversaire.def, Math.random());
-    var d = degatsAjustes(brut, c.espece, combat.adversaire.espece, palier);
+    if (c.immobilise > 0) {
+      lignes.push(ESPECES[c.espece].nom + " reprend son souffle.");
+      continue;
+    }
 
-    combat.adversaire.pv -= d;
-    lignes.push(ESPECES[c.espece].nom + " frappe : " + d +
-                mentionAffinite(c.espece, combat.adversaire.espece));
+    if (choix && choix.indice === i) {
+      lignes = lignes.concat(employerAptitude(c, choix.cle, palier));
+    } else {
+      // degats() reste la formule d'origine ; les multiplicateurs
+      // viennent apres, dans degatsAjustes().
+      var brut = degats(c.atq, combat.adversaire.def, Math.random());
+      var d = degatsAjustes(brut, c.espece, combat.adversaire.espece, palier);
+
+      combat.adversaire.pv -= d;
+      lignes.push(ESPECES[c.espece].nom + " frappe : " + d +
+                  mentionAffinite(c.espece, combat.adversaire.espece));
+    }
 
     if (combat.adversaire.pv <= 0) break;
   }
@@ -315,7 +589,42 @@ function actionAttaquer() {
   setTimeout(tourAdverse, 900);
 }
 
+function actionAttaquer() { tourEquipe(null); }
+
+/* Le menu grise deja ce qui n'est pas jouable, mais on revalide ici :
+   c'est le seul point d'entree, et une aptitude employee par erreur
+   partirait en recharge pour rien. */
+function actionAptitude(indice, cle) {
+  var c = combat && combat.equipe[indice];
+  if (!c) return;
+  if (aptitudesConnues(c.espece, c.niveau).indexOf(cle) === -1) return;
+  if (!aptitudeDisponible(c, cle)) return;
+
+  fermerAptitudes();
+  tourEquipe({ indice: indice, cle: cle });
+}
+
+/* Defendre : toute l'equipe se couvre ce tour-ci, et l'adversaire
+   se laisse un peu plus approcher au tour suivant. */
+function actionDefendre() {
+  boutonsActifs(false);
+
+  for (var i = 0; i < combat.equipe.length; i++) {
+    var c = combat.equipe[i];
+    if (c.pv <= 0) continue;
+    c.garde = DEFENDRE_REDUCTION;
+    c.gardeTours = 1;
+  }
+
+  combat.defenseEnAttente = true;   // le bonus s'ouvre a la fin du tour
+
+  message("Ton équipe se met en garde.");
+  majAffichageCombat();
+  setTimeout(tourAdverse, 900);
+}
+
 function actionAssimiler() {
+  if (!assimilable(combat.donjon)) return;
   boutonsActifs(false);
 
   var chance = chanceAssimilation(combat);
@@ -334,6 +643,9 @@ function actionAssimiler() {
   setTimeout(tourAdverse, 900);
 }
 
+/* EN SOMMEIL : les quatre commandes sont Attaquer, Aptitude,
+   Assimiler et Defendre. Fuir n'a plus de bouton, mais la fonction
+   reste entiere : il suffit de rebrancher un bouton dessus. */
 function actionFuir() {
   boutonsActifs(false);
 
@@ -371,9 +683,17 @@ function tourAdverse() {
 
   if (!cible) { defaite(); return; }
 
-  var brut = degats(combat.adversaire.atq, cible.def, Math.random());
+  // Le Sceau reduit son ATQ avant le calcul ; la formule elle-meme
+  // ne change pas, elle recoit seulement une ATQ diminuee.
+  var atq = Math.round(combat.adversaire.atq * combat.adversaire.sceau);
+
+  var brut = degats(atq, cible.def, Math.random());
   var d = degatsAjustes(brut, combat.adversaire.espece, cible.espece,
                         palierFigement(combat.figement));
+
+  // Rempart et Defendre s'appliquent en dernier, sur ce qui arrive.
+  d = Math.max(1, Math.round(d * cible.garde));
+
   cible.pv -= d;
 
   var txt = "<b>" + ESPECES[combat.donjon.espece].nom + "</b> frappe " +
@@ -392,9 +712,35 @@ function tourAdverse() {
   finDeTour();
 }
 
-/* Le tour est termine : le lieu se fige d'un cran, l'affichage
-   suit, et la main revient au joueur. */
+/* Le tour est termine : les compteurs descendent d'un cran, le lieu
+   se fige (s'il est actif), l'affichage suit, et la main revient au
+   joueur. C'est le seul endroit ou le temps passe. */
 function finDeTour() {
+  for (var i = 0; i < combat.equipe.length; i++) {
+    var c = combat.equipe[i];
+
+    for (var cle in c.recharges) {
+      if (c.recharges[cle] > 0) c.recharges[cle]--;
+    }
+
+    if (c.immobilise > 0) c.immobilise--;
+
+    if (c.gardeTours > 0) {
+      c.gardeTours--;
+      if (c.gardeTours === 0) c.garde = 1;
+    }
+  }
+
+  var adv = combat.adversaire;
+  if (adv.sceauTours > 0) {
+    adv.sceauTours--;
+    if (adv.sceauTours === 0) adv.sceau = 1;
+  }
+
+  // Le bonus de Defendre ne s'ouvre qu'au tour suivant, puis retombe.
+  combat.bonusDefense = combat.defenseEnAttente ? DEFENDRE_BONUS_ASSIMILATION : 0;
+  combat.defenseEnAttente = false;
+
   avancerFigement();
   majAffichageCombat();
   boutonsActifs(true);
@@ -498,8 +844,10 @@ function finDeCombat() {
 
 function brancherBoutonsCombat() {
   elem("btn-attaquer").addEventListener("click", actionAttaquer);
+  elem("btn-aptitude").addEventListener("click", ouvrirAptitudes);
   elem("btn-assimiler").addEventListener("click", actionAssimiler);
-  elem("btn-fuir").addEventListener("click", actionFuir);
+  elem("btn-defendre").addEventListener("click", actionDefendre);
+  elem("btn-fermer-aptitudes").addEventListener("click", fermerAptitudes);
 }
 
 
@@ -558,11 +906,72 @@ function especeDeNature(nature) {
   return null;
 }
 
+// La premiere espece du bestiaire qui porte ce rang.
+function especeDeRang(rang) {
+  for (var id in ESPECES) if (ESPECES[id].rang === rang) return id;
+  return null;
+}
+
+/* Combat.testerAssimilation()
+   Le taux obtenu pour quelques cas types : la cible a pleine vie,
+   a moitie, a 10 % de PV, croisee avec les cinq rangs. */
+function testerAssimilation(niveauEquipe, niveauCible) {
+  var nivEquipe = niveauEquipe || 10;
+  var nivCible  = niveauCible  || 10;
+  var rangs = ["D", "C", "B", "A", "S"];
+  var etats = [["pleine vie", 1], ["a moitie", 0.5], ["a 10 % de PV", 0.1]];
+
+  function colonne(t, largeur) {
+    t = String(t);
+    while (t.length < largeur) t += " ";
+    return t;
+  }
+
+  // On passe par la vraie fonction du jeu, pas par une formule recopiee.
+  function taux(rang, part, bonusAppel, bonusDefense) {
+    return chanceAssimilation({
+      adversaire: { espece: especeDeRang(rang), niveau: nivCible,
+                    pv: Math.round(100 * part), pvMax: 100 },
+      equipe: [{ niveau: nivEquipe, pv: 1 }],
+      bonusAppel: bonusAppel || 0,
+      bonusDefense: bonusDefense || 0
+    });
+  }
+
+  console.log("ASSIMILATION — taux en %, equipe niveau " + nivEquipe +
+              " contre une cible niveau " + nivCible);
+  console.log("");
+  console.log(colonne("cible", 16) + rangs.map(function (r) {
+    return colonne("rang " + r, 9);
+  }).join(""));
+
+  etats.forEach(function (e) {
+    console.log(colonne(e[0], 16) + rangs.map(function (r) {
+      return colonne(taux(r, e[1]), 9);
+    }).join(""));
+  });
+
+  console.log("");
+  console.log("Effet des bonus, sur une cible de rang B a moitie vie :");
+  console.log("  seul                 " + taux("B", 0.5));
+  console.log("  apres Appel (+20)    " + taux("B", 0.5, APTITUDES.appel.bonusAssimilation, 0));
+  console.log("  apres Defendre (+10) " + taux("B", 0.5, 0, DEFENDRE_BONUS_ASSIMILATION));
+  console.log("  les deux             " + taux("B", 0.5, APTITUDES.appel.bonusAssimilation,
+                                               DEFENDRE_BONUS_ASSIMILATION));
+  console.log("");
+  console.log("Bornes : jamais moins de " + ASSIMILATION_MIN +
+              " %, jamais plus de " + ASSIMILATION_MAX + " %.");
+}
+
 /* Le seul global que ce fichier expose. Le reste du jeu continue
    d'appeler les fonctions directement, rien n'a change pour lui. */
 window.Combat = {
   testerFigement: testerFigement,
+  testerAssimilation: testerAssimilation,
   figementDuLieu: figementDuLieu,
+  aptitudesConnues: aptitudesConnues,
+  chanceAssimilation: chanceAssimilation,
+  assimilable: assimilable,
   palierFigement: palierFigement,
   multiplicateurFigement: multiplicateurFigement,
   multiplicateurAffinite: multiplicateurAffinite,

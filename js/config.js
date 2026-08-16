@@ -61,9 +61,21 @@ var FIGEMENT_PAR_PALIER   = 10;    // points de compteur dans un palier
 var FIGEMENT_PALIER_MAX   = 10;    // palier maximal
 
 /* Paliers gagnes a la fin de chaque tour.
+
+   A ZERO, LE FIGEMENT EST EN SOMMEIL : le compteur ne bouge plus,
+   tous les multiplicateurs valent 1.00, et la mecanique disparait
+   de l'ecran de combat. Aucun code n'a ete supprime pour autant :
+   il suffit de remettre les deux constantes ci-dessous a leur
+   valeur d'origine (1 et true) pour retrouver le combat d'avant,
+   a l'identique. verifier/tests.js verifie les deux etats.
+
+   Le Figement continue de servir hors combat : c'est lui qui donne
+   la difficulte d'un lieu, affichee avant d'y entrer.
+
    POINT D'ACCROCHE : le futur systeme de Clarte (issu du quiz)
    viendra reduire cette vitesse. Rien ne le fait aujourd'hui. */
-var VITESSE_FIGEMENT      = 1;
+var VITESSE_FIGEMENT      = 0;   // 1 = mecanique active
+var AFFICHER_BARRE_FIGEMENT = false;   // true = barre et fleches en combat
 
 /* Multiplicateur de degats de l'ATTAQUANT, selon sa nature.
    multiplicateur = base + pas x palier
@@ -120,6 +132,103 @@ var COULEURS_AFFINITE = {
 
 var LIBELLES_AFFINITE = { matiere: "Matière", recit: "Récit", oubli: "Oubli" };
 var LIBELLES_NATURE   = { organique: "organique", mecanique: "mécanique", hybride: "hybride" };
+
+
+/* ============================================================
+   LES APTITUDES
+   Huit archetypes reutilisables, pas 48 aptitudes uniques.
+   Chaque espece en reference trois dans especes.js.
+
+   Pas de points de magie : chaque aptitude a un temps de
+   recharge, et c'est tout. Un systeme de moins a comprendre.
+   ============================================================ */
+
+var APTITUDE_RECHARGE = 3;              // tours avant de pouvoir la relancer
+var APTITUDE_NIVEAUX  = [5, 10, 15];    // niveaux de deblocage des trois aptitudes
+
+/* Chaque archetype porte ses propres nombres : c'est ici qu'on
+   equilibre, jamais dans combat.js.
+     multi          multiplie les degats
+     coups          nombre de frappes
+     ignoreDef      la defense de la cible ne compte pas
+     soin           part des PV max rendue a l'Echo
+     garde          les degats subis sont multiplies par ca
+     affaiblit      l'ATQ de la cible est multipliee par ca
+     tours          duree d'un effet qui dure
+     immobilise     tours pendant lesquels l'Echo ne peut plus agir
+     multiAvantage  multiplicateur quand l'affinite est favorable
+     bonusAssimilation  points ajoutes au taux, jusqu'a la fin */
+var APTITUDES = {
+  frappeLourde: {
+    nom: "Frappe lourde", multi: 1.6, immobilise: 1,
+    texte: "Dégâts ×1.6, mais l'Écho ne peut pas agir au tour suivant."
+  },
+  doubleFrappe: {
+    nom: "Double frappe", multi: 0.6, coups: 2,
+    texte: "Deux attaques à ×0.6 chacune."
+  },
+  fissure: {
+    nom: "Fissure", multi: 1, ignoreDef: true,
+    texte: "Ignore complètement la défense de la cible."
+  },
+  seve: {
+    nom: "Sève", soin: 0.25,
+    texte: "Rend 25 % des PV maximum de l'Écho."
+  },
+  rempart: {
+    nom: "Rempart", garde: 0.4, tours: 2,
+    texte: "Dégâts subis ×0.4 pendant 2 tours."
+  },
+  sceau: {
+    nom: "Sceau", affaiblit: 0.75, tours: 2,
+    texte: "ATQ de la cible ×0.75 pendant 2 tours."
+  },
+  percee: {
+    nom: "Percée", multi: 1, multiAvantage: 1.3,
+    texte: "Dégâts ×1.3 si avantage d'affinité, ×1.0 sinon."
+  },
+  appel: {
+    nom: "Appel", bonusAssimilation: 20,
+    texte: "+20 au taux d'Assimilation jusqu'à la fin du combat."
+  }
+};
+
+
+/* ============================================================
+   DEFENDRE
+   ============================================================ */
+
+var DEFENDRE_REDUCTION          = 0.5;  // degats subis ce tour
+var DEFENDRE_BONUS_ASSIMILATION = 10;   // points gagnes au tour suivant
+
+
+/* ============================================================
+   ASSIMILER
+   Le taux est visible sur le bouton avant confirmation : le
+   joueur voit ses chances monter et choisit son moment.
+
+     taux = socle
+          + PV manquants de la cible (en %) x poids
+          + (niveau du meilleur Echo debout - niveau cible) x poids
+          + bonus d'Appel et de Defense
+          - malus de rang de la cible
+   ============================================================ */
+
+var ASSIMILATION_SOCLE        = 30;
+var ASSIMILATION_POIDS_PV     = 0.4;   // 100 % de PV manquants -> +40
+var ASSIMILATION_POIDS_NIVEAU = 3;     // par niveau d'ecart
+var ASSIMILATION_ECART_MAX    = 20;    // l'ecart de niveau est borne a +/- 20
+
+// Jamais 0, jamais 100 : il reste toujours un espoir et toujours un risque.
+var ASSIMILATION_MIN = 5;
+var ASSIMILATION_MAX = 95;
+
+/* Le rang dit a quel point un Echo se laisse convaincre.
+   X n'est porte par aucune espece : il est reserve aux futurs
+   Gardiens de donjon, qui se poseront sur le LIEU et pas sur
+   l'espece. POINT D'ACCROCHE, rien ne le pose aujourd'hui. */
+var ASSIMILATION_MALUS_RANG = { D: 0, C: 5, B: 10, A: 15, S: 25 };
+var RANG_INASSIMILABLE = "X";
 
 
 /* ============================================================

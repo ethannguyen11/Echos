@@ -55,22 +55,23 @@
     <div class="jauge"><span id="m-jauge" style="width:100%"></span></div>
   </div>
 
-  <div id="assimilation-bloc">
-    <div class="jauge-nom">
-      <span>Assimilation</span>
-      <span id="a-val">0 %</span>
-    </div>
-    <div class="jauge"><span id="a-jauge" class="assimilation" style="width:0%"></span></div>
-  </div>
-
   <div id="equipe-combat"></div>
 
   <div id="combat-message"></div>
 
+  <!-- Les quatre commandes. Pleine largeur, empilees : le jeu se
+       joue debout, dehors, au pouce. -->
   <div id="combat-actions">
     <button id="btn-attaquer">Attaquer</button>
+    <button id="btn-aptitude">Aptitude</button>
     <button id="btn-assimiler" class="assimilation">Assimiler</button>
-    <button id="btn-fuir">Fuir</button>
+    <button id="btn-defendre">Défendre</button>
+  </div>
+
+  <!-- Le menu d'aptitudes, ouvert par la commande Aptitude -->
+  <div id="aptitudes">
+    <div id="liste-aptitudes"></div>
+    <button id="btn-fermer-aptitudes">Retour</button>
   </div>
 </div>
 

@@ -120,27 +120,27 @@
       le 4e est refuse. Le bandeau en haut a gauche suit.</li>
   <li><b>Combat.</b> Approche a moins de 40 m d'un lieu : le bouton
       "Approcher" apparait, puis l'ecran de combat s'ouvre.</li>
-  <li><b>Les trois boutons.</b> "Attaquer" fait baisser la jauge verte et
-      secoue le monstre ; <b>"Assimiler"</b> affiche un pourcentage ;
-      "Fuir" te ramene a la carte.</li>
-  <li><b>Jauge d'assimilation.</b> La barre violette monte a mesure que
-      l'adversaire faiblit, et baisse a chaque tentative ratee.</li>
-  <li><b>Barre de Figement.</b> Tout en haut de l'ecran de combat, epaisse et
-      contrastee. <b>Va la regarder dehors, en plein soleil</b> : c'est le seul
-      vrai test. Tant que ton meilleur Echo est sous le niveau 10, elle
-      n'affiche <b>aucun chiffre</b>, seulement une phrase.</li>
-  <li><b>Le Figement monte.</b> A chaque tour, la barre avance d'un cran et sa
-      couleur va du vert froid vers l'acier clair. Elle ne recule jamais et ne
-      depasse jamais le bout.</li>
-  <li><b>Les fleches.</b> Une petite fleche verte ou rouge sur les cartes
-      d'Echos et sur le nom de l'adversaire. Elle change de sens en cours de
-      combat, quand le lieu se mecanise. Un Echo hybride (Jin Chan) n'en a
-      jamais.</li>
-  <li><b>Le tempo.</b> Un Echo organique doit visiblement taper plus fort aux
-      premiers tours qu'aux derniers, un mecanique l'inverse. Pour les chiffres
-      exacts, ouvre la console et tape <code>Combat.testerFigement()</code>.</li>
-  <li><b>Memoire du lieu.</b> Fuis un combat, puis reviens au meme lieu : le
-      Figement doit repartir de la meme valeur qu'a la premiere visite.</li>
+  <li><b>Les quatre commandes.</b> Attaquer, Aptitude, Assimiler, Defendre :
+      pleine largeur, empilees, au moins 44 px de haut. <b>Teste-les au pouce,
+      debout</b> : c'est le seul vrai test.</li>
+  <li><b>Assimiler affiche son taux.</b> Le pourcentage est <b>sur le bouton</b>,
+      avant confirmation, et il monte quand l'adversaire faiblit. Il n'apparait
+      nulle part ailleurs. Pour le tableau complet, ouvre la console et tape
+      <code>Combat.testerAssimilation()</code>.</li>
+  <li><b>Aptitudes.</b> Un Echo de niveau 4 n'en a aucune (bouton grise,
+      "Aucune aptitude connue"). A 5 il en a une, a 10 deux, a 15 trois. Le
+      menu liste celles de <b>tous</b> les Echos debout.</li>
+  <li><b>Recharge.</b> Une aptitude employee reste grisee 3 tours, avec le
+      nombre de tours restants ecrit a cote. Elle redevient jouable au 4e.</li>
+  <li><b>Une aptitude remplace l'attaque.</b> L'Echo qui l'emploie ne frappe
+      pas en plus ; les deux autres frappent normalement.</li>
+  <li><b>Defendre.</b> Les degats du tour sont visiblement plus faibles, et le
+      taux d'Assimilation gagne 10 points <b>au tour suivant</b> seulement.</li>
+  <li><b>Le Figement a quitte le combat.</b> Aucune barre, aucune fleche,
+      aucun chiffre de Figement pendant une rencontre. Il ne se lit plus que
+      sur le bandeau du bas, <b>avant</b> d'approcher.</li>
+  <li><b>Memoire du lieu.</b> Reviens au meme lieu : la difficulte annoncee
+      doit etre la meme qu'a la premiere visite.</li>
   <li><b>Grimoire.</b> Chaque Echo affiche son affinite et sa nature sous ses
       stats, dans sa couleur : Matiere ocre, Recit or terni, Oubli vert-de-gris.</li>
   <li><b>Fin.</b> Apres une assimilation reussie, le rond du lieu devient

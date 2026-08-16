@@ -9,6 +9,7 @@ var ESPECES = {
   komainu: {
     img: "komainu", famille: "temple",
     affinite: "matiere", nature: "organique",
+    rang: "A", aptitudes: ["rempart", "sceau", "fissure"],
     nom: "Komainu", titre: "le Lion Gardien",
     pv: 26, atq: 5, def: 9,
     trait: "Garde du Seuil : annule les dégâts d'un tour et en renvoie la moitié."
@@ -16,6 +17,7 @@ var ESPECES = {
   chiguo: {
     img: "chiguo", famille: "temple",
     affinite: "matiere", nature: "hybride",
+    rang: "C", aptitudes: ["sceau", "appel", "rempart"],
     nom: "Chi Guo", titre: "Gardien des Terres",
     pv: 23, atq: 4, def: 7,
     trait: "Souffle d'Encens : empoisonne l'adversaire pendant 4 tours."
@@ -23,6 +25,7 @@ var ESPECES = {
   sunwukong: {
     img: "sunwukong", famille: "temple",
     affinite: "recit", nature: "organique",
+    rang: "B", aptitudes: ["doubleFrappe", "percee", "frappeLourde"],
     nom: "Sun Wukong", titre: "l'Esprit Enchaîné",
     pv: 14, atq: 11, def: 2,
     trait: "Bond du Singe : frappe deux fois, mais subit un contrecoup."
@@ -30,6 +33,7 @@ var ESPECES = {
   palantir: {
     img: "palantir", famille: "temple",
     affinite: "recit", nature: "mecanique",
+    rang: "D", aptitudes: ["sceau", "fissure", "percee"],
     nom: "Palantir", titre: "la Sphère de Vide",
     pv: 20, atq: 3, def: 6,
     trait: "Question du Vide : pose une question ; l'échec coûte la moitié des PV."
@@ -39,6 +43,7 @@ var ESPECES = {
   mechadrill: {
     img: "mechadrill", famille: "metro",
     affinite: "matiere", nature: "mecanique",
+    rang: "S", aptitudes: ["fissure", "rempart", "frappeLourde"],
     nom: "Mecha Drill", titre: "la Foreuse",
     pv: 31, atq: 8, def: 6,
     trait: "Percée : charge un tour, puis frappe au triple."
@@ -46,6 +51,7 @@ var ESPECES = {
   teketeke: {
     img: "teketeke", famille: "metro",
     affinite: "oubli", nature: "mecanique",
+    rang: "C", aptitudes: ["fissure", "doubleFrappe", "frappeLourde"],
     nom: "Teke Teke", titre: "l'Onryo",
     pv: 16, atq: 7, def: 3,
     trait: "Rampe : trois frappes qui ignorent la défense."
@@ -53,6 +59,7 @@ var ESPECES = {
   zhanxiyuan: {
     img: "zhanxiyuan", famille: "metro",
     affinite: "oubli", nature: "hybride",
+    rang: "C", aptitudes: ["sceau", "appel", "fissure"],
     nom: "Zhan Xiyuan", titre: "l'Inventeur",
     pv: 19, atq: 5, def: 5,
     trait: "Aiguillage : l'adversaire saute son prochain tour."
@@ -60,6 +67,7 @@ var ESPECES = {
   baku: {
     img: "baku", famille: "metro",
     affinite: "oubli", nature: "organique",
+    rang: "B", aptitudes: ["seve", "sceau", "appel"],
     nom: "Baku", titre: "le Mange-Rêve",
     pv: 23, atq: 6, def: 4,
     trait: "Dévorer : vole des PV à l'adversaire."
@@ -69,6 +77,7 @@ var ESPECES = {
   eiffel: {
     img: "eiffel", famille: "monument",
     affinite: "matiere", nature: "mecanique",
+    rang: "B", aptitudes: ["rempart", "sceau", "frappeLourde"],
     nom: "Eiffel", titre: "l'Architecte",
     pv: 24, atq: 5, def: 7,
     trait: "Charpente : la défense monte à chaque tour."
@@ -76,6 +85,7 @@ var ESPECES = {
   tortuedragon: {
     img: "tortuedragon", famille: "monument",
     affinite: "matiere", nature: "organique",
+    rang: "S", aptitudes: ["rempart", "frappeLourde", "seve"],
     nom: "Tortue Dragon", titre: "le Maître des Fondations",
     pv: 29, atq: 6, def: 9,
     trait: "Ancrage : renonce à fuir, mais double ses dégâts."
@@ -83,6 +93,7 @@ var ESPECES = {
   hephaistos: {
     img: "hephaistos", famille: "monument",
     affinite: "matiere", nature: "mecanique",
+    rang: "A", aptitudes: ["rempart", "fissure", "frappeLourde"],
     nom: "Héphaïstos", titre: "le Marteau",
     pv: 22, atq: 7, def: 6,
     trait: "Enclume : rend d'un coup tout ce qu'il a encaissé."
@@ -90,6 +101,7 @@ var ESPECES = {
   vinci: {
     img: "vinci", famille: "monument",
     affinite: "recit", nature: "mecanique",
+    rang: "C", aptitudes: ["fissure", "doubleFrappe", "percee"],
     nom: "Vinci", titre: "le Savoir",
     pv: 18, atq: 8, def: 3,
     trait: "Mesure : ses coups ignorent la défense pendant 3 tours."
@@ -99,6 +111,7 @@ var ESPECES = {
   hinezumi: {
     img: "hinezumi", famille: "parc",
     affinite: "recit", nature: "organique",
+    rang: "D", aptitudes: ["doubleFrappe", "fissure", "percee"],
     nom: "Hinezumi", titre: "le Rat de Feu",
     pv: 18, atq: 6, def: 3,
     trait: "Robe de Flammes : brûlure qui s'aggrave chaque tour."
@@ -106,6 +119,7 @@ var ESPECES = {
   penghou: {
     img: "penghou", famille: "parc",
     affinite: "oubli", nature: "organique",
+    rang: "D", aptitudes: ["seve", "rempart", "appel"],
     nom: "Penghou", titre: "le Chien",
     pv: 21, atq: 4, def: 5,
     trait: "Sève : régénère des PV à chaque tour."
@@ -113,6 +127,7 @@ var ESPECES = {
   peng: {
     img: "peng", famille: "parc",
     affinite: "recit", nature: "organique",
+    rang: "B", aptitudes: ["percee", "sceau", "frappeLourde"],
     nom: "Peng", titre: "l'Oiseau Colossal",
     pv: 20, atq: 7, def: 4,
     trait: "Envol : esquive garantie, puis contre-attaque."
@@ -120,6 +135,7 @@ var ESPECES = {
   jinchan: {
     img: "jinchan", famille: "parc",
     affinite: "recit", nature: "hybride",
+    rang: "D", aptitudes: ["appel", "seve", "sceau"],
     nom: "Jin Chan", titre: "le Crapaud",
     pv: 17, atq: 4, def: 3,
     trait: "Fortune : double les points d'écho gagnés."
