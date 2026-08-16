@@ -230,6 +230,16 @@ button { font-family: inherit; }
 
 #combat-actions button.assimilation { background: #7a3d95; border-color: #b455d4; }
 
+/* Fuir : trouvable, mais qui n'attire pas l'oeil. Pas de fond plein,
+   pas de bordure, texte gris. Elle garde sa hauteur tactile. */
+#combat-actions button.discret {
+  min-height: 44px;
+  font-size: 15px; font-weight: 400;
+  color: #8b8296;
+  background: transparent;
+  border-color: transparent;
+}
+
 #combat-actions button.sortie {
   background: #b455d4; border-color: #b455d4;
 }

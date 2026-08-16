@@ -42,9 +42,9 @@ function texteInfobulle(d) {
   var e = ESPECES[d.espece];
   var bas;
 
-  if (d.capture) bas = "Savoir assimile";
+  if (d.capture) bas = "Savoir assimilé";
   else if (d.dissipe) bas = "Savoir perdu";
-  else bas = e.nom + ", " + e.titre + " &middot; niveau " + d.niveau;
+  else bas = e.nom + ", " + e.titre + " &middot; niveau " + niveauAdversaire(d);
 
   return '<div class="pop-titre">' + d.nom + '</div>' +
          '<div class="pop-lieu">' + d.lieu + '</div>' +
@@ -121,7 +121,7 @@ function mettreAJourHud(lat, lon) {
     bouton.style.display = "none";
   } else {
     texte.innerHTML = "<b>" + e.nom + "</b>, " + e.titre +
-                      "<br>niveau " + donjonProche.niveau +
+                      "<br>niveau " + niveauAdversaire(donjonProche) +
                       "<br>" + ligneDifficulte(donjonProche) +
                       (distanceProche <= DISTANCE_PREEMPTIF ?
                        "<br><span style='color:#b455d4'>Il ne t'a pas vu venir.</span>" : "");

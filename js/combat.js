@@ -72,8 +72,29 @@ function combattantsEquipe() {
   return liste;
 }
 
+/* Le niveau auquel l'adversaire se bat.
+
+   Un lieu fige renforce ce qu'il abrite : +1 niveau tous les deux
+   paliers, donc de +0 a +5. C'est un niveau de COMBAT seulement :
+   capture(), lui, garde toujours donjon.niveau, le niveau de base.
+   Un debutant qui l'emporte ici repart avec une espece rare, pas
+   avec un Echo surpuissant. */
+function niveauAdversaire(donjon) {
+  if (!donjon) return 1;
+  var palier = palierFigement(figementDuLieu(donjon));
+  var bonus = Math.floor(palier / FIGEMENT_PALIERS_PAR_NIVEAU);
+  return Math.max(1, donjon.niveau + bonus);
+}
+
+// De combien l'experience est multipliee dans ce lieu : x1.00 a x1.50
+function multiplicateurXp(donjon) {
+  var palier = palierFigement(figementDuLieu(donjon));
+  return 1 + palier * FIGEMENT_BONUS_XP_PAR_PALIER;
+}
+
 function adversaireDe(donjon, tailleEquipe) {
-  var s = statsAuNiveau(donjon.espece, donjon.niveau);
+  var niveau = niveauAdversaire(donjon);
+  var s = statsAuNiveau(donjon.espece, niveau);
 
   // Il se renforce a mesure que ton equipe grandit : seul contre un,
   // il reste abordable ; face a trois, il doit tenir trois attaques par tour.
@@ -81,7 +102,7 @@ function adversaireDe(donjon, tailleEquipe) {
   var facteurAtq = 1 + (tailleEquipe - 1) * 0.15;
 
   return {
-    espece: donjon.espece, niveau: donjon.niveau,
+    espece: donjon.espece, niveau: niveau,
     pv:    Math.round(s.pvMax * facteurPv),
     pvMax: Math.round(s.pvMax * facteurPv),
     atq:   Math.round(s.atq * facteurAtq),
@@ -390,6 +411,7 @@ function boutonsActifs(a) {
 
   regler("btn-attaquer", a);
   regler("btn-defendre", a);
+  regler("btn-fuir", a);
 
   // Ces deux-la ont leurs propres raisons d'etre grises
   regler("btn-aptitude", a && aptitudesJouables().length > 0);
@@ -507,7 +529,9 @@ function demarrerCombat(donjon, preemptif) {
   var e = ESPECES[donjon.espece];
 
   elem("combat-lieu").textContent = donjon.nom.toUpperCase();
-  elem("m-nom").textContent = e.nom + " (niv. " + donjon.niveau + ")";
+
+  // Le niveau annonce est celui auquel il se bat, renfort du lieu compris.
+  elem("m-nom").textContent = e.nom + " (niv. " + combat.adversaire.niveau + ")";
 
   var img = elem("monstre-img"), vide = elem("monstre-vide");
   img.style.display = "none";
@@ -521,7 +545,8 @@ function demarrerCombat(donjon, preemptif) {
     '<button id="btn-attaquer">Attaquer</button>' +
     '<button id="btn-aptitude">Aptitude</button>' +
     '<button id="btn-assimiler" class="assimilation">Assimiler</button>' +
-    '<button id="btn-defendre">Défendre</button>';
+    '<button id="btn-defendre">Défendre</button>' +
+    '<button id="btn-fuir" class="discret">Fuir</button>';
   fermerAptitudes();
   brancherBoutonsCombat();
 
@@ -643,9 +668,9 @@ function actionAssimiler() {
   setTimeout(tourAdverse, 900);
 }
 
-/* EN SOMMEIL : les quatre commandes sont Attaquer, Aptitude,
-   Assimiler et Defendre. Fuir n'a plus de bouton, mais la fonction
-   reste entiere : il suffit de rebrancher un bouton dessus. */
+/* Fuir est la cinquieme commande, en dessous des quatre autres et
+   volontairement plus discrete : elle doit rester trouvable sans
+   attirer l'oeil. Pas d'appui long, c'est indecouvrable sur mobile. */
 function actionFuir() {
   boutonsActifs(false);
 
@@ -754,6 +779,10 @@ function finDeTour() {
 // Recompense commune a la capture et a la dissipation
 function distribuerXp(bonusFortune) {
   var gain = 6 + combat.donjon.niveau * 5;
+
+  // Un lieu fige rend davantage : c'est ce qui rend le risque payant.
+  gain = Math.round(gain * multiplicateurXp(combat.donjon));
+
   if (bonusFortune) gain *= 2;
 
   var lignes = [];
@@ -847,6 +876,7 @@ function brancherBoutonsCombat() {
   elem("btn-aptitude").addEventListener("click", ouvrirAptitudes);
   elem("btn-assimiler").addEventListener("click", actionAssimiler);
   elem("btn-defendre").addEventListener("click", actionDefendre);
+  elem("btn-fuir").addEventListener("click", actionFuir);
   elem("btn-fermer-aptitudes").addEventListener("click", fermerAptitudes);
 }
 

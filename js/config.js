@@ -106,6 +106,35 @@ var LIBELLES_FIGEMENT = [
 ];
 
 
+/* --- LE FIGEMENT COMME DIFFICULTE DU LIEU ---
+
+   Le Figement ne pese plus sur le combat, mais il decide de ce que
+   le lieu contient. Trois effets, et trois seulement.
+
+   Il agit meme quand la mecanique de combat est en sommeil : c'est
+   une propriete du lieu, pas une regle de bataille.
+
+   Ce qu'il ne touche JAMAIS : le niveau auquel l'Echo est capture.
+   Un debutant qui l'emporte dans un lieu tres fige repart avec une
+   espece rare, pas avec un Echo surpuissant. Voir capture(). */
+
+// a) Les adversaires rencontres sont plus forts : +0 a +5 niveaux
+var FIGEMENT_PALIERS_PAR_NIVEAU = 2;    // 2 paliers = +1 niveau
+
+// b) L'experience gagnee monte : x1.00 a x1.50
+var FIGEMENT_BONUS_XP_PAR_PALIER = 0.05;
+
+/* c) Les rangs d'especes qui peuvent habiter le lieu.
+      Un lieu vivant n'abrite que du commun ; un lieu mort garde
+      ce qu'il y a de plus rare. */
+var FIGEMENT_RANGS_PAR_PALIER = [
+  { jusqua: 2,  rangs: ["D", "C"] },
+  { jusqua: 5,  rangs: ["D", "C", "B"] },
+  { jusqua: 8,  rangs: ["C", "B", "A"] },
+  { jusqua: 10, rangs: ["B", "A", "S"] }
+];
+
+
 /* ============================================================
    LES AFFINITES
    Un triangle, comme pierre-feuille-ciseaux :

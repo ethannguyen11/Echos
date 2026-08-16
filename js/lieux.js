@@ -74,6 +74,31 @@ function nomDuLieu(tags) {
   return tags["name:fr"] || tags["name:en"] || tags.name || "";
 }
 
+/* Les rangs d'especes qu'un palier de Figement autorise. */
+function rangsAuPalier(palier) {
+  for (var i = 0; i < FIGEMENT_RANGS_PAR_PALIER.length; i++) {
+    if (palier <= FIGEMENT_RANGS_PAR_PALIER[i].jusqua) {
+      return FIGEMENT_RANGS_PAR_PALIER[i].rangs;
+    }
+  }
+  return FIGEMENT_RANGS_PAR_PALIER[FIGEMENT_RANGS_PAR_PALIER.length - 1].rangs;
+}
+
+/* Les especes de cette categorie de lieu que le Figement laisse
+   apparaitre. Si le filtre ne laisse rien (une categorie pourrait
+   n'avoir aucune espece du bon rang), on rend la liste complete :
+   un lieu vide serait pire qu'un lieu hors norme. */
+function especesDisponibles(categorie, palier) {
+  var toutes = ESPECES_PAR_LIEU[categorie];
+  var rangs = rangsAuPalier(palier);
+
+  var retenues = toutes.filter(function (id) {
+    return rangs.indexOf(ESPECES[id].rang) !== -1;
+  });
+
+  return retenues.length ? retenues : toutes;
+}
+
 function donjonDepuisLieu(element) {
   var tags = element.tags || {};
 
@@ -89,7 +114,11 @@ function donjonDepuisLieu(element) {
 
   var id = element.type + "/" + element.id;
   var a = tirageAleatoire(grainePourTexte(id));
-  var liste = ESPECES_PAR_LIEU[cat];
+
+  // Le Figement du lieu se LIT (meme graine, troisieme tirage), il ne
+  // se recalcule pas ici. Il decide des rangs qui peuvent habiter le
+  // lieu avant meme qu'on tire l'espece.
+  var liste = especesDisponibles(cat, palierFigement(figementDuLieu({ id: id })));
 
   return {
     id: id,

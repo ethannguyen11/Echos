@@ -147,11 +147,14 @@ function lancerTests() {
       var d = donjonDepuisLieu(el);
       return d.id + " | " + d.nom + " | " + d.categorie + " | " + d.espece + " | niv " + d.niveau;
     }), [
+      // Les especes suivent le Figement du lieu : au palier 5, le
+      // metro ne peut plus sortir Mecha Drill (rang S), et le
+      // monument sort Eiffel (B) au lieu de Tortue Dragon (S).
       "node/1 | Porte du Temple de Longshan | temple | palantir | niv 3",
       "way/42 | Clairière du parc Daan Forest | parc | penghou | niv 8",
-      "node/999999 | Tunnel d'entrée de Taipei Main | metro | mechadrill | niv 3",
-      "relation/7 | Seuil de Tour Taipei 101 | monument | tortuedragon | niv 7",
-      "node/123456789 | Seuil de Sun Yat-sen | monument | tortuedragon | niv 8"
+      "node/999999 | Tunnel d'entrée de Taipei Main | metro | teketeke | niv 3",
+      "relation/7 | Seuil de Tour Taipei 101 | monument | eiffel | niv 7",
+      "node/123456789 | Seuil de Sun Yat-sen | monument | hephaistos | niv 8"
     ]);
 
   verifie("un lieu sans nom ou sans categorie est ignore", [
@@ -269,6 +272,53 @@ function lancerTests() {
     Object.keys(ESPECES).filter(function (id) {
       return ESPECES[id].rang === RANG_INASSIMILABLE;
     }), []);
+
+  /* --- Le Figement comme difficulte du lieu ---
+     Trois effets, et trois seulement : le niveau des adversaires,
+     l'experience gagnee, et les rangs qui peuvent apparaitre.
+     Il agit meme quand la mecanique de combat est en sommeil. */
+
+  verifie("difficulte : +1 niveau tous les 2 paliers, de +0 a +5",
+    [0, 1, 2, 5, 8, 10].map(function (p) {
+      return niveauAdversaire({ id: "x", niveau: 10, figement: p * 10 });
+    }), [10, 10, 11, 12, 14, 15]);
+
+  verifie("difficulte : l'XP monte jusqu'a x1.50",
+    [0, 5, 10].map(function (p) {
+      return Math.round(multiplicateurXp({ id: "x", figement: p * 10 }) * 100) / 100;
+    }), [1, 1.25, 1.5]);
+
+  verifie("difficulte : les rangs autorises suivent le palier",
+    [0, 2, 3, 5, 6, 8, 9, 10].map(function (p) { return rangsAuPalier(p).join(""); }),
+    ["DC", "DC", "DCB", "DCB", "CBA", "CBA", "BAS", "BAS"]);
+
+  verifie("difficulte : un lieu vivant ne sort jamais de rang S",
+    [0, 1, 2].map(function (p) {
+      return especesDisponibles("metro", p).indexOf("mechadrill");   // mechadrill est S
+    }), [-1, -1, -1]);
+
+  verifie("difficulte : un lieu mort ne sort plus de rang D",
+    especesDisponibles("parc", 10).map(function (id) { return ESPECES[id].rang; }),
+    ["B"]);
+
+  verifie("difficulte : un filtre qui ne laisse rien rend la liste complete",
+    especesDisponibles("parc", 10).length > 0, true);
+
+  /* Le point le plus important de tout ce bloc : le renfort du lieu
+     ne doit JAMAIS se retrouver dans la collection du joueur. */
+  verifie("un Echo capture garde son niveau de base, pas le niveau renforce",
+    (function () {
+      var collAvant = collection, eqAvant = equipe, combatAvant = combat;
+      collection = {}; equipe = [];
+
+      var donjon = { id: "node/1", espece: "komainu", niveau: 4 };   // palier 5 -> +2
+      var renforce = niveauAdversaire(donjon);
+      ajouterAlaCollection(donjon.espece, donjon.niveau);            // ce que fait capture()
+      var enCollection = collection.komainu.niveau;
+
+      collection = collAvant; equipe = eqAvant; combat = combatAvant;
+      return [donjon.niveau, renforce, enCollection];
+    })(), [4, 6, 4]);
 
   verifie("assimiler : un lieu marque rang X refuse la commande",
     [assimilable({ espece: "jinchan" }),
