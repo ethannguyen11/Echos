@@ -297,12 +297,44 @@ function lancerTests() {
       return especesDisponibles("metro", p).indexOf("mechadrill");   // mechadrill est S
     }), [-1, -1, -1]);
 
-  verifie("difficulte : un lieu mort ne sort plus de rang D",
-    especesDisponibles("parc", 10).map(function (id) { return ESPECES[id].rang; }),
-    ["B"]);
 
-  verifie("difficulte : un filtre qui ne laisse rien rend la liste complete",
-    especesDisponibles("parc", 10).length > 0, true);
+  /* --- Le rang est une tendance, pas un mur ---
+     Avec 4 especes par categorie, la bande brute laissait parfois
+     une seule espece possible. Elle s'elargit maintenant jusqu'a
+     RANGS_MINIMUM_ESPECES. */
+
+  var casesMaigres = [];
+  Object.keys(ESPECES_PAR_LIEU).forEach(function (cat) {
+    for (var p = 0; p <= FIGEMENT_PALIER_MAX; p++) {
+      var n = especesDisponibles(cat, p).length;
+      if (n < RANGS_MINIMUM_ESPECES) casesMaigres.push(cat + " palier " + p + " : " + n);
+    }
+  });
+  verifie("aucune case categorie x palier sous le minimum", casesMaigres, []);
+
+  // Les deux cas qui ont motive la correction
+  verifie("un monument peu fige ne donne plus toujours Vinci",
+    especesDisponibles("monument", 1).length >= RANGS_MINIMUM_ESPECES, true);
+
+  verifie("un parc tres fige ne donne plus toujours Peng",
+    especesDisponibles("parc", 10).length >= RANGS_MINIMUM_ESPECES, true);
+
+  // La bande s'elargit vers le bas en premier
+  verifie("l'elargissement commence par le bas",
+    especesDisponibles("temple", 10).map(function (id) { return ESPECES[id].rang; }).sort(),
+    ["A", "B", "C"]);          // BAS ne donnait que A et B : C rejoint par le bas
+
+  // Quand la bande suffit, elle n'est pas elargie : la tendance tient
+  verifie("une bande deja suffisante n'est pas elargie",
+    [especesDisponibles("parc", 0).map(function (id) { return ESPECES[id].rang; }).join(""),
+     especesDisponibles("metro", 10).indexOf("mechadrill") !== -1],
+    ["DDD", true]);            // parc vivant : que du D. metro mort : le S est la.
+
+  // Meme categorie, meme palier, meme liste : le tirage reste sur
+  var listeA = especesDisponibles("monument", 4).join(",");
+  var listeB = especesDisponibles("monument", 4).join(",");
+  verifie("le filtre rend toujours la meme liste, donc la meme espece",
+    listeA === listeB && listeA.length > 0, true);
 
   /* Le point le plus important de tout ce bloc : le renfort du lieu
      ne doit JAMAIS se retrouver dans la collection du joueur. */

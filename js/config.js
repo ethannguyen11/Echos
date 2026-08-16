@@ -134,6 +134,22 @@ var FIGEMENT_RANGS_PAR_PALIER = [
   { jusqua: 10, rangs: ["B", "A", "S"] }
 ];
 
+/* L'echelle des rangs, du plus commun au plus rare. Une bande de
+   FIGEMENT_RANGS_PAR_PALIER est toujours une tranche continue de
+   cette echelle : c'est ce qui permet de l'elargir d'un cran. */
+var ECHELLE_RANGS = ["D", "C", "B", "A", "S"];
+
+/* Le rang est une TENDANCE, pas un mur.
+
+   Avec 4 especes par categorie et 4 bandes de rangs, certaines
+   cases ne laissaient qu'une seule espece possible : tous les
+   monuments peu figes donnaient Vinci, tous les parcs tres figes
+   donnaient Peng. En dessous de ce minimum, la bande s'elargit
+   d'un cran vers le bas, puis vers le haut, jusqu'a offrir de quoi
+   varier. Voir especesDisponibles() dans lieux.js, et
+   Lieux.testerFiltreRang() pour verifier chaque case. */
+var RANGS_MINIMUM_ESPECES = 3;
+
 
 /* ============================================================
    LES AFFINITES

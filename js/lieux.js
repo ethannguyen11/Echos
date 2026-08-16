@@ -85,18 +85,47 @@ function rangsAuPalier(palier) {
 }
 
 /* Les especes de cette categorie de lieu que le Figement laisse
-   apparaitre. Si le filtre ne laisse rien (une categorie pourrait
-   n'avoir aucune espece du bon rang), on rend la liste complete :
-   un lieu vide serait pire qu'un lieu hors norme. */
+   apparaitre.
+
+   Le rang est une tendance, pas un mur. Une bande de rangs est une
+   tranche continue de ECHELLE_RANGS : tant qu'elle ne laisse pas au
+   moins RANGS_MINIMUM_ESPECES especes dans cette categorie, on
+   l'elargit d'un cran vers le bas, puis vers le haut, et on
+   recommence. Sans ca, un monument peu fige n'avait qu'une seule
+   espece possible, et tous se ressemblaient.
+
+   Le resultat ne depend que de la categorie et du palier : deux
+   appareils qui regardent le meme lieu obtiennent la meme liste,
+   donc la meme espece. Le tirage reste deterministe. */
 function especesDisponibles(categorie, palier) {
   var toutes = ESPECES_PAR_LIEU[categorie];
-  var rangs = rangsAuPalier(palier);
+  var bande = rangsAuPalier(palier);
 
-  var retenues = toutes.filter(function (id) {
-    return rangs.indexOf(ESPECES[id].rang) !== -1;
-  });
+  var bas = ECHELLE_RANGS.indexOf(bande[0]);
+  var haut = ECHELLE_RANGS.indexOf(bande[bande.length - 1]);
+  var dernier = ECHELLE_RANGS.length - 1;
 
-  return retenues.length ? retenues : toutes;
+  function retenues() {
+    return toutes.filter(function (id) {
+      var r = ECHELLE_RANGS.indexOf(ESPECES[id].rang);
+      return r >= bas && r <= haut;
+    });
+  }
+
+  var versLeBas = true;
+  var liste = retenues();
+
+  while (liste.length < RANGS_MINIMUM_ESPECES && (bas > 0 || haut < dernier)) {
+    if (versLeBas && bas > 0) bas--;          // un cran vers le bas
+    else if (haut < dernier) haut++;          // puis un cran vers le haut
+    else bas--;                               // le haut est epuise
+
+    versLeBas = !versLeBas;
+    liste = retenues();
+  }
+
+  // Ceinture et bretelles : une categorie vide serait pire que tout.
+  return liste.length ? liste : toutes;
 }
 
 function donjonDepuisLieu(element) {
@@ -246,3 +275,60 @@ function charger() {
     for (var id in donjons) poserMarqueur(donjons[id]);
   } catch (e) { donjons = {}; }
 }
+
+
+/* ------------------------------------------------------------
+   OUTIL DE CONSOLE
+   Ouvre la console et tape :   Lieux.testerFiltreRang()
+
+   Pour chaque categorie et chaque palier, la liste des especes
+   finalement possibles. Aucune case ne doit tomber sous
+   RANGS_MINIMUM_ESPECES : si c'est le cas, la ligne est marquee.
+   ------------------------------------------------------------ */
+
+function testerFiltreRang() {
+  function colonne(t, largeur) {
+    t = String(t);
+    while (t.length < largeur) t += " ";
+    return t;
+  }
+
+  var categories = Object.keys(ESPECES_PAR_LIEU);
+  var sousLeMinimum = 0;
+
+  console.log("FILTRE DE RANG — especes possibles par categorie et par palier");
+  console.log("(minimum exige : " + RANGS_MINIMUM_ESPECES + " especes par case)");
+
+  categories.forEach(function (cat) {
+    console.log("");
+    console.log("--- " + cat.toUpperCase() + " ---");
+    console.log(colonne("palier", 8) + colonne("bande", 10) + colonne("nb", 4) + "especes possibles");
+
+    for (var p = 0; p <= FIGEMENT_PALIER_MAX; p++) {
+      var liste = especesDisponibles(cat, p);
+      var noms = liste.map(function (id) {
+        return ESPECES[id].nom + " (" + ESPECES[id].rang + ")";
+      });
+
+      var alerte = liste.length < RANGS_MINIMUM_ESPECES;
+      if (alerte) sousLeMinimum++;
+
+      console.log(colonne(p, 8) + colonne(rangsAuPalier(p).join(""), 10) +
+                  colonne(liste.length, 4) + noms.join(", ") +
+                  (alerte ? "   <-- SOUS LE MINIMUM" : ""));
+    }
+  });
+
+  console.log("");
+  console.log(sousLeMinimum === 0 ?
+              "Aucune case sous le minimum." :
+              sousLeMinimum + " case(s) sous le minimum.");
+}
+
+/* Le seul global que ce fichier expose. Le reste du jeu continue
+   d'appeler les fonctions directement, rien n'a change pour lui. */
+window.Lieux = {
+  testerFiltreRang: testerFiltreRang,
+  especesDisponibles: especesDisponibles,
+  rangsAuPalier: rangsAuPalier
+};
