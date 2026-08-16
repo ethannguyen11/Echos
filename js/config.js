@@ -47,7 +47,7 @@ var DOSSIER_MONSTRES = "monstres/";
    donjon fictif, ni l'Echo capture, ni l'experience gagnee.
    ============================================================ */
 
-var MODE_TEST = false;
+var MODE_TEST = true;
 
 /* Deuxieme securite : meme a true, le mode test reste muet des que
    la page est servie ailleurs qu'en local (GitHub Pages, par
@@ -55,7 +55,7 @@ var MODE_TEST = false;
    donc pas sur le site publie.
    Pour essayer le mode test depuis ton telephone via GitHub Pages,
    passe cette constante a false. */
-var MODE_TEST_LOCAL_SEULEMENT = true;
+var MODE_TEST_LOCAL_SEULEMENT = false;
 
 // Une couleur par famille de lieu : marqueurs de la carte et pastilles
 // du grimoire piochent ici.
