@@ -22,6 +22,24 @@
   <button id="btn-grimoire">Grimoire</button>
 </div>
 
+<!-- Le panneau du mode test. Invisible tant que js/modetest.js ne lui
+     ajoute pas la classe "actif", ce qu'il ne fait que si MODE_TEST
+     est a true dans js/config.js. -->
+<div id="mode-test">
+  <div class="mt-titre">Mode test</div>
+  <label class="mt-ligne">Palier
+    <input type="range" id="mt-palier" min="0" max="10" step="1" value="5">
+    <span id="mt-palier-val">5</span>
+  </label>
+  <label class="mt-ligne">Niveau
+    <input type="range" id="mt-niveau" min="1" max="50" step="1" value="5">
+    <span id="mt-niveau-val">5</span>
+  </label>
+  <label class="mt-ligne">Espèce
+    <select id="mt-espece"></select>
+  </label>
+</div>
+
 <div id="hud">
   <div id="texte">Recherche de ta position...</div>
   <div id="etat"></div>
@@ -100,6 +118,7 @@
 <script src="js/combat.js"></script>
 <script src="js/grimoire.js"></script>
 <script src="js/intro.js"></script>
+<script src="js/modetest.js"></script>
 <script src="js/jeu.js"></script>
 
 </body>

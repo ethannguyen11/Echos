@@ -559,6 +559,13 @@ function demarrerCombat(donjon, preemptif) {
   elem("combat").classList.add("actif");
 }
 
+/* Un combat d'essai ne doit laisser aucune trace sur le disque :
+   ni le donjon fictif, ni l'Echo capture, ni l'experience gagnee.
+   Les trois points de sauvegarde consultent cette fonction. */
+function estCombatFictif() {
+  return !!(combat && combat.donjon && combat.donjon.fictif);
+}
+
 function equipeDebout() {
   for (var i = 0; i < combat.equipe.length; i++) if (combat.equipe[i].pv > 0) return true;
   return false;
@@ -820,8 +827,7 @@ function capture() {
   if (r.lignes.length) txt += "<br>" + r.lignes.join("<br>");
 
   d.capture = true;
-  rafraichirMarqueur(d);
-  sauvegarder();
+  if (!estCombatFictif()) { rafraichirMarqueur(d); sauvegarder(); }
 
   message(txt);
   finDeCombat();
@@ -838,8 +844,7 @@ function dissipation() {
   if (r.lignes.length) txt += "<br>" + r.lignes.join("<br>");
 
   combat.donjon.dissipe = true;
-  rafraichirMarqueur(combat.donjon);
-  sauvegarder();
+  if (!estCombatFictif()) { rafraichirMarqueur(combat.donjon); sauvegarder(); }
 
   message(txt);
   finDeCombat();
@@ -853,13 +858,20 @@ function defaite() {
 function finDeCombat() {
   combat.fini = true;
 
-  // Les Echos se remettent entre deux rencontres
-  for (var id in collection) {
-    collection[id].pv = statsAuNiveau(id, collection[id].niveau).pvMax;
-  }
+  if (estCombatFictif()) {
+    /* Combat d'essai : au lieu d'enregistrer, on relit la sauvegarde
+       reelle. L'Echo eventuellement capture et l'experience gagnee
+       pendant l'essai disparaissent, la vraie partie est intacte. */
+    chargerJoueur();
+  } else {
+    // Les Echos se remettent entre deux rencontres
+    for (var id in collection) {
+      collection[id].pv = statsAuNiveau(id, collection[id].niveau).pvMax;
+    }
 
-  sauverJoueur();
-  majFiche();
+    sauverJoueur();
+    majFiche();
+  }
 
   elem("combat-actions").innerHTML =
     '<button class="sortie" id="btn-sortir">Revenir à la carte</button>';

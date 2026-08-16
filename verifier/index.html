@@ -157,6 +157,26 @@
       gris, et l'Echo apparait dans le grimoire.</li>
 </ol>
 
+<h2>LE MODE TEST</h2>
+
+<p>
+  A ne faire que si tu as mis <code>MODE_TEST = true</code> dans
+  <code>js/config.js</code>. Remets-le a <code>false</code> avant de commiter.
+</p>
+
+<ol>
+  <li><b>A false, rien n'existe.</b> Aucun panneau en haut a gauche, et le
+      bandeau du bas annonce un vrai lieu. C'est le test le plus important
+      des trois.</li>
+  <li><b>A true.</b> Un panneau en pointilles apparait sous la barre du haut,
+      et le bandeau annonce toujours "Terrain d'essai", ou que tu sois. Les
+      trois reglages (palier, niveau, espece) changent immediatement le niveau
+      et la difficulte annonces.</li>
+  <li><b>Aucune trace.</b> Gagne un combat d'essai, assimile l'Echo, puis
+      <b>recharge la page</b> : ni l'Echo, ni l'experience gagnee ne doivent
+      subsister. Ton grimoire doit etre exactement celui d'avant l'essai.</li>
+</ol>
+
 <!-- On ne charge que les fichiers qui n'ont besoin ni de la carte
      ni de la page du jeu : ils suffisent pour toutes les formules. -->
 <script src="../js/config.js"></script>

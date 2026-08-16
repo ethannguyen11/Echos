@@ -32,6 +32,31 @@ var SERVEURS_OVERPASS = [
 var DELAI_NOUVEL_ESSAI = 20000;   // 20 s avant de retenter apres un echec total
 var DOSSIER_MONSTRES = "monstres/";
 
+
+/* ============================================================
+   LE MODE TEST
+   Un donjon fictif a ta position, et un panneau pour regler le
+   palier de Figement, le niveau et l'espece de l'adversaire.
+   Sert a essayer un combat sans sortir de chez soi.
+
+   A false, il ne se passe RIEN : aucun panneau, aucun donjon
+   fictif, pas une ligne executee. Tout tient dans js/modetest.js,
+   qui peut etre supprime sans rien casser.
+
+   Un combat d'essai n'ecrit jamais dans localStorage : ni le
+   donjon fictif, ni l'Echo capture, ni l'experience gagnee.
+   ============================================================ */
+
+var MODE_TEST = false;
+
+/* Deuxieme securite : meme a true, le mode test reste muet des que
+   la page est servie ailleurs qu'en local (GitHub Pages, par
+   exemple). Un MODE_TEST oublie a true dans un commit ne se voit
+   donc pas sur le site publie.
+   Pour essayer le mode test depuis ton telephone via GitHub Pages,
+   passe cette constante a false. */
+var MODE_TEST_LOCAL_SEULEMENT = true;
+
 // Une couleur par famille de lieu : marqueurs de la carte et pastilles
 // du grimoire piochent ici.
 var COULEURS = {

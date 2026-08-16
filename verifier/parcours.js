@@ -20,7 +20,8 @@ var RACINE = path.join(__dirname, "..");
 // Tout sauf jeu.js : on ne veut pas brancher les boutons du jeu,
 // seulement disposer de ses fonctions.
 var FICHIERS = ["js/config.js", "js/especes.js", "js/lieux.js", "js/carte.js",
-                "js/joueur.js", "js/combat.js", "js/grimoire.js", "js/intro.js"];
+                "js/joueur.js", "js/combat.js", "js/grimoire.js", "js/intro.js",
+                "js/modetest.js"];
 
 
 /* ------------------------------------------------------------

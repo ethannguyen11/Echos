@@ -298,6 +298,64 @@ function lancerTests() {
     }), [-1, -1, -1]);
 
 
+  /* --- Le mode test ---
+     Le contrat est d'abord un contrat d'absence : a false, rien
+     n'existe. Ces tests le rallument pour verifier qu'il marche,
+     puis le rendorment. */
+
+  var modeTestRegle = MODE_TEST, localRegle = MODE_TEST_LOCAL_SEULEMENT;
+
+  function avecModeTest(allume, f) {
+    MODE_TEST = allume;
+    MODE_TEST_LOCAL_SEULEMENT = false;   // le faux navigateur n'a pas de hostname
+    try { return f(); }
+    finally { MODE_TEST = modeTestRegle; MODE_TEST_LOCAL_SEULEMENT = localRegle; }
+  }
+
+  verifie("mode test : livre a l'arret, et local seulement",
+    [modeTestRegle, localRegle], [false, true]);
+
+  verifie("mode test eteint : aucun donjon fictif, panneau muet",
+    [ModeTest.actif(), ModeTest.donjonDeTest(25, 121)],
+    [false, null]);
+
+  verifie("mode test allume : un donjon fictif est fabrique",
+    avecModeTest(true, function () {
+      var d = ModeTest.donjonDeTest(25.03, 121.56);
+      return [ModeTest.actif(), d.fictif, d.lat, d.lon, d.id];
+    }), [true, true, 25.03, 121.56, "test/fictif"]);
+
+  verifie("mode test : le panneau pilote palier, niveau et espece",
+    avecModeTest(true, function () {
+      ModeTest.reglages.palier = 8;
+      ModeTest.reglages.niveau = 22;
+      ModeTest.reglages.espece = "baku";
+      var d = ModeTest.donjonDeTest(0, 0);
+      var lu = [palierFigement(figementDuLieu(d)), d.niveau, d.espece];
+      ModeTest.reglages.palier = 5;
+      ModeTest.reglages.niveau = 5;
+      ModeTest.reglages.espece = "sunwukong";
+      return lu;
+    }), [8, 22, "baku"]);
+
+  verifie("mode test : le donjon fictif n'entre jamais dans donjons",
+    avecModeTest(true, function () {
+      var avant = Object.keys(donjons).length;
+      ModeTest.donjonDeTest(0, 0);
+      return Object.keys(donjons).length === avant;
+    }), true);
+
+  verifie("un combat fictif est reconnu comme tel", (function () {
+    var avant = combat;
+    combat = { donjon: { fictif: true } };
+    var oui = estCombatFictif();
+    combat = { donjon: { id: "node/1" } };
+    var non = estCombatFictif();
+    combat = avant;
+    return [oui, non];
+  })(), [true, false]);
+
+
   /* --- Le rang est une tendance, pas un mur ---
      Avec 4 especes par categorie, la bande brute laissait parfois
      une seule espece possible. Elle s'elargit maintenant jusqu'a

@@ -93,6 +93,18 @@ function mettreAJourHud(lat, lon) {
     if (dist < distanceProche) { distanceProche = dist; donjonProche = d; }
   }
 
+  /* Mode test : un donjon fictif se pose a ta position et prend la
+     place du plus proche, ou que tu sois. Hors mode test, ces deux
+     lignes ne font rien du tout. */
+  if (ModeTest.actif()) {
+    ModeTest.preparerPanneau();
+    donjonProche = ModeTest.donjonDeTest(lat, lon);
+
+    // Assez pres pour entrer, assez loin pour ne pas offrir le tour
+    // gratuit : sinon on ne testerait jamais un combat ordinaire.
+    distanceProche = DISTANCE_ENTREE - 1;
+  }
+
   var texte = elem("texte");
   var bouton = elem("entrer");
 
