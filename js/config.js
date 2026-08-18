@@ -55,7 +55,7 @@ var MODE_TEST = false;
    donc pas sur le site publie.
    Pour essayer le mode test depuis ton telephone via GitHub Pages,
    passe cette constante a false. */
-var MODE_TEST_LOCAL_SEULEMENT = truee;
+var MODE_TEST_LOCAL_SEULEMENT = true;
 
 // Une couleur par famille de lieu : marqueurs de la carte et pastilles
 // du grimoire piochent ici.
