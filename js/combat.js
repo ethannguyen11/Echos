@@ -7,7 +7,7 @@
 var combat = null;
 
 function degats(atq, def, alea) {
-  var base = atq - def / 2;
+  var base = atq - def / POIDS_DEFENSE;
   return Math.max(1, Math.round(base * (0.85 + alea * 0.3)));
 }
 
@@ -98,8 +98,8 @@ function adversaireDe(donjon, tailleEquipe) {
 
   // Il se renforce a mesure que ton equipe grandit : seul contre un,
   // il reste abordable ; face a trois, il doit tenir trois attaques par tour.
-  var facteurPv  = 1 + (tailleEquipe - 1) * 0.7;
-  var facteurAtq = 1 + (tailleEquipe - 1) * 0.15;
+  var facteurPv  = 1 + (tailleEquipe - 1) * ADVERSAIRE_PV_PAR_ECHO;
+  var facteurAtq = 1 + (tailleEquipe - 1) * ADVERSAIRE_ATQ_PAR_ECHO;
 
   return {
     espece: donjon.espece, niveau: niveau,
@@ -1005,9 +1005,277 @@ function testerAssimilation(niveauEquipe, niveauCible) {
               " %, jamais plus de " + ASSIMILATION_MAX + " %.");
 }
 
+/* ------------------------------------------------------------
+   RAPPORT D'EQUILIBRAGE
+   Ouvre la console et tape :   Combat.rapportEquilibrage()
+
+   Il rejoue des milliers de combats en memoire, sans DOM et sans
+   attente, en passant par les VRAIES fonctions du jeu : degats(),
+   degatsAjustes(), adversaireDe(). Ce qu'il mesure est donc ce
+   que le joueur subit, pas une formule recopiee.
+
+   Il ne simule que des attaques de base : ni aptitudes, ni
+   Defendre, ni Assimiler. C'est le plancher du jeu, le combat
+   qu'un debutant mene sans rien connaitre.
+   ------------------------------------------------------------ */
+
+/* Une suite de nombres "au hasard" reproductible : deux rapports
+   lances a la suite donnent exactement les memes chiffres, donc un
+   avant et un apres sont comparables. */
+function suiteAleatoire(graine) {
+  var e = graine;
+  return function () {
+    e = (e + 0x6D2B79F5) | 0;
+    var t = Math.imul(e ^ (e >>> 15), 1 | e);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+var RAPPORT_TOURS_MAX = 60;   // garde-fou : au-dela, le combat n'aboutit pas
+
+/* Un combat complet, joue jusqu'au bout.
+   affiniteForcee sert au seul test d'affinite : il remplace le
+   multiplicateur pour isoler cette variable des statistiques. */
+function simulerCombat(equipeSpec, especeAdverse, niveauAdverse, alea, affiniteForcee) {
+  var mesEchos = equipeSpec.map(function (e) {
+    var s = statsAuNiveau(e.espece, e.niveau);
+    return { espece: e.espece, niveau: e.niveau,
+             pv: s.pvMax, pvMax: s.pvMax, atq: s.atq, def: s.def };
+  });
+
+  var adv = adversaireDe({ espece: especeAdverse, niveau: niveauAdverse }, mesEchos.length);
+  var palier = 0;   // le Figement est en sommeil : le palier ne change rien
+
+  /* estEquipe distingue les deux camps : quand on force une
+     affinite, elle ne doit porter QUE sur les coups de l'equipe.
+     L'appliquer aux deux camps renforcerait aussi l'adversaire et
+     inverserait le resultat. */
+  function frappe(atq, def, especeA, especeC, estEquipe) {
+    var brut = degats(atq, def, alea());
+
+    if (estEquipe && affiniteForcee !== undefined && affiniteForcee !== null) {
+      return Math.max(1, Math.round(brut * affiniteForcee));
+    }
+    if (!estEquipe && affiniteForcee !== undefined && affiniteForcee !== null) {
+      return Math.max(1, Math.round(brut));      // adversaire toujours neutre
+    }
+    return degatsAjustes(brut, especeA, especeC, palier);
+  }
+
+  var tours = 0, infliges = 0, subis = 0;
+
+  while (tours < RAPPORT_TOURS_MAX) {
+    tours++;
+
+    // Le tour de l'equipe
+    for (var i = 0; i < mesEchos.length; i++) {
+      var c = mesEchos[i];
+      if (c.pv <= 0) continue;
+      var d = frappe(c.atq, adv.def, c.espece, adv.espece, true);
+      adv.pv -= d;
+      infliges += d;
+      if (adv.pv <= 0) break;
+    }
+    if (adv.pv <= 0) break;
+
+    // Le tour de l'adversaire : il frappe le premier Echo debout
+    var cible = null;
+    for (var j = 0; j < mesEchos.length; j++) {
+      if (mesEchos[j].pv > 0) { cible = mesEchos[j]; break; }
+    }
+    if (!cible) break;
+
+    var r = frappe(adv.atq, cible.def, adv.espece, cible.espece, false);
+    cible.pv -= r;
+    subis += r;
+
+    var debout = false;
+    for (var k = 0; k < mesEchos.length; k++) if (mesEchos[k].pv > 0) debout = true;
+    if (!debout) break;
+  }
+
+  return { tours: tours, victoire: adv.pv <= 0, infliges: infliges, subis: subis };
+}
+
+/* Repete le combat SIMULATIONS_PAR_CAS fois et rend les moyennes. */
+function mesurer(equipeSpec, especeAdverse, niveauAdverse, graine, affiniteForcee) {
+  var alea = suiteAleatoire(graine);
+  var victoires = 0, tours = 0, infliges = 0, subis = 0;
+
+  for (var n = 0; n < SIMULATIONS_PAR_CAS; n++) {
+    var r = simulerCombat(equipeSpec, especeAdverse, niveauAdverse, alea, affiniteForcee);
+    if (r.victoire) victoires++;
+    tours += r.tours;
+    infliges += r.infliges;
+    subis += r.subis;
+  }
+
+  return {
+    victoires: Math.round(victoires / SIMULATIONS_PAR_CAS * 100),
+    tours: tours / SIMULATIONS_PAR_CAS,
+    degatsEquipe: infliges / tours,
+    degatsAdverse: subis / tours
+  };
+}
+
+// Toutes les especes d'un rang donne.
+function especesDeRang(rang) {
+  return Object.keys(ESPECES).filter(function (id) { return ESPECES[id].rang === rang; });
+}
+
+/* Une equipe "moyenne" : on fait tourner le bestiaire d'un cas a
+   l'autre, pour ne pas mesurer les qualites d'une seule espece. */
+function equipeType(taille, niveau, decalage) {
+  var ids = Object.keys(ESPECES);
+  var liste = [];
+  for (var i = 0; i < taille; i++) {
+    liste.push({ espece: ids[(decalage + i) % ids.length], niveau: niveau });
+  }
+  return liste;
+}
+
+function rapportEquilibrage() {
+  function col(t, largeur) {
+    t = String(t);
+    while (t.length < largeur) t += " ";
+    return t;
+  }
+  function pc(n) { return n + " %"; }
+
+  console.log("RAPPORT D'EQUILIBRAGE — " + SIMULATIONS_PAR_CAS + " simulations par case");
+  console.log("Attaques de base uniquement : ni aptitude, ni Defendre, ni Assimiler.");
+  console.log("Le Figement est en sommeil, seules les affinites jouent.");
+
+  var graine = 20260817;
+
+  /* --- 0. Le combat reellement joue sur iPhone --- */
+
+  console.log("");
+  console.log("=== 0. LE COMBAT CONSTATE EN TEST REEL ===");
+  var constate = mesurer([{ espece: "jinchan", niveau: 3 },
+                          { espece: "penghou", niveau: 1 }], "sunwukong", 3, 1234);
+  console.log("Jin Chan niv.3 + Penghou niv.1 contre Sun Wukong niv.3");
+  console.log("  victoires : " + pc(constate.victoires) +
+              "   tours : " + constate.tours.toFixed(1) +
+              "   deg/tour equipe : " + constate.degatsEquipe.toFixed(1) +
+              "   adverse : " + constate.degatsAdverse.toFixed(1));
+
+  /* --- 1. L'Echo de depart, seul --- */
+
+  console.log("");
+  console.log("=== 1. JIN CHAN SEUL, NIVEAU 3 (le tout premier combat) ===");
+  console.log("Taux de victoire, puis nombre de tours, par niveau adverse");
+  console.log("");
+  console.log(col("adversaire", 16) + col("rang", 6) +
+              [1, 2, 3, 4, 5].map(function (n) { return col("niv " + n, 12); }).join(""));
+
+  ["D", "C"].forEach(function (rang) {
+    especesDeRang(rang).forEach(function (id) {
+      var ligne = col(ESPECES[id].nom, 16) + col(rang, 6);
+      for (var niv = 1; niv <= 5; niv++) {
+        var m = mesurer([{ espece: "jinchan", niveau: 3 }], id, niv, graine++);
+        ligne += col(pc(m.victoires) + " / " + m.tours.toFixed(0) + "t", 12);
+      }
+      console.log(ligne);
+    });
+  });
+
+  /* --- 2 et 3. Les equipes, a niveau egal --- */
+
+  [[2, 4, "=== 2. EQUIPE DE 2 ECHOS NIVEAU 4, A NIVEAU EGAL ==="],
+   [3, 10, "=== 3. EQUIPE DE 3 ECHOS NIVEAU 10, A NIVEAU EGAL ==="]
+  ].forEach(function (cas) {
+    var taille = cas[0], niveau = cas[1];
+
+    console.log("");
+    console.log(cas[2]);
+    console.log("");
+    console.log(col("rang adverse", 14) + col("victoires", 12) + col("tours", 9) +
+                col("deg/tour equipe", 18) + "deg/tour adverse");
+
+    ECHELLE_RANGS.forEach(function (rang) {
+      var especes = especesDeRang(rang);
+      var v = 0, t = 0, de = 0, da = 0, n = 0;
+
+      especes.forEach(function (id) {
+        // On fait tourner la composition de l'equipe d'une espece a l'autre
+        var m = mesurer(equipeType(taille, niveau, n * 3), id, niveau, graine++);
+        v += m.victoires; t += m.tours; de += m.degatsEquipe; da += m.degatsAdverse; n++;
+      });
+
+      console.log(col(rang + " (" + n + " especes)", 14) +
+                  col(pc(Math.round(v / n)), 12) +
+                  col((t / n).toFixed(1), 9) +
+                  col((de / n).toFixed(1), 18) +
+                  (da / n).toFixed(1));
+    });
+  });
+
+  /* --- 4. L'affinite, isolee --- */
+
+  console.log("");
+  console.log("=== 4. L'AFFINITE, TOUTES CHOSES EGALES PAR AILLEURS ===");
+  console.log("Meme equipe, meme adversaire : seul le multiplicateur change.");
+  console.log("");
+  console.log(col("situation", 16) + col("multiplicateur", 16) +
+              col("victoires", 12) + "tours");
+
+  /* On prend un affrontement serre : sur un combat gagne ou perdu
+     d'avance, le multiplicateur ne se verrait pas. */
+  [["avantage", AFFINITE_AVANTAGE],
+   ["neutre", AFFINITE_NEUTRE],
+   ["desavantage", AFFINITE_DESAVANTAGE]
+  ].forEach(function (cas) {
+    var m = mesurer(equipeType(3, 10, 0), "baku", 10, 424242, cas[1]);
+    console.log(col(cas[0], 16) + col("x" + cas[1], 16) +
+                col(pc(m.victoires), 12) + m.tours.toFixed(1));
+  });
+
+  /* --- Le verdict, face aux cibles --- */
+
+  console.log("");
+  console.log("=== FACE AUX CIBLES ===");
+  console.log("");
+  console.log(col("cible visee", 52) + col("mesure", 10) + "verdict");
+
+  function verdict(texte, obtenu, ok) {
+    console.log(col(texte, 52) + col(obtenu, 10) + (ok ? "atteint" : "NON ATTEINT"));
+  }
+
+  // Moyenne sur les quatre especes de rang D, pas sur une seule
+  var vd = 0, nd = 0;
+  especesDeRang("D").forEach(function (id) {
+    vd += mesurer([{ espece: "jinchan", niveau: 3 }], id, 3, graine++).victoires; nd++;
+  });
+  verdict("Echo de depart seul vs rang D, niveau egal : ~85 %",
+          pc(Math.round(vd / nd)), Math.abs(vd / nd - 85) <= 15);
+
+  var b = 0, nb = 0;
+  especesDeRang("B").forEach(function (id) {
+    b += mesurer(equipeType(3, 10, nb * 3), id, 10, graine++).victoires; nb++;
+  });
+  verdict("Equipe complete vs rang B, niveau egal : ~70 %",
+          pc(Math.round(b / nb)), Math.abs(b / nb - 70) <= 15);
+
+  var s = 0, ns = 0;
+  especesDeRang("S").forEach(function (id) {
+    s += mesurer(equipeType(3, 10, ns * 3), id, 10, graine++).victoires; ns++;
+  });
+  verdict("Equipe complete vs rang S, niveau egal : ~25 %",
+          pc(Math.round(s / ns)), Math.abs(s / ns - 25) <= 15);
+
+  var ordinaire = mesurer(equipeType(3, 10, 0), "baku", 10, 99);
+  verdict("Duree d'un combat ordinaire : 4 a 6 tours",
+          ordinaire.tours.toFixed(1), ordinaire.tours >= 4 && ordinaire.tours <= 6);
+}
+
+
 /* Le seul global que ce fichier expose. Le reste du jeu continue
    d'appeler les fonctions directement, rien n'a change pour lui. */
 window.Combat = {
+  rapportEquilibrage: rapportEquilibrage,
+  simulerCombat: simulerCombat,
   testerFigement: testerFigement,
   testerAssimilation: testerAssimilation,
   figementDuLieu: figementDuLieu,

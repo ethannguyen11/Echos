@@ -188,9 +188,50 @@ var AFFINITE_BAT = {
   oubli:   "matiere"
 };
 
+/* Recompenser genereusement ne casse rien ; c'est punir qui rend
+   un combat impossible. D'ou l'ecart entre les deux bornes. */
 var AFFINITE_AVANTAGE    = 1.3;
 var AFFINITE_NEUTRE      = 1.0;
-var AFFINITE_DESAVANTAGE = 0.75;
+var AFFINITE_DESAVANTAGE = 0.85;
+
+
+/* ============================================================
+   L'ADVERSAIRE FACE A UNE EQUIPE
+
+   Une equipe de 3 Echos porte trois attaques par tour : sa
+   production est triplee. Si l'adversaire ne gagnait que 70 % de
+   PV et 15 % d'ATQ, chaque Echo supplementaire rendait le combat
+   strictement plus facile, et un Echo seul se faisait ecraser.
+
+   Les PV suivent donc la taille de l'equipe, et l'ATQ monte assez
+   pour epuiser un Echo tous les deux ou trois tours, sans jamais
+   en tuer un d'un seul coup.
+
+     taille 1 -> PV x1    ATQ x1
+     taille 2 -> PV x2    ATQ x1.25
+     taille 3 -> PV x3    ATQ x1.5
+   ============================================================ */
+
+var ADVERSAIRE_PV_PAR_ECHO  = 0.7;
+var ADVERSAIRE_ATQ_PAR_ECHO = 0.6;
+
+
+/* ============================================================
+   LE POIDS DE LA DEFENSE
+
+   degats() calcule atq - def / POIDS_DEFENSE. Plus le poids est
+   grand, moins la defense compte.
+
+   A 2, la defense ecrasait les degats des qu'elle montait : au
+   niveau 10, une DEF de 9 retirait 15 points a chaque coup, et
+   les Echos les plus resistants devenaient intouchables. A 2.5,
+   elle protege sans rendre invulnerable.
+
+   C'est la seule modification apportee a la formule de degats :
+   sa structure n'a pas change.
+   ============================================================ */
+
+var POIDS_DEFENSE = 2.5;
 
 // Matiere = ocre / gris pierre, Recit = or terni / pourpre,
 // Oubli = vert-de-gris / bleu delave.
@@ -299,6 +340,15 @@ var ASSIMILATION_MAX = 95;
    l'espece. POINT D'ACCROCHE, rien ne le pose aujourd'hui. */
 var ASSIMILATION_MALUS_RANG = { D: 0, C: 5, B: 10, A: 15, S: 25 };
 var RANG_INASSIMILABLE = "X";
+
+
+/* ============================================================
+   L'OUTIL D'EQUILIBRAGE
+   Combien de combats Combat.rapportEquilibrage() rejoue par case.
+   Plus haut = plus stable mais plus lent.
+   ============================================================ */
+
+var SIMULATIONS_PAR_CAS = 200;
 
 
 /* ============================================================

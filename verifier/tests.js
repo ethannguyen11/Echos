@@ -80,14 +80,14 @@ function lancerTests() {
     });
   });
   verifie("statsAuNiveau", stats, [
-    "komainu@1 = 26/5/9", "komainu@3 = 40/8/14", "komainu@8 = 73/14/25",
-    "komainu@20 = 154/30/53", "komainu@50 = 357/69/124",
-    "sunwukong@1 = 14/11/2", "sunwukong@3 = 21/17/3", "sunwukong@8 = 39/31/6",
-    "sunwukong@20 = 83/65/12", "sunwukong@50 = 192/151/27",
-    "jinchan@1 = 17/4/3", "jinchan@3 = 26/6/5", "jinchan@8 = 48/11/8",
-    "jinchan@20 = 101/24/18", "jinchan@50 = 234/55/41",
-    "mechadrill@1 = 31/8/6", "mechadrill@3 = 47/12/9", "mechadrill@8 = 87/23/17",
-    "mechadrill@20 = 184/48/36", "mechadrill@50 = 426/110/82"
+    "komainu@1 = 28/6/6", "komainu@3 = 43/9/9", "komainu@8 = 79/17/17",
+    "komainu@20 = 166/36/36", "komainu@50 = 385/82/82",
+    "sunwukong@1 = 22/9/3", "sunwukong@3 = 33/14/5", "sunwukong@8 = 62/25/8",
+    "sunwukong@20 = 131/53/18", "sunwukong@50 = 302/124/41",
+    "jinchan@1 = 20/6/4", "jinchan@3 = 30/9/6", "jinchan@8 = 56/17/11",
+    "jinchan@20 = 119/36/24", "jinchan@50 = 275/82/55",
+    "mechadrill@1 = 29/8/5", "mechadrill@3 = 44/12/8", "mechadrill@8 = 82/23/14",
+    "mechadrill@20 = 172/48/30", "mechadrill@50 = 398/110/69"
   ]);
 
 
@@ -207,7 +207,7 @@ function lancerTests() {
   [[5, 9], [11, 2], [8, 6], [3, 20], [7, 4]].forEach(function (p) {
     for (var i = 0; i < 3; i++) coups.push(degats(p[0], p[1], alea()));
   });
-  verifie("degats", coups, [1, 1, 1, 11, 9, 9, 4, 5, 5, 1, 1, 1, 6, 5, 5]);
+  verifie("degats", coups, [1, 1, 2, 12, 9, 9, 5, 6, 5, 1, 1, 1, 6, 5, 5]);
 
   verifie("degats : jamais moins de 1", degats(1, 100, 0), 1);
 
@@ -215,7 +215,7 @@ function lancerTests() {
     [1, 2, 3].map(function (t) {
       var adv = adversaireDe({ espece: "komainu", niveau: 5 }, t);
       return t + " -> " + adv.pv + "/" + adv.atq + "/" + adv.def;
-    }), ["1 -> 53/10/18", "2 -> 90/12/18", "3 -> 127/13/18"]);
+    }), ["1 -> 57/12/12", "2 -> 97/19/12", "3 -> 137/26/12"]);
 
   /* --- Assimiler ---
      Nouvelle formule, visible sur le bouton :
@@ -527,7 +527,7 @@ function lancerTests() {
      degatsAjustes(10, "komainu", "tortuedragon", 10),   // neutre, palier max
      degatsAjustes(10, "komainu", "sunwukong", 0),       // avantage 1.3
      degatsAjustes(10, "sunwukong", "komainu", 10)],     // desavantage 0.75
-    [10, 10, 13, 8]);
+    [10, 10, 13, 9]);
 
   // Et maintenant : rallume, tout doit revenir exactement comme avant
   verifie("rallume : l'ancien comportement revient a l'identique",
@@ -577,7 +577,7 @@ function lancerTests() {
     [multiplicateurAffinite("sunwukong", "komainu"),    // recit   frappe matiere
      multiplicateurAffinite("baku", "sunwukong"),       // oubli   frappe recit
      multiplicateurAffinite("komainu", "baku")          // matiere frappe oubli
-    ], [0.75, 0.75, 0.75]);
+    ], [AFFINITE_DESAVANTAGE, AFFINITE_DESAVANTAGE, AFFINITE_DESAVANTAGE]);
 
   verifie("meme affinite : rien ne change",
     [multiplicateurAffinite("komainu", "tortuedragon"),
@@ -665,14 +665,14 @@ function lancerTests() {
 
   verifie("l'equipe s'arrete a 3", equipe, ["komainu", "baku", "peng"]);
   verifie("un doublon plus fort remplace l'ancien",
-    collection.komainu, { espece: "komainu", niveau: 7, xp: 0, pv: 67 });
+    collection.komainu, { espece: "komainu", niveau: 7, xp: 0, pv: 72 });
 
   verifie("xpRequis", [1, 2, 5, 10, 49].map(xpRequis), [26, 40, 82, 152, 698]);
   verifie("gagnerXp (montees de niveau)",
     [gagnerXp("baku", 25), gagnerXp("baku", 500), gagnerXp("inconnu", 10)],
     [0, 7, null]);
   verifie("gagnerXp soigne a la montee",
-    collection.baku, { espece: "baku", niveau: 8, xp: 49, pv: 65 });
+    collection.baku, { espece: "baku", niveau: 8, xp: 49, pv: 79 });
 
   // basculerEquipe ecrit normalement la sauvegarde et redessine le
   // grimoire : on neutralise ces deux effets, pour que lancer les

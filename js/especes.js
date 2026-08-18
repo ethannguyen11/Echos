@@ -11,7 +11,7 @@ var ESPECES = {
     affinite: "matiere", nature: "organique",
     rang: "A", aptitudes: ["rempart", "sceau", "fissure"],
     nom: "Komainu", titre: "le Lion Gardien",
-    pv: 26, atq: 5, def: 9,
+    pv: 28, atq: 6, def: 6,
     trait: "Garde du Seuil : annule les dégâts d'un tour et en renvoie la moitié."
   },
   chiguo: {
@@ -19,7 +19,7 @@ var ESPECES = {
     affinite: "matiere", nature: "hybride",
     rang: "C", aptitudes: ["sceau", "appel", "rempart"],
     nom: "Chi Guo", titre: "Gardien des Terres",
-    pv: 23, atq: 4, def: 7,
+    pv: 23, atq: 5, def: 5,
     trait: "Souffle d'Encens : empoisonne l'adversaire pendant 4 tours."
   },
   sunwukong: {
@@ -27,7 +27,7 @@ var ESPECES = {
     affinite: "recit", nature: "organique",
     rang: "B", aptitudes: ["doubleFrappe", "percee", "frappeLourde"],
     nom: "Sun Wukong", titre: "l'Esprit Enchaîné",
-    pv: 14, atq: 11, def: 2,
+    pv: 22, atq: 9, def: 3,
     trait: "Bond du Singe : frappe deux fois, mais subit un contrecoup."
   },
   palantir: {
@@ -35,7 +35,7 @@ var ESPECES = {
     affinite: "recit", nature: "mecanique",
     rang: "D", aptitudes: ["sceau", "fissure", "percee"],
     nom: "Palantir", titre: "la Sphère de Vide",
-    pv: 20, atq: 3, def: 6,
+    pv: 19, atq: 5, def: 5,
     trait: "Question du Vide : pose une question ; l'échec coûte la moitié des PV."
   },
 
@@ -45,7 +45,7 @@ var ESPECES = {
     affinite: "matiere", nature: "mecanique",
     rang: "S", aptitudes: ["fissure", "rempart", "frappeLourde"],
     nom: "Mecha Drill", titre: "la Foreuse",
-    pv: 31, atq: 8, def: 6,
+    pv: 29, atq: 8, def: 5,
     trait: "Percée : charge un tour, puis frappe au triple."
   },
   teketeke: {
@@ -53,7 +53,7 @@ var ESPECES = {
     affinite: "oubli", nature: "mecanique",
     rang: "C", aptitudes: ["fissure", "doubleFrappe", "frappeLourde"],
     nom: "Teke Teke", titre: "l'Onryo",
-    pv: 16, atq: 7, def: 3,
+    pv: 18, atq: 7, def: 3,
     trait: "Rampe : trois frappes qui ignorent la défense."
   },
   zhanxiyuan: {
@@ -61,7 +61,7 @@ var ESPECES = {
     affinite: "oubli", nature: "hybride",
     rang: "C", aptitudes: ["sceau", "appel", "fissure"],
     nom: "Zhan Xiyuan", titre: "l'Inventeur",
-    pv: 19, atq: 5, def: 5,
+    pv: 21, atq: 6, def: 4,
     trait: "Aiguillage : l'adversaire saute son prochain tour."
   },
   baku: {
@@ -69,7 +69,7 @@ var ESPECES = {
     affinite: "oubli", nature: "organique",
     rang: "B", aptitudes: ["seve", "sceau", "appel"],
     nom: "Baku", titre: "le Mange-Rêve",
-    pv: 23, atq: 6, def: 4,
+    pv: 28, atq: 7, def: 4,
     trait: "Dévorer : vole des PV à l'adversaire."
   },
 
@@ -79,7 +79,7 @@ var ESPECES = {
     affinite: "matiere", nature: "mecanique",
     rang: "B", aptitudes: ["rempart", "sceau", "frappeLourde"],
     nom: "Eiffel", titre: "l'Architecte",
-    pv: 24, atq: 5, def: 7,
+    pv: 29, atq: 6, def: 5,
     trait: "Charpente : la défense monte à chaque tour."
   },
   tortuedragon: {
@@ -87,7 +87,7 @@ var ESPECES = {
     affinite: "matiere", nature: "organique",
     rang: "S", aptitudes: ["rempart", "frappeLourde", "seve"],
     nom: "Tortue Dragon", titre: "le Maître des Fondations",
-    pv: 29, atq: 6, def: 9,
+    pv: 30, atq: 7, def: 6,
     trait: "Ancrage : renonce à fuir, mais double ses dégâts."
   },
   hephaistos: {
@@ -95,7 +95,7 @@ var ESPECES = {
     affinite: "matiere", nature: "mecanique",
     rang: "A", aptitudes: ["rempart", "fissure", "frappeLourde"],
     nom: "Héphaïstos", titre: "le Marteau",
-    pv: 22, atq: 7, def: 6,
+    pv: 26, atq: 8, def: 5,
     trait: "Enclume : rend d'un coup tout ce qu'il a encaissé."
   },
   vinci: {
@@ -103,7 +103,7 @@ var ESPECES = {
     affinite: "recit", nature: "mecanique",
     rang: "C", aptitudes: ["fissure", "doubleFrappe", "percee"],
     nom: "Vinci", titre: "le Savoir",
-    pv: 18, atq: 8, def: 3,
+    pv: 20, atq: 8, def: 3,
     trait: "Mesure : ses coups ignorent la défense pendant 3 tours."
   },
 
@@ -113,7 +113,7 @@ var ESPECES = {
     affinite: "recit", nature: "organique",
     rang: "D", aptitudes: ["doubleFrappe", "fissure", "percee"],
     nom: "Hinezumi", titre: "le Rat de Feu",
-    pv: 18, atq: 6, def: 3,
+    pv: 17, atq: 7, def: 3,
     trait: "Robe de Flammes : brûlure qui s'aggrave chaque tour."
   },
   penghou: {
@@ -121,7 +121,7 @@ var ESPECES = {
     affinite: "oubli", nature: "organique",
     rang: "D", aptitudes: ["seve", "rempart", "appel"],
     nom: "Penghou", titre: "le Chien",
-    pv: 21, atq: 4, def: 5,
+    pv: 21, atq: 5, def: 4,
     trait: "Sève : régénère des PV à chaque tour."
   },
   peng: {
@@ -129,7 +129,7 @@ var ESPECES = {
     affinite: "recit", nature: "organique",
     rang: "B", aptitudes: ["percee", "sceau", "frappeLourde"],
     nom: "Peng", titre: "l'Oiseau Colossal",
-    pv: 20, atq: 7, def: 4,
+    pv: 27, atq: 7, def: 4,
     trait: "Envol : esquive garantie, puis contre-attaque."
   },
   jinchan: {
@@ -137,7 +137,7 @@ var ESPECES = {
     affinite: "recit", nature: "hybride",
     rang: "D", aptitudes: ["appel", "seve", "sceau"],
     nom: "Jin Chan", titre: "le Crapaud",
-    pv: 17, atq: 4, def: 3,
+    pv: 20, atq: 6, def: 4,
     trait: "Fortune : double les points d'écho gagnés."
   }
 };
