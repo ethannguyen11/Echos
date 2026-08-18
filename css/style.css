@@ -237,12 +237,29 @@ button { font-family: inherit; }
 
 .mini-jauge span { display: block; height: 100%; background: #6ec06e; }
 
+/* Le journal de combat.
+   HAUTEUR FIXE : quatre lignes, toujours. Les boutons ne bougent
+   jamais d'un tour a l'autre, rien ne saute sous le pouce.
+   Les lignes s'empilent vers le bas, la plus recente en dernier. */
 #combat-message {
   margin: 0 20px 10px; padding: 12px;
-  min-height: 60px;
+  box-sizing: border-box;
+  height: 108px;                 /* 4 lignes a 1.45 + le padding */
   background: rgba(10, 6, 16, 0.85);
   border: 1px solid #4a3060; border-radius: 12px;
   font-size: 14px; line-height: 1.45;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;     /* la plus recente colle au bas */
+  overflow: hidden;
+}
+
+/* L'opacite vient de JOURNAL_OPACITES, posee en style inline par
+   combat.js : plus une ligne est ancienne, plus elle s'efface. */
+.journal-ligne {
+  flex-shrink: 0;
+  transition: opacity 0.3s ease;
 }
 
 /* Les quatre commandes : pleine largeur, empilees, 52 px de haut.
@@ -261,7 +278,12 @@ button { font-family: inherit; }
   -webkit-tap-highlight-color: transparent;
 }
 
-#combat-actions button:disabled { opacity: 0.35; }
+/* Pendant que le journal defile, les boutons sont eteints : il faut
+   que ca se voie du premier coup d'oeil, sinon on tape dans le vide. */
+#combat-actions button:disabled {
+  opacity: 0.3;
+  filter: grayscale(0.7);
+}
 
 #combat-actions button.assimilation { background: #7a3d95; border-color: #b455d4; }
 

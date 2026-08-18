@@ -205,7 +205,7 @@ var classesManquantes = [];
  "nom", "titre", "stats", "trait", "pop-titre", "pop-lieu", "pop-mons",
  "figement", "grosse", "fleche-haut", "fleche-bas",
  "affinite", "affinite-plus", "affinite-moins",
- "difficulte", "discret", "mt-titre", "mt-ligne", "apt-echo", "apt-ligne", "apt-nom", "apt-texte", "apt-attente",
+ "difficulte", "discret", "journal-ligne", "mt-titre", "mt-ligne", "apt-echo", "apt-ligne", "apt-nom", "apt-texte", "apt-attente",
  "intro-ouverte", "intro-overlay", "intro-visuel", "intro-dialogue",
  "sortant", "recit", "ico", "lieu", "nom-lieu", "parti",
  "echo-depart", "echo-vignette", "echo-substitut", "echo-nom", "echo-titre",

@@ -314,7 +314,83 @@ function avancerFigement() {
    AFFICHAGE
    ------------------------------------------------------------ */
 
-function message(t) { elem("combat-message").innerHTML = t; }
+/* ------------------------------------------------------------
+   LE JOURNAL DE COMBAT
+
+   Trois idees, et c'est tout :
+     - il accumule les lignes au lieu de les remplacer ;
+     - il les fait defiler une par une, pas toutes d'un coup ;
+     - tant qu'il defile, les boutons sont eteints.
+
+   Une seule fonction sert a raconter un tour : raconter(). Elle
+   recoit la liste des choses qui viennent de se passer, et ce
+   qu'il faut faire quand le joueur a fini de les lire.
+   ------------------------------------------------------------ */
+
+var journalVisible = [];      // les lignes affichees, la plus recente en dernier
+var filJournal = [];          // celles qui attendent leur tour
+var minuteurJournal = null;
+var apresJournal = null;      // la suite du combat, une fois le fil vide
+
+function viderJournal() {
+  if (minuteurJournal) { clearTimeout(minuteurJournal); minuteurJournal = null; }
+  journalVisible = [];
+  filJournal = [];
+  apresJournal = null;
+  dessinerJournal();
+}
+
+/* La plus ancienne en haut et la plus pale, la plus recente en bas
+   et en pleine lumiere. La hauteur du bloc ne change jamais : les
+   boutons ne bougent pas d'un tour a l'autre. */
+function dessinerJournal() {
+  var html = "";
+
+  for (var i = 0; i < journalVisible.length; i++) {
+    var age = journalVisible.length - 1 - i;      // 0 = la plus recente
+    var opacite = JOURNAL_OPACITES[age];
+    if (opacite === undefined) opacite = JOURNAL_OPACITES[JOURNAL_OPACITES.length - 1];
+
+    html += '<div class="journal-ligne" style="opacity:' + opacite + '">' +
+            journalVisible[i] + '</div>';
+  }
+
+  elem("combat-message").innerHTML = html;
+}
+
+function ajouterAuJournal(ligne) {
+  journalVisible.push(ligne);
+  while (journalVisible.length > JOURNAL_LIGNES) journalVisible.shift();
+  dessinerJournal();
+}
+
+function defilerJournal() {
+  if (filJournal.length === 0) {
+    minuteurJournal = null;
+
+    // Le fil est vide : le joueur a tout lu, le combat peut reprendre.
+    var suite = apresJournal;
+    apresJournal = null;
+    if (suite) suite();
+    return;
+  }
+
+  ajouterAuJournal(filJournal.shift());
+  minuteurJournal = setTimeout(defilerJournal, DELAI_JOURNAL);
+}
+
+/* Raconte une suite d'evenements, puis enchaine.
+   lignes : un tableau de chaines, les vides sont ignorees.
+   suite  : appelee une fois la derniere ligne lue (facultatif). */
+function raconter(lignes, suite) {
+  if (typeof lignes === "string") lignes = [lignes];
+
+  filJournal = filJournal.concat(lignes.filter(function (l) { return !!l; }));
+  apresJournal = suite || null;
+
+  boutonsActifs(false);
+  if (!minuteurJournal) defilerJournal();
+}
 
 /* La fleche d'un combattant : montante s'il est avantage par le
    Figement en cours, descendante s'il est desavantage, rien s'il
@@ -356,16 +432,20 @@ function majFigement(valeur, palier) {
 
 /* Une mention courte dans le journal quand l'affinite joue.
    Rien du tout quand elle est neutre : le journal reste lisible. */
+/* Une mention courte quand l'affinite joue, rien quand elle est
+   neutre. On nomme toujours la paire dans le meme sens : qui domine
+   qui. "Recit domine Oubli." a l'avantage comme au desavantage,
+   seule change la couleur et l'ordre des deux affinites. */
 function mentionAffinite(especeAttaquant, especeCible) {
   var m = multiplicateurAffinite(especeAttaquant, especeCible);
+  var a = LIBELLES_AFFINITE[ESPECES[especeAttaquant].affinite];
+  var c = LIBELLES_AFFINITE[ESPECES[especeCible].affinite];
 
   if (m > AFFINITE_NEUTRE) {
-    return ' <span class="affinite-plus">&mdash; ' +
-           LIBELLES_AFFINITE[ESPECES[especeAttaquant].affinite] + ' domine</span>';
+    return ' <span class="affinite-plus">' + a + ' domine ' + c + '.</span>';
   }
   if (m < AFFINITE_NEUTRE) {
-    return ' <span class="affinite-moins">&mdash; ' +
-           LIBELLES_AFFINITE[ESPECES[especeCible].affinite] + ' resiste</span>';
+    return ' <span class="affinite-moins">' + c + ' domine ' + a + '.</span>';
   }
   return "";
 }
@@ -551,10 +631,12 @@ function demarrerCombat(donjon, preemptif) {
   brancherBoutonsCombat();
 
   majAffichageCombat();
-  boutonsActifs(true);
 
-  message("<b>" + e.nom + "</b>, " + e.titre + ", se manifeste." +
-          (preemptif ? "<br><span style='color:#b455d4'>Tu l'as surpris : il perd son premier tour.</span>" : ""));
+  // Le journal repart vide a chaque rencontre.
+  viderJournal();
+  raconter(["<b>" + e.nom + "</b>, " + e.titre + ", se manifeste."].concat(
+    preemptif ? ["<span style='color:#b455d4'>Tu l'as surpris : il perd son premier tour.</span>"] : []
+  ), function () { boutonsActifs(true); });
 
   elem("combat").classList.add("actif");
 }
@@ -604,7 +686,7 @@ function tourEquipe(choix) {
       var d = degatsAjustes(brut, c.espece, combat.adversaire.espece, palier);
 
       combat.adversaire.pv -= d;
-      lignes.push(ESPECES[c.espece].nom + " frappe : " + d +
+      lignes.push(ESPECES[c.espece].nom + " frappe : " + d + " dégâts." +
                   mentionAffinite(c.espece, combat.adversaire.espece));
     }
 
@@ -614,11 +696,12 @@ function tourEquipe(choix) {
   elem("scene").classList.add("secoue");
   setTimeout(function () { elem("scene").classList.remove("secoue"); }, 300);
 
-  message(lignes.join("<br>"));
   majAffichageCombat();
 
-  if (combat.adversaire.pv <= 0) { setTimeout(dissipation, 800); return; }
-  setTimeout(tourAdverse, 900);
+  raconter(lignes, function () {
+    if (combat.adversaire.pv <= 0) { dissipation(); return; }
+    tourAdverse();
+  });
 }
 
 function actionAttaquer() { tourEquipe(null); }
@@ -650,9 +733,8 @@ function actionDefendre() {
 
   combat.defenseEnAttente = true;   // le bonus s'ouvre a la fin du tour
 
-  message("Ton équipe se met en garde.");
   majAffichageCombat();
-  setTimeout(tourAdverse, 900);
+  raconter(["Ton équipe se met en garde."], tourAdverse);
 }
 
 function actionAssimiler() {
@@ -665,14 +747,12 @@ function actionAssimiler() {
   var e = ESPECES[combat.donjon.espece];
 
   if (Math.random() * 100 < chance) {
-    message("Le savoir de <b>" + e.nom + "</b> se laisse enfin saisir.");
-    setTimeout(capture, 800);
+    raconter(["Le savoir de <b>" + e.nom + "</b> se laisse enfin saisir."], capture);
     return;
   }
 
-  message("Tu tentes d'assimiler <b>" + e.nom + "</b> (" + chance + " %).<br>Le savoir se dérobe.");
   majAffichageCombat();
-  setTimeout(tourAdverse, 900);
+  raconter(["Assimilation ratée. <b>" + e.nom + "</b> t'ignore."], tourAdverse);
 }
 
 /* Fuir est la cinquieme commande, en dessous des quatre autres et
@@ -688,13 +768,12 @@ function actionFuir() {
   var chance = 0.5 + (moyenne - combat.adversaire.niveau) * 0.07;
 
   if (Math.random() < chance) {
-    message("Tu rappelles tes échos et t'éloignes.<br>Le lieu garde le sien.");
-    finDeCombat();
+    raconter(["Tu rappelles tes échos et t'éloignes.",
+              "Le lieu garde le sien."], finDeCombat);
     return;
   }
 
-  message("L'écho te barre le passage !");
-  setTimeout(tourAdverse, 900);
+  raconter(["L'écho te barre le passage !"], tourAdverse);
 }
 
 function tourAdverse() {
@@ -728,20 +807,21 @@ function tourAdverse() {
 
   cible.pv -= d;
 
-  var txt = "<b>" + ESPECES[combat.donjon.espece].nom + "</b> frappe " +
-            ESPECES[cible.espece].nom + " : " + d + " dégâts." +
-            mentionAffinite(combat.adversaire.espece, cible.espece);
+  var lignes = ["<b>" + ESPECES[combat.donjon.espece].nom + "</b> frappe " +
+                ESPECES[cible.espece].nom + " : " + d + " dégâts." +
+                mentionAffinite(combat.adversaire.espece, cible.espece)];
 
   if (cible.pv <= 0) {
     cible.pv = 0;
-    txt += "<br>" + ESPECES[cible.espece].nom + " se dissout.";
+    lignes.push(ESPECES[cible.espece].nom + " est épuisé.");
   }
 
-  message(txt);
   majAffichageCombat();
 
-  if (!equipeDebout()) { setTimeout(defaite, 800); return; }
-  finDeTour();
+  raconter(lignes, function () {
+    if (!equipeDebout()) { defaite(); return; }
+    finDeTour();
+  });
 }
 
 /* Le tour est termine : les compteurs descendent d'un cran, le lieu
@@ -823,13 +903,13 @@ function capture() {
     txt = "<b>" + e.nom + "</b> se livre, mais tu en savais déjà davantage.";
   }
 
-  txt += "<br>+" + r.gain + " points d'écho" + (fortune ? " (Fortune)" : "") + ".";
-  if (r.lignes.length) txt += "<br>" + r.lignes.join("<br>");
+  var lignes = [txt, "+" + r.gain + " points d'écho" + (fortune ? " (Fortune)" : "") + "."];
+  lignes = lignes.concat(r.lignes);
 
   d.capture = true;
   if (!estCombatFictif()) { rafraichirMarqueur(d); sauvegarder(); }
 
-  message(txt);
+  raconter(lignes);
   finDeCombat();
 }
 
@@ -838,20 +918,20 @@ function dissipation() {
   var fortune = equipe.indexOf("jinchan") !== -1;
   var r = distribuerXp(fortune);
 
-  var txt = "<b>" + e.nom + "</b> se disloque et disparaît.<br>" +
-            "<span style='color:#d4554a'>Son savoir est perdu à jamais.</span><br>" +
-            "+" + r.gain + " points d'écho.";
-  if (r.lignes.length) txt += "<br>" + r.lignes.join("<br>");
+  var lignes = ["<b>" + e.nom + "</b> se disloque et disparaît.",
+                "<span style='color:#d4554a'>Son savoir est perdu à jamais.</span>",
+                "+" + r.gain + " points d'écho."];
+  lignes = lignes.concat(r.lignes);
 
   combat.donjon.dissipe = true;
   if (!estCombatFictif()) { rafraichirMarqueur(combat.donjon); sauvegarder(); }
 
-  message(txt);
+  raconter(lignes);
   finDeCombat();
 }
 
 function defaite() {
-  message("Tes échos sont épuisés.<br>Tu recules. Le lieu garde le sien.");
+  raconter(["Tes échos sont épuisés.", "Tu recules. Le lieu garde le sien."]);
   finDeCombat();
 }
 

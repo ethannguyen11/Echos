@@ -352,6 +352,25 @@ var SIMULATIONS_PAR_CAS = 200;
 
 
 /* ============================================================
+   LE JOURNAL DE COMBAT
+
+   Il accumule les lignes au lieu de les remplacer, et les fait
+   defiler une par une : apres un tour a trois Echos, il se passe
+   trois choses, et le joueur doit pouvoir les lire.
+
+   Tant que le fil se deroule, les boutons restent eteints : on ne
+   doit pas pouvoir jouer par-dessus le recit.
+   ============================================================ */
+
+var JOURNAL_LIGNES = 4;      // lignes gardees a l'ecran, la plus recente en bas
+var DELAI_JOURNAL  = 500;    // millisecondes entre deux lignes
+
+/* Opacite de chaque ligne selon son age : 0 = la plus recente.
+   La liste doit compter au moins JOURNAL_LIGNES valeurs. */
+var JOURNAL_OPACITES = [1, 0.62, 0.38, 0.22];
+
+
+/* ============================================================
    OUTILS COMMUNS
    Trois raccourcis dont tous les fichiers se servent.
    ============================================================ */
