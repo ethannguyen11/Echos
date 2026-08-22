@@ -212,7 +212,7 @@ function employerAptitude(combattant, cle, palier) {
 
   lignes.push(nom + " emploie <b>" + a.nom + "</b> : " + total +
               (coups > 1 ? " en " + coups + " coups" : "") +
-              mentionAffinite(combattant.espece, adv.espece));
+              mentionAffinite(combattant.espece, adv.espece, true));
   return lignes;
 }
 
@@ -479,22 +479,53 @@ function majFigement(valeur, palier) {
 
 /* Une mention courte dans le journal quand l'affinite joue.
    Rien du tout quand elle est neutre : le journal reste lisible. */
-/* Une mention courte quand l'affinite joue, rien quand elle est
-   neutre. On nomme toujours la paire dans le meme sens : qui domine
-   qui. "Recit domine Oubli." a l'avantage comme au desavantage,
-   seule change la couleur et l'ordre des deux affinites. */
-function mentionAffinite(especeAttaquant, especeCible) {
-  var m = multiplicateurAffinite(especeAttaquant, especeCible);
-  var a = LIBELLES_AFFINITE[ESPECES[especeAttaquant].affinite];
-  var c = LIBELLES_AFFINITE[ESPECES[especeCible].affinite];
+/* La pastille d'affinite : le nom, sur la couleur de l'affinite.
 
-  if (m > AFFINITE_NEUTRE) {
-    return ' <span class="affinite-plus">' + a + ' domine ' + c + '.</span>';
-  }
-  if (m < AFFINITE_NEUTRE) {
-    return ' <span class="affinite-moins">' + c + ' domine ' + a + '.</span>';
-  }
-  return "";
+   Elle s'affiche sous le nom de l'adversaire et sur chaque carte
+   d'Echo de l'equipe. Le joueur lit le rapport de force sans
+   ouvrir le grimoire, et il apprend les trois noms en jouant.
+
+   Le nom vient de LIBELLES_AFFINITE : c'est le seul endroit qui
+   decide comment une affinite s'ecrit. */
+function pastilleAffinite(especeId) {
+  var e = ESPECES[especeId];
+  if (!e || !LIBELLES_AFFINITE[e.affinite]) return "";
+
+  return '<span class="past-affinite" style="background:' +
+         COULEURS_AFFINITE[e.affinite] + '">' +
+         LIBELLES_AFFINITE[e.affinite] + '</span>';
+}
+
+/* La mention d'affinite, en fin de ligne du journal.
+
+   Elle dit la CONSEQUENCE, pas la regle. "Pierre domine Flamme"
+   obligeait le joueur a savoir de quelle affinite est chacun des
+   deux combattants avant de comprendre ce qui venait de se
+   passer. "Coup renforce." se lit sans rien savoir.
+
+   Les mots decrivent LE COUP, la couleur dit QUI EN PROFITE :
+     vert    l'avantage est pour le joueur
+     orange  l'avantage est pour l'adversaire
+
+   Les deux se croisent, et c'est le point : un coup adverse
+   renforce s'affiche en ORANGE, un coup adverse attenue en VERT.
+   Avant, la mention etait verte meme quand c'est l'adversaire qui
+   frappait plus fort.
+
+   joueurAttaque : vrai quand c'est un Echo de l'equipe qui frappe. */
+function mentionAffinite(especeAttaquant, especeCible, joueurAttaque) {
+  var m = multiplicateurAffinite(especeAttaquant, especeCible);
+  if (m === AFFINITE_NEUTRE) return "";
+
+  var renforce = m > AFFINITE_NEUTRE;
+
+  // Qui profite du coup : celui qui frappe s'il est renforce,
+  // celui qui encaisse s'il est attenue.
+  var joueurEnProfite = renforce ? joueurAttaque : !joueurAttaque;
+
+  return ' <span class="' +
+         (joueurEnProfite ? "affinite-plus" : "affinite-moins") + '">' +
+         (renforce ? MENTION_RENFORCE : MENTION_ATTENUE) + '</span>';
 }
 
 function majAffichageCombat() {
@@ -503,6 +534,8 @@ function majAffichageCombat() {
 
   majFigement(combat.figement, palier);
   elem("m-fleche").innerHTML = flecheFigement(a.espece, palier);
+
+  elem("m-affinite").innerHTML = pastilleAffinite(a.espece);
 
   elem("m-pv").textContent = Math.max(0, a.pv) + "/" + a.pvMax;
   var pc = Math.max(0, a.pv) / a.pvMax * 100;
@@ -522,6 +555,7 @@ function majAffichageCombat() {
     html += '<div class="carte-echo' + (c.pv <= 0 ? " ko" : "") + '">' +
             '<b>' + e.nom + flecheFigement(c.espece, palier) + '</b>' +
             'niv. ' + c.niveau + ' &middot; ' + Math.max(0, c.pv) + ' PV' +
+            '<div class="ligne-affinite">' + pastilleAffinite(c.espece) + '</div>' +
             '<div class="mini-jauge"><span style="width:' + pct + '%"></span></div>' +
             '</div>';
   }
@@ -785,7 +819,7 @@ function tourEquipe(choix) {
 
       combat.adversaire.pv -= d;
       lignes.push(ESPECES[c.espece].nom + " frappe : " + d + " dégâts." +
-                  mentionAffinite(c.espece, combat.adversaire.espece));
+                  mentionAffinite(c.espece, combat.adversaire.espece, true));
     }
 
     if (combat.adversaire.pv <= 0) break;
@@ -907,7 +941,7 @@ function tourAdverse() {
 
   var lignes = [NOM_ADVERSAIRE + " frappe " +
                 ESPECES[cible.espece].nom + " : " + d + " dégâts." +
-                mentionAffinite(combat.adversaire.espece, cible.espece)];
+                mentionAffinite(combat.adversaire.espece, cible.espece, false)];
 
   if (cible.pv <= 0) {
     cible.pv = 0;

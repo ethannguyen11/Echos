@@ -190,7 +190,16 @@ var RANGS_MINIMUM_ESPECES = 3;
 /* ============================================================
    LES AFFINITES
    Un triangle, comme pierre-feuille-ciseaux :
-     matiere bat recit, recit bat oubli, oubli bat matiere.
+
+     Pierre etouffe Flamme
+     Flamme dissipe Brume
+     Brume  erode   Pierre
+
+   Les noms affiches sont Pierre, Flamme et Brume ; les CLES
+   internes restent matiere, recit et oubli. Elles sont ecrites
+   dans les seize especes et dans la sauvegarde : les renommer
+   obligerait a migrer les deux. La traduction se fait au seul
+   moment de l'affichage, par LIBELLES_AFFINITE.
    ============================================================ */
 
 var AFFINITE_BAT = {
@@ -244,8 +253,9 @@ var ADVERSAIRE_ATQ_PAR_ECHO = 0.6;
 
 var POIDS_DEFENSE = 2.5;
 
-// Matiere = ocre / gris pierre, Recit = or terni / pourpre,
-// Oubli = vert-de-gris / bleu delave.
+// Pierre = ocre / gris pierre, Flamme = or terni / pourpre,
+// Brume = vert-de-gris / bleu delave. Les couleurs n'ont pas
+// bouge : seuls les noms affiches ont change.
 var COULEURS_AFFINITE = {
   matiere: "#b08d5a",
   recit:   "#c9a227",
@@ -286,7 +296,26 @@ var COULEURS_SECOURS = {
 
 var NOM_ADVERSAIRE = "L'écho du lieu";
 
-var LIBELLES_AFFINITE = { matiere: "Matière", recit: "Récit", oubli: "Oubli" };
+/* Ce que le journal dit quand l'affinite joue.
+
+   Le texte decrit LE COUP, jamais qui en profite : c'est la
+   couleur qui s'en charge (vert pour le joueur, orange pour
+   l'adversaire). Deux mots a apprendre, et ils valent dans les
+   deux sens. Voir mentionAffinite() dans combat.js. */
+var MENTION_RENFORCE = "Coup renforcé.";
+var MENTION_ATTENUE  = "Coup atténué.";
+
+/* Le nom de l'affinite tel qu'il s'ecrit a l'ecran, sur le modele
+   de LIBELLES_FAMILLE.
+
+   ATTENTION : les CLES ne changent jamais. Elles sont ecrites dans
+   les seize especes, dans AFFINITE_BAT, dans COULEURS_AFFINITE et
+   dans COULEURS_SECOURS. Seul ce qui s'affiche change ici.
+
+   Tout affichage d'affinite passe par cette table : le grimoire,
+   les pastilles du combat, et rien d'autre ne doit ecrire un nom
+   d'affinite en dur. */
+var LIBELLES_AFFINITE = { matiere: "Pierre", recit: "Flamme", oubli: "Brume" };
 var LIBELLES_NATURE   = { organique: "organique", mecanique: "mécanique", hybride: "hybride" };
 
 

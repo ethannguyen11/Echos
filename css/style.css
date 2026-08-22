@@ -197,9 +197,40 @@ button { font-family: inherit; }
 .fleche-haut { color: #7ddc9a; font-size: 0.85em; }
 .fleche-bas  { color: #e0796d; font-size: 0.85em; }
 
-/* La mention d'affinite dans le journal de combat */
+/* La mention d'affinite dans le journal de combat.
+   La couleur ne suit pas l'affinite mais QUI EN PROFITE : vert
+   quand l'avantage est pour le joueur, orange quand il est pour
+   l'adversaire. Voir mentionAffinite() dans combat.js. */
 .affinite-plus  { color: #7ddc9a; }
 .affinite-moins { color: #e0796d; }
+
+/* La pastille d'affinite : sous le nom de l'adversaire et sur
+   chaque carte d'Echo. Le fond vient de COULEURS_AFFINITE, pose
+   en style inline ; les trois teintes sont claires, d'ou le texte
+   sombre par-dessus. */
+.past-affinite {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.6px;
+  color: #171021;
+  vertical-align: middle;
+}
+
+/* La pastille de l'adversaire, sous son nom, alignee a gauche
+   comme le nom lui-meme. */
+#m-affinite { margin-bottom: 6px; }
+
+/* Sur une carte d'Echo, la pastille est plus petite : trois
+   cartes tiennent cote a cote sur un ecran de telephone. */
+.ligne-affinite { margin-top: 4px; }
+
+.carte-echo .past-affinite {
+  padding: 1px 7px;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
 
 /* Jauge d'assimilation */
 #assimilation-bloc { display: none; padding: 0 20px 8px; }

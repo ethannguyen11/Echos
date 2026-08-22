@@ -847,6 +847,80 @@ function lancerTests() {
   viderJournal();
 
 
+  /* --- Les affinites : les noms affiches et ce que dit le journal ---
+
+     Les noms visibles sont Pierre, Flamme et Brume. Les CLES
+     internes restent matiere, recit et oubli : elles sont ecrites
+     dans les seize especes et dans la sauvegarde. Ce bloc verifie
+     que le renommage n'a touche QUE l'affichage. */
+
+  bloc("Affinites");
+
+  verifie("les trois noms affiches",
+    [LIBELLES_AFFINITE.matiere, LIBELLES_AFFINITE.recit, LIBELLES_AFFINITE.oubli],
+    ["Pierre", "Flamme", "Brume"]);
+
+  verifie("les cles internes n'ont pas bouge",
+    Object.keys(AFFINITE_BAT).sort(), ["matiere", "oubli", "recit"]);
+
+  verifie("le cycle n'a pas bouge",
+    [AFFINITE_BAT.matiere, AFFINITE_BAT.recit, AFFINITE_BAT.oubli],
+    ["recit", "oubli", "matiere"]);
+
+  verifie("les multiplicateurs n'ont pas bouge",
+    [AFFINITE_AVANTAGE, AFFINITE_NEUTRE, AFFINITE_DESAVANTAGE],
+    [1.3, 1.0, 0.85]);
+
+  // Chaque espece doit porter une cle connue, et chaque cle un nom.
+  var affinitesOrphelines = [];
+  for (var idA in ESPECES) {
+    var aff = ESPECES[idA].affinite;
+    if (!LIBELLES_AFFINITE[aff]) affinitesOrphelines.push(idA + " : " + aff + " sans libelle");
+    if (!COULEURS_AFFINITE[aff]) affinitesOrphelines.push(idA + " : " + aff + " sans couleur");
+  }
+  verifie("chaque espece a un nom d'affinite et une couleur", affinitesOrphelines, []);
+
+  // La pastille affiche le nom, jamais la cle.
+  verifie("la pastille porte le nom affiche",
+    pastilleAffinite("komainu").indexOf(">Pierre<") !== -1, true);
+
+  /* La mention du journal : le TEXTE decrit le coup, la COULEUR dit
+     qui en profite. Les deux se croisent quand c'est l'adversaire
+     qui frappe, et c'est tout l'interet du correctif.
+
+     komainu est Pierre, sunwukong est Flamme : Pierre etouffe
+     Flamme. */
+  function mention(attaquant, cible, joueurAttaque) {
+    var html = mentionAffinite(attaquant, cible, joueurAttaque);
+    if (!html) return "rien";
+    var classe = html.indexOf("affinite-plus") !== -1 ? "vert" : "orange";
+    var texte = html.replace(/<[^>]+>/g, "").trim();
+    return classe + " / " + texte;
+  }
+
+  verifie("le joueur frappe avec l'avantage : vert",
+    mention("komainu", "sunwukong", true), "vert / Coup renforcé.");
+
+  verifie("le joueur frappe avec le desavantage : orange",
+    mention("sunwukong", "komainu", true), "orange / Coup atténué.");
+
+  verifie("l'adversaire frappe avec l'avantage : ORANGE",
+    mention("komainu", "sunwukong", false), "orange / Coup renforcé.");
+
+  verifie("l'adversaire frappe avec le desavantage : VERT",
+    mention("sunwukong", "komainu", false), "vert / Coup atténué.");
+
+  verifie("affinite neutre : aucune mention",
+    [mention("komainu", "eiffel", true), mention("komainu", "eiffel", false)],
+    ["rien", "rien"]);
+
+  // Le journal ne doit plus jamais enoncer la regle.
+  verifie("la mention ne nomme plus les affinites",
+    [mentionAffinite("komainu", "sunwukong", true).indexOf("Pierre"),
+     mentionAffinite("komainu", "sunwukong", true).indexOf("domine")],
+    [-1, -1]);
+
+
   /* --- Cinematique d'ouverture --- */
 
   bloc("Intro");

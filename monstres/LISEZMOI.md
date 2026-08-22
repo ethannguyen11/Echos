@@ -41,8 +41,8 @@ C'est prévu, et c'est la règle principale de ce dossier : **le jeu reste
 parfaitement jouable avec un dossier vide.**
 
 Une espèce dont l'image manque affiche un **visuel de secours** : une
-silhouette sombre, colorée selon son affinité (Matière ocre, Récit or
-terni, Oubli vert-de-gris), avec son initiale. Elle ne provoque aucune
+silhouette sombre, colorée selon son affinité (Pierre ocre, Flamme or
+terni, Brume vert-de-gris), avec son initiale. Elle ne provoque aucune
 erreur, et n'empêche jamais les autres espèces de s'afficher
 normalement. Tu peux donc dessiner tes seize Échos un par un, sur des
 semaines, sans jamais casser le jeu entre deux.
