@@ -699,6 +699,80 @@ function lancerTests() {
   equipe = equipeAvant;
 
 
+  /* --- Le grimoire : ce qu'il montre du bestiaire ---
+     bestiaire() ne touche pas a l'ecran, on peut donc l'appeler
+     ici directement. On lui donne une collection connue, et on
+     verifie ce qu'il en dit. */
+
+  bloc("Grimoire");
+
+  var collectionAvantG = collection, equipeAvantG = equipe;
+
+  // Grimoire vierge : les seize especes sont la, aucune n'est liee.
+  collection = {};
+  equipe = [];
+  var vierge = bestiaire();
+
+  verifie("un grimoire vierge montre quand meme tout le bestiaire",
+    [vierge.lies, vierge.total, vierge.familles.length], [0, 16, 4]);
+
+  verifie("les familles sont dans l'ordre d'especes.js",
+    vierge.familles.map(function (f) { return f.famille; }),
+    ["temple", "metro", "monument", "parc"]);
+
+  // Chaque famille doit avoir un titre affichable et une couleur.
+  var famillesSansLibelle = [];
+  vierge.familles.forEach(function (f) {
+    if (!LIBELLES_FAMILLE[f.famille]) famillesSansLibelle.push(f.famille + " : sans libelle");
+    if (!COULEURS[f.famille]) famillesSansLibelle.push(f.famille + " : sans couleur");
+  });
+  verifie("chaque famille a un libelle et une couleur", famillesSansLibelle, []);
+
+  /* Une espece presente dans ESPECES mais absente d'ESPECES_PAR_LIEU
+     n'apparaitrait dans aucune section : elle serait introuvable
+     pour le joueur. C'est le sens inverse du test du bloc
+     "Bestiaire", qui verifie que les lieux ne pointent que vers
+     des especes connues. */
+  var horsGrimoire = Object.keys(ESPECES);
+  vierge.familles.forEach(function (f) {
+    f.lignes.forEach(function (l) {
+      var i = horsGrimoire.indexOf(l.espece);
+      if (i !== -1) horsGrimoire.splice(i, 1);
+    });
+  });
+  verifie("aucune espece n'echappe au grimoire", horsGrimoire, []);
+
+  // Une collection connue : trois especes liees, dans trois familles.
+  collection = {};
+  ajouterAlaCollection("komainu", 7);    // temple
+  ajouterAlaCollection("baku", 4);       // metro
+  ajouterAlaCollection("vinci", 2);      // monument
+  equipe = ["baku"];
+
+  var b = bestiaire();
+  verifie("la progression compte les especes liees", [b.lies, b.total], [3, 16]);
+
+  verifie("chaque famille compte les siennes",
+    b.familles.map(function (f) { return f.famille + " " + f.lies + "/" + f.total; }),
+    ["temple 1/4", "metro 1/4", "monument 1/4", "parc 0/4"]);
+
+  verifie("les especes gardent l'ordre d'especes.js",
+    b.familles[0].lignes.map(function (l) { return l.espece; }),
+    ["komainu", "chiguo", "sunwukong", "palantir"]);
+
+  verifie("une espece liee porte son niveau",
+    b.familles[0].lignes[0], { espece: "komainu", lie: true, niveau: 7, dansEquipe: false });
+
+  verifie("une espece inconnue ne porte aucun niveau",
+    b.familles[0].lignes[1], { espece: "chiguo", lie: false, niveau: 0, dansEquipe: false });
+
+  verifie("l'equipe est signalee sur la ligne",
+    b.familles[1].lignes[3], { espece: "baku", lie: true, niveau: 4, dansEquipe: true });
+
+  collection = collectionAvantG;
+  equipe = equipeAvantG;
+
+
   /* --- Cinematique d'ouverture --- */
 
   bloc("Intro");

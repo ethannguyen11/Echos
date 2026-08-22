@@ -66,6 +66,17 @@ var COULEURS = {
   temple:   "#d4554a"
 };
 
+/* Le nom de la famille tel qu'il s'ecrit a l'ecran. CATEGORIES,
+   dans lieux.js, ne connait que le prefixe d'un nom de lieu
+   ("Porte du Temple de") : ca ne fait pas un titre de rubrique.
+   Sert aux quatre sections du grimoire. */
+var LIBELLES_FAMILLE = {
+  monument: "Monuments",
+  parc:     "Parcs",
+  metro:    "Métro",
+  temple:   "Temples"
+};
+
 
 /* ============================================================
    LE FIGEMENT
