@@ -1,13 +1,20 @@
 /* ============================================================
    LE BESTIAIRE
    Chaque espece : ses statistiques de base, son trait, sa famille.
-   "img" est le nom du fichier : monstres/komainu.png
+
+   "image" est le nom complet du fichier, extension comprise :
+   monstres/komainu.png. Voir monstres/LISEZMOI.md pour la
+   convention de nommage et le format attendu.
+
+   C'est une propriete de l'ESPECE, jamais de l'Echo possede :
+   elle n'entre pas dans la sauvegarde. normaliserCollection()
+   ne recopie que espece / niveau / xp / pv.
    ============================================================ */
 
 var ESPECES = {
   /* --- TEMPLES --- */
   komainu: {
-    img: "komainu", famille: "temple",
+    image: "komainu.png", famille: "temple",
     affinite: "matiere", nature: "organique",
     rang: "A", aptitudes: ["rempart", "sceau", "fissure"],
     nom: "Komainu", titre: "le Lion Gardien",
@@ -15,7 +22,7 @@ var ESPECES = {
     trait: "Garde du Seuil : annule les dégâts d'un tour et en renvoie la moitié."
   },
   chiguo: {
-    img: "chiguo", famille: "temple",
+    image: "chiguo.png", famille: "temple",
     affinite: "matiere", nature: "hybride",
     rang: "C", aptitudes: ["sceau", "appel", "rempart"],
     nom: "Chi Guo", titre: "Gardien des Terres",
@@ -23,7 +30,7 @@ var ESPECES = {
     trait: "Souffle d'Encens : empoisonne l'adversaire pendant 4 tours."
   },
   sunwukong: {
-    img: "sunwukong", famille: "temple",
+    image: "sunwukong.png", famille: "temple",
     affinite: "recit", nature: "organique",
     rang: "B", aptitudes: ["doubleFrappe", "percee", "frappeLourde"],
     nom: "Sun Wukong", titre: "l'Esprit Enchaîné",
@@ -31,7 +38,7 @@ var ESPECES = {
     trait: "Bond du Singe : frappe deux fois, mais subit un contrecoup."
   },
   palantir: {
-    img: "palantir", famille: "temple",
+    image: "palantir.png", famille: "temple",
     affinite: "recit", nature: "mecanique",
     rang: "D", aptitudes: ["sceau", "fissure", "percee"],
     nom: "Palantir", titre: "la Sphère de Vide",
@@ -41,7 +48,7 @@ var ESPECES = {
 
   /* --- METRO --- */
   mechadrill: {
-    img: "mechadrill", famille: "metro",
+    image: "mechadrill.png", famille: "metro",
     affinite: "matiere", nature: "mecanique",
     rang: "S", aptitudes: ["fissure", "rempart", "frappeLourde"],
     nom: "Mecha Drill", titre: "la Foreuse",
@@ -49,7 +56,7 @@ var ESPECES = {
     trait: "Percée : charge un tour, puis frappe au triple."
   },
   teketeke: {
-    img: "teketeke", famille: "metro",
+    image: "teketeke.png", famille: "metro",
     affinite: "oubli", nature: "mecanique",
     rang: "C", aptitudes: ["fissure", "doubleFrappe", "frappeLourde"],
     nom: "Teke Teke", titre: "l'Onryo",
@@ -57,7 +64,7 @@ var ESPECES = {
     trait: "Rampe : trois frappes qui ignorent la défense."
   },
   zhanxiyuan: {
-    img: "zhanxiyuan", famille: "metro",
+    image: "zhanxiyuan.png", famille: "metro",
     affinite: "oubli", nature: "hybride",
     rang: "C", aptitudes: ["sceau", "appel", "fissure"],
     nom: "Zhan Xiyuan", titre: "l'Inventeur",
@@ -65,7 +72,7 @@ var ESPECES = {
     trait: "Aiguillage : l'adversaire saute son prochain tour."
   },
   baku: {
-    img: "baku", famille: "metro",
+    image: "baku.png", famille: "metro",
     affinite: "oubli", nature: "organique",
     rang: "B", aptitudes: ["seve", "sceau", "appel"],
     nom: "Baku", titre: "le Mange-Rêve",
@@ -75,7 +82,7 @@ var ESPECES = {
 
   /* --- MONUMENTS --- */
   eiffel: {
-    img: "eiffel", famille: "monument",
+    image: "eiffel.png", famille: "monument",
     affinite: "matiere", nature: "mecanique",
     rang: "B", aptitudes: ["rempart", "sceau", "frappeLourde"],
     nom: "Eiffel", titre: "l'Architecte",
@@ -83,7 +90,7 @@ var ESPECES = {
     trait: "Charpente : la défense monte à chaque tour."
   },
   tortuedragon: {
-    img: "tortuedragon", famille: "monument",
+    image: "tortuedragon.png", famille: "monument",
     affinite: "matiere", nature: "organique",
     rang: "S", aptitudes: ["rempart", "frappeLourde", "seve"],
     nom: "Tortue Dragon", titre: "le Maître des Fondations",
@@ -91,7 +98,7 @@ var ESPECES = {
     trait: "Ancrage : renonce à fuir, mais double ses dégâts."
   },
   hephaistos: {
-    img: "hephaistos", famille: "monument",
+    image: "hephaistos.png", famille: "monument",
     affinite: "matiere", nature: "mecanique",
     rang: "A", aptitudes: ["rempart", "fissure", "frappeLourde"],
     nom: "Héphaïstos", titre: "le Marteau",
@@ -99,7 +106,7 @@ var ESPECES = {
     trait: "Enclume : rend d'un coup tout ce qu'il a encaissé."
   },
   vinci: {
-    img: "vinci", famille: "monument",
+    image: "vinci.png", famille: "monument",
     affinite: "recit", nature: "mecanique",
     rang: "C", aptitudes: ["fissure", "doubleFrappe", "percee"],
     nom: "Vinci", titre: "le Savoir",
@@ -109,7 +116,7 @@ var ESPECES = {
 
   /* --- PARCS --- */
   hinezumi: {
-    img: "hinezumi", famille: "parc",
+    image: "hinezumi.png", famille: "parc",
     affinite: "recit", nature: "organique",
     rang: "D", aptitudes: ["doubleFrappe", "fissure", "percee"],
     nom: "Hinezumi", titre: "le Rat de Feu",
@@ -117,7 +124,7 @@ var ESPECES = {
     trait: "Robe de Flammes : brûlure qui s'aggrave chaque tour."
   },
   penghou: {
-    img: "penghou", famille: "parc",
+    image: "penghou.png", famille: "parc",
     affinite: "oubli", nature: "organique",
     rang: "D", aptitudes: ["seve", "rempart", "appel"],
     nom: "Penghou", titre: "le Chien",
@@ -125,7 +132,7 @@ var ESPECES = {
     trait: "Sève : régénère des PV à chaque tour."
   },
   peng: {
-    img: "peng", famille: "parc",
+    image: "peng.png", famille: "parc",
     affinite: "recit", nature: "organique",
     rang: "B", aptitudes: ["percee", "sceau", "frappeLourde"],
     nom: "Peng", titre: "l'Oiseau Colossal",
@@ -133,7 +140,7 @@ var ESPECES = {
     trait: "Envol : esquive garantie, puis contre-attaque."
   },
   jinchan: {
-    img: "jinchan", famille: "parc",
+    image: "jinchan.png", famille: "parc",
     affinite: "recit", nature: "hybride",
     rang: "D", aptitudes: ["appel", "seve", "sceau"],
     nom: "Jin Chan", titre: "le Crapaud",
@@ -159,4 +166,57 @@ function statsAuNiveau(especeId, niveau) {
     atq:   Math.round(e.atq * f),
     def:   Math.round(e.def * f)
   };
+}
+
+
+/* ------------------------------------------------------------
+   LE VISUEL DE SECOURS
+
+   Ce qu'on affiche a la place d'une illustration absente. Ce
+   n'est pas un message d'erreur : c'est une silhouette sombre,
+   teintee selon l'affinite de l'espece, avec son initiale. Elle
+   doit avoir l'air voulue, pas cassee.
+
+   Le secours dit deja quelque chose d'utile : sa couleur annonce
+   l'affinite de l'adversaire.
+
+   Trois ecrans s'en servent : le combat, le grimoire et l'Echo de
+   depart de la cinematique. Ils passent tous par ici, donc changer
+   son allure se fait a un seul endroit.
+   ------------------------------------------------------------ */
+
+function secoursDeLEspece(especeId) {
+  var e = ESPECES[especeId] || {};
+  var affinite = COULEURS_SECOURS[e.affinite] ? e.affinite : "matiere";
+
+  return {
+    vif:      COULEURS_AFFINITE[affinite],    // bord et initiale
+    fond:     COULEURS_SECOURS[affinite],     // coeur du degrade
+    initiale: (e.nom || "?").charAt(0).toUpperCase()
+  };
+}
+
+// Le style commun aux trois ecrans, en une chaine.
+function styleSecours(s) {
+  return "background:radial-gradient(circle at 38% 32%," + s.fond + ",#0d0812);" +
+         "border-color:" + s.vif + ";color:" + s.vif;
+}
+
+/* Pose le secours sur un element qui existe deja dans la page.
+   C'est le cas de l'ecran de combat (#monstre-vide). */
+function poserSecours(noeud, especeId) {
+  if (!noeud) return;
+  var s = secoursDeLEspece(especeId);
+  noeud.style.background = "radial-gradient(circle at 38% 32%," + s.fond + ",#0d0812)";
+  noeud.style.borderColor = s.vif;
+  noeud.style.color = s.vif;
+  noeud.innerHTML = '<span class="initiale">' + s.initiale + '</span>';
+}
+
+/* Rend le secours sous forme de HTML, pour les ecrans qui se
+   construisent en chaine de caracteres (grimoire, cinematique). */
+function htmlSecours(especeId, classe) {
+  var s = secoursDeLEspece(especeId);
+  return '<span class="' + classe + '" style="' + styleSecours(s) + '">' +
+         '<span class="initiale">' + s.initiale + '</span></span>';
 }

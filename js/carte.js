@@ -116,6 +116,13 @@ function mettreAJourHud(lat, lon) {
 
   var e = ESPECES[donjonProche.espece];
 
+  /* On demande l'illustration de cet Echo des qu'il devient le plus
+     proche, donc pendant que le joueur marche encore vers lui. Elle
+     sera en cache quand le combat s'ouvrira, et l'adversaire
+     apparaitra du premier coup. prechargerEspece() ne telecharge
+     qu'une fois par espece. */
+  prechargerEspece(donjonProche.espece);
+
   if (distanceProche > DISTANCE_ENTREE) {
     texte.innerHTML = "<b>" + donjonProche.nom + "</b><br>" + Math.round(distanceProche) + " m";
     bouton.style.display = "none";

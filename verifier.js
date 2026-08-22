@@ -202,7 +202,7 @@ var css = lire("css/style.css") + "\n" + lire("css/intro.css");
 var classesManquantes = [];
 ["actif", "visible", "secoue", "ko", "bas", "danger", "assimilation", "sortie",
  "carte-echo", "mini-jauge", "ligne-echo", "equipee", "pastille", "infos",
- "lie", "inconnu", "vide", "famille-titre",
+ "lie", "inconnu", "vide", "famille-titre", "initiale", "pastille-secours",
  "nom", "titre", "stats", "trait", "pop-titre", "pop-lieu", "pop-mons",
  "figement", "grosse", "fleche-haut", "fleche-bas",
  "affinite", "affinite-plus", "affinite-moins",

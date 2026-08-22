@@ -58,6 +58,13 @@ elem("entrer").addEventListener("click", function () {
   demarrerCombat(donjonProche, distanceProche <= DISTANCE_PREEMPTIF);
 });
 
+/* Un appui n'importe ou sur l'ecran de combat fait avancer le
+   journal d'une ligne. Branche UNE SEULE FOIS, ici : #combat reste
+   le meme element toute la partie, alors que les cinq boutons
+   d'action sont reecrits a chaque rencontre par demarrerCombat().
+   Les brancher au meme endroit empilerait les ecouteurs. */
+elem("combat").addEventListener("click", avancerJournal);
+
 elem("btn-grimoire").addEventListener("click", ouvrirGrimoire);
 
 elem("btn-fermer-grimoire").addEventListener("click", function () {

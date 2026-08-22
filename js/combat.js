@@ -331,12 +331,14 @@ var journalVisible = [];      // les lignes affichees, la plus recente en dernie
 var filJournal = [];          // celles qui attendent leur tour
 var minuteurJournal = null;
 var apresJournal = null;      // la suite du combat, une fois le fil vide
+var verrouJournal = false;    // empeche un appui de consommer deux lignes
 
 function viderJournal() {
   if (minuteurJournal) { clearTimeout(minuteurJournal); minuteurJournal = null; }
   journalVisible = [];
   filJournal = [];
   apresJournal = null;
+  verrouJournal = false;
   dessinerJournal();
 }
 
@@ -355,7 +357,25 @@ function dessinerJournal() {
             journalVisible[i] + '</div>';
   }
 
-  elem("combat-message").innerHTML = html;
+  var boite = elem("combat-message");
+  boite.innerHTML = html;
+
+  /* AUCUNE LIGNE COUPEE.
+
+     Le cadre a une hauteur fixe, sinon les boutons sauteraient d'un
+     tour a l'autre. Mais une ligne longue se replie en deux, et
+     quatre lignes repliees debordent : la plus ancienne se
+     retrouvait tranchee en son milieu, en haut du cadre.
+
+     On retire donc les plus anciennes tant que ca deborde. Elles
+     disparaissent entieres, jamais a moitie. Seul l'AFFICHAGE est
+     ampute : journalVisible garde ses quatre lignes.
+
+     scrollHeight = la hauteur qu'il faudrait, clientHeight = celle
+     dont on dispose. */
+  while (boite.firstChild && boite.scrollHeight > boite.clientHeight) {
+    boite.removeChild(boite.firstChild);
+  }
 }
 
 function ajouterAuJournal(ligne) {
@@ -377,6 +397,33 @@ function defilerJournal() {
 
   ajouterAuJournal(filJournal.shift());
   minuteurJournal = setTimeout(defilerJournal, DELAI_JOURNAL);
+}
+
+/* L'APPUI QUI FAIT AVANCER
+
+   Le joueur n'attend pas les 900 ms s'il a deja lu : un appui
+   n'importe ou sur l'ecran de combat sort la ligne suivante tout
+   de suite. C'est le meme geste que dans la cinematique
+   d'ouverture, ou un tap abrege une pause.
+
+   Le verrou est celui de js/intro.js, sous un autre nom : le
+   "verrou" de l'intro est prive (le fichier est une fonction qui
+   s'appelle elle-meme), on en reprend donc le mecanisme, pas la
+   variable. Sans lui, le clic fantome du tactile ferait avancer de
+   deux lignes pour un seul contact du doigt.
+
+   Les boutons d'action restent eteints pendant tout l'enchainement,
+   exactement comme avant : avancer plus vite n'est pas jouer. */
+function avancerJournal() {
+  if (verrouJournal) return;
+  if (!minuteurJournal) return;      // le fil est vide : rien a presser
+
+  verrouJournal = true;
+  clearTimeout(minuteurJournal);
+  minuteurJournal = null;
+
+  defilerJournal();
+  setTimeout(function () { verrouJournal = false; }, DELAI_APPUI);
 }
 
 /* Raconte une suite d'evenements, puis enchaine.
@@ -586,6 +633,60 @@ function fermerAptitudes() {
 
 
 /* ------------------------------------------------------------
+   L'ILLUSTRATION DE L'ADVERSAIRE
+
+   Le dossier monstres/ se remplit un dessin a la fois. Tant qu'une
+   image manque, l'espece concernee montre son visuel de secours,
+   et elle seule : chaque image a son propre onerror, donc une
+   absence n'empeche jamais les autres de s'afficher.
+   ------------------------------------------------------------ */
+
+/* Les especes dont l'image a deja ete demandee au navigateur.
+   On ne garde que la clef : l'image, elle, vit dans le cache du
+   navigateur. Sert a ne pas relancer dix fois le meme
+   telechargement. */
+var imagesDemandees = {};
+
+/* Demande l'image a l'avance, pendant que le joueur marche encore
+   vers le lieu. Quand le combat s'ouvre, elle est deja en cache et
+   s'affiche du premier coup : pas de 💀 qui clignote au premier
+   tour. Appelee par mettreAJourHud() des que le lieu est a portee.
+
+   Un echec ici ne fait rien : c'est afficherAdversaire() qui
+   decide de ce qu'on montre, et le secours l'attend deja. */
+function prechargerEspece(especeId) {
+  var e = ESPECES[especeId];
+  if (!e || !e.image || imagesDemandees[especeId]) return;
+
+  imagesDemandees[especeId] = true;
+
+  // typeof : le faux navigateur de verifier.js ne connait pas Image
+  if (typeof Image === "undefined") return;
+
+  var avance = new Image();
+  avance.src = DOSSIER_MONSTRES + e.image;
+}
+
+/* Met l'adversaire a l'ecran. Le secours est pose AVANT la
+   tentative de chargement : si l'image arrive, elle le recouvre ;
+   si elle n'arrive pas, il n'y a rien a rattraper. */
+function afficherAdversaire(especeId) {
+  var e = ESPECES[especeId];
+  var img = elem("monstre-img"), vide = elem("monstre-vide");
+
+  poserSecours(vide, especeId);
+  img.style.display = "none";
+  vide.style.display = "flex";
+
+  if (!e || !e.image) return;    // espece sans illustration prevue
+
+  img.onload = function () { img.style.display = "block"; vide.style.display = "none"; };
+  img.onerror = function () { img.style.display = "none"; vide.style.display = "flex"; };
+  img.src = DOSSIER_MONSTRES + e.image;
+}
+
+
+/* ------------------------------------------------------------
    DEROULEMENT
    ------------------------------------------------------------ */
 
@@ -613,12 +714,7 @@ function demarrerCombat(donjon, preemptif) {
   // Le niveau annonce est celui auquel il se bat, renfort du lieu compris.
   elem("m-nom").textContent = e.nom + " (niv. " + combat.adversaire.niveau + ")";
 
-  var img = elem("monstre-img"), vide = elem("monstre-vide");
-  img.style.display = "none";
-  vide.style.display = "flex";
-  img.onload = function () { img.style.display = "block"; vide.style.display = "none"; };
-  img.onerror = function () { img.style.display = "none"; vide.style.display = "flex"; };
-  img.src = DOSSIER_MONSTRES + e.img + ".png";
+  afficherAdversaire(donjon.espece);
 
   // Les quatre commandes, toujours les memes, toujours au meme endroit.
   elem("combat-actions").innerHTML =
@@ -634,7 +730,9 @@ function demarrerCombat(donjon, preemptif) {
 
   // Le journal repart vide a chaque rencontre.
   viderJournal();
-  raconter(["<b>" + e.nom + "</b>, " + e.titre + ", se manifeste."].concat(
+  /* L'apparition pose la regle ET donne le nom, dans cet ordre :
+     le joueur apprend la convention sans qu'on la lui explique. */
+  raconter([NOM_ADVERSAIRE + " se manifeste : <b>" + e.nom + "</b>, " + e.titre + "."].concat(
     preemptif ? ["<span style='color:#b455d4'>Tu l'as surpris : il perd son premier tour.</span>"] : []
   ), function () { boutonsActifs(true); });
 
@@ -752,7 +850,7 @@ function actionAssimiler() {
   }
 
   majAffichageCombat();
-  raconter(["Assimilation ratée. <b>" + e.nom + "</b> t'ignore."], tourAdverse);
+  raconter(["Assimilation ratée. " + NOM_ADVERSAIRE + " t'ignore."], tourAdverse);
 }
 
 /* Fuir est la cinquieme commande, en dessous des quatre autres et
@@ -773,7 +871,7 @@ function actionFuir() {
     return;
   }
 
-  raconter(["L'écho te barre le passage !"], tourAdverse);
+  raconter([NOM_ADVERSAIRE + " te barre le passage !"], tourAdverse);
 }
 
 function tourAdverse() {
@@ -807,7 +905,7 @@ function tourAdverse() {
 
   cible.pv -= d;
 
-  var lignes = ["<b>" + ESPECES[combat.donjon.espece].nom + "</b> frappe " +
+  var lignes = [NOM_ADVERSAIRE + " frappe " +
                 ESPECES[cible.espece].nom + " : " + d + " dégâts." +
                 mentionAffinite(combat.adversaire.espece, cible.espece)];
 
@@ -918,7 +1016,11 @@ function dissipation() {
   var fortune = equipe.indexOf("jinchan") !== -1;
   var r = distribuerXp(fortune);
 
-  var lignes = ["<b>" + e.nom + "</b> se disloque et disparaît.",
+  /* On nomme l'espece ici, alors que le reste du combat dit
+     seulement "l'echo du lieu" : un joueur qui perd un Echo rare
+     doit savoir lequel il vient de perdre. C'est ce qui donne
+     envie d'y retourner. */
+  var lignes = [NOM_ADVERSAIRE + " se disloque : <b>" + e.nom + "</b> disparaît.",
                 "<span style='color:#d4554a'>Son savoir est perdu à jamais.</span>",
                 "+" + r.gain + " points d'écho."];
   lignes = lignes.concat(r.lignes);

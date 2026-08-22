@@ -128,20 +128,35 @@ button { font-family: inherit; }
   position: relative;
 }
 
+/* L'illustration est TOUJOURS redimensionnee ici, jamais affichee a
+   sa taille native (environ 1000 px de haut). #scene lui reserve sa
+   place a l'avance (flex + min-height), donc l'arrivee de l'image ne
+   deplace rien autour d'elle. */
 #monstre-img {
   max-height: 100%; max-width: 65%;
   object-fit: contain;
   filter: drop-shadow(0 0 24px rgba(180, 85, 212, 0.35));
 }
 
+/* Le visuel de secours, quand l'illustration n'existe pas encore.
+   Les trois couleurs (fond, bord, initiale) sont posees en style
+   inline par poserSecours(), d'apres l'affinite de l'espece. */
 #monstre-vide {
   width: 130px; height: 130px;
   border-radius: 50% 50% 42% 42%;
   background: radial-gradient(circle at 40% 35%, #4a3060, #221430);
   border: 2px solid #6b4a85;
   display: flex; align-items: center; justify-content: center;
-  font-size: 40px;
+  font-size: 54px;
   animation: flotter 3s ease-in-out infinite;
+}
+
+/* L'initiale de l'espece : presente, jamais un logo. */
+.initiale {
+  font-weight: 700;
+  opacity: 0.38;
+  letter-spacing: 1px;
+  line-height: 1;
 }
 
 @keyframes flotter {
@@ -244,7 +259,7 @@ button { font-family: inherit; }
 #combat-message {
   margin: 0 20px 10px; padding: 12px;
   box-sizing: border-box;
-  height: 108px;                 /* 4 lignes a 1.45 + le padding */
+  height: 160px;                 /* de quoi replier des lignes longues */
   background: rgba(10, 6, 16, 0.85);
   border: 1px solid #4a3060; border-radius: 12px;
   font-size: 14px; line-height: 1.45;
@@ -425,20 +440,39 @@ button { font-family: inherit; }
   margin-top: 3px;
 }
 
+/* La vignette d'un Echo : elle porte son illustration. Le bord
+   prend la couleur de la famille, posee en style inline par
+   vignetteEcho(). Taille fixe et flex-shrink a 0 : l'arrivee d'une
+   image ne deplace jamais le texte a cote. */
 .pastille {
-  width: 42px; height: 42px; border-radius: 10px;
+  width: 56px; height: 56px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700; color: #fff;
   flex-shrink: 0;
+  background: #120d18;
+  border: 2px solid #b455d4;
+  overflow: hidden;
 }
 
-/* La pastille d'une espece inconnue ne porte aucune couleur de
-   famille : elle ne recoit pas de style inline, donc ces regles
-   suffisent, sans !important. */
+/* L'illustration reste cachee tant qu'elle n'a pas charge : c'est
+   le secours qu'on voit en attendant. Elle est toujours
+   redimensionnee ici, jamais affichee en taille native. */
+.pastille img { max-width: 100%; max-height: 100%; display: none; }
+
+.pastille-secours {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+}
+
+/* La vignette d'une espece inconnue ne porte aucune couleur de
+   famille ni d'affinite : montrer sa teinte apprendrait au joueur
+   quelque chose qu'il n'a pas encore merite. Elle ne recoit pas de
+   style inline, donc ces regles suffisent, sans !important. */
 .pastille.vide {
   background: #201a2a; color: #574a64;
-  border: 1px dashed #3d3349;
-  font-size: 16px;
+  border: 2px dashed #3d3349;
+  font-size: 22px;
 }
 
 #btn-fermer-grimoire {

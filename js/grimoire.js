@@ -70,18 +70,41 @@ function bestiaire() {
    COMMENT IL S'AFFICHE
    ------------------------------------------------------------ */
 
+/* La vignette d'un Echo lie : son illustration si le dessin existe
+   dans monstres/, son visuel de secours sinon.
+
+   Le montage est celui de l'ecran de combat, en plus petit : le
+   secours est en place d'abord, l'image se pose PAR-DESSUS quand
+   elle arrive, et son propre onerror la retire si elle n'arrive
+   pas. Chaque vignette est independante, donc une image manquante
+   n'empeche jamais les autres de s'afficher.
+
+   Le bord garde la couleur de la famille : c'est ce que portait la
+   pastille avant, et ca reste lisible d'un coup d'oeil. */
+function vignetteEcho(especeId) {
+  var e = ESPECES[especeId];
+  var bord = COULEURS[e.famille] || "#b455d4";
+
+  return '<div class="pastille" style="border-color:' + bord + '">' +
+         '<img src="' + DOSSIER_MONSTRES + e.image + '" alt="" ' +
+         'onload="this.style.display=\'block\';this.nextElementSibling.style.display=\'none\'" ' +
+         'onerror="this.style.display=\'none\'">' +
+         htmlSecours(especeId, "pastille-secours") +
+         '</div>';
+}
+
 function ligneLiee(l) {
   var e = ESPECES[l.espece];
   var s = statsAuNiveau(l.espece, l.niveau);
 
   return '<div class="ligne-echo lie' + (l.dansEquipe ? " equipee" : "") +
          '" data-espece="' + l.espece + '">' +
-         '<div class="pastille" style="background:' + COULEURS[e.famille] + '">' +
-         l.niveau + '</div>' +
+         vignetteEcho(l.espece) +
          '<div class="infos">' +
          '<div class="nom">' + e.nom + '</div>' +
          '<div class="titre">' + e.titre + '</div>' +
-         '<div class="stats">' + s.pvMax + ' PV &middot; ATQ ' + s.atq + ' &middot; DEF ' + s.def + '</div>' +
+         '<div class="stats">Niv. ' + l.niveau + ' &middot; ' +
+         s.pvMax + ' PV &middot; ATQ ' + s.atq + ' &middot; DEF ' + s.def + '</div>' +
          '<div class="affinite" style="color:' + COULEURS_AFFINITE[e.affinite] + '">' +
          LIBELLES_AFFINITE[e.affinite] + ' &middot; ' + LIBELLES_NATURE[e.nature] + '</div>' +
          '<div class="trait">' + e.trait + '</div>' +

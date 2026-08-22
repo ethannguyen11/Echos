@@ -174,7 +174,14 @@ body.intro-ouverte { overflow: hidden; }
 }
 
 .echo-vignette img { max-width: 100%; max-height: 100%; display: none; }
-.echo-substitut { font-size: 44px; }
+
+/* Le visuel de secours, en vignette. Fond, bord et couleur de
+   l'initiale viennent de htmlSecours(), en style inline. */
+.echo-substitut {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44px;
+}
 
 .echo-nom { font-size: 20px; font-weight: 600; color: #fff; }
 .echo-titre { font-size: 14px; color: #9a9aa4; font-style: italic; margin-top: 2px; }

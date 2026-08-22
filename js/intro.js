@@ -610,10 +610,10 @@ function carteEchoDepart() {
   // comme sur l'ecran de combat.
   return '<div class="echo-depart">' +
          '<div class="echo-vignette" style="border-color:' + couleur + '">' +
-         '<img src="' + DOSSIER_MONSTRES + e.img + '.png" alt="" ' +
+         '<img src="' + DOSSIER_MONSTRES + e.image + '" alt="" ' +
          'onload="this.style.display=\'block\';this.nextElementSibling.style.display=\'none\'" ' +
          'onerror="this.style.display=\'none\'">' +
-         '<span class="echo-substitut">&#128128;</span>' +
+         htmlSecours(echo.espece, "echo-substitut") +
          '</div>' +
          '<div class="echo-nom">' + echapper(e.nom) + '</div>' +
          '<div class="echo-titre">' + echapper(e.titre) + '</div>' +

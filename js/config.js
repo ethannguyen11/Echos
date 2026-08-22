@@ -252,6 +252,40 @@ var COULEURS_AFFINITE = {
   oubli:   "#7fa6a0"
 };
 
+/* Le fond profond du visuel de secours, quand l'illustration d'une
+   espece n'existe pas encore dans monstres/. La teinte vive, elle,
+   vient de COULEURS_AFFINITE juste au-dessus : une seule source
+   pour la couleur d'une affinite.
+     matiere  gris pierre
+     recit    pourpre
+     oubli    bleu delave
+   Voir secoursDeLEspece() dans especes.js. */
+var COULEURS_SECOURS = {
+  matiere: "#3b3128",
+  recit:   "#3a2440",
+  oubli:   "#26343d"
+};
+
+/* ============================================================
+   COMMENT LE JOURNAL NOMME L'ADVERSAIRE
+
+   Une regle, apprise des la premiere ligne du combat :
+     un nom nu designe toujours un de TES Echos ;
+     l'adversaire est toujours "l'echo du lieu".
+
+   Sans elle, un adversaire de la meme espece qu'un Echo de ton
+   equipe donnait "Penghou frappe Penghou : 38 degats.", illisible.
+   Avec seize especes et trois Echos en equipe, le cas arrive
+   souvent.
+
+   Le nom de l'espece n'est jamais perdu pour autant : il reste
+   affiche en permanence au-dessus de la jauge (#m-nom), et le
+   journal le donne aux deux moments qui comptent, l'apparition et
+   la fin du combat.
+   ============================================================ */
+
+var NOM_ADVERSAIRE = "L'écho du lieu";
+
 var LIBELLES_AFFINITE = { matiere: "Matière", recit: "Récit", oubli: "Oubli" };
 var LIBELLES_NATURE   = { organique: "organique", mecanique: "mécanique", hybride: "hybride" };
 
@@ -374,7 +408,18 @@ var SIMULATIONS_PAR_CAS = 200;
    ============================================================ */
 
 var JOURNAL_LIGNES = 4;      // lignes gardees a l'ecran, la plus recente en bas
-var DELAI_JOURNAL  = 500;    // millisecondes entre deux lignes
+var DELAI_JOURNAL  = 900;    // millisecondes entre deux lignes
+
+/* Le joueur n'est pas oblige d'attendre : un appui n'importe ou sur
+   l'ecran de combat fait passer a la ligne suivante tout de suite.
+   900 ms est donc un rythme de lecture confortable, pas une
+   contrainte.
+
+   Apres un appui manuel, on ferme le passage pendant ce delai : un
+   seul contact du doigt peut produire deux evenements (le "clic
+   fantome" du tactile), et sans ce verrou il consommerait deux
+   lignes d'un coup. Meme mecanisme que le verrou de js/intro.js. */
+var DELAI_APPUI = 250;
 
 /* Opacite de chaque ligne selon son age : 0 = la plus recente.
    La liste doit compter au moins JOURNAL_LIGNES valeurs. */

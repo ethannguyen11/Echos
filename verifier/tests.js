@@ -42,7 +42,7 @@ function lancerTests() {
   var champsManquants = [];
   for (var id in ESPECES) {
     var e = ESPECES[id];
-    ["img", "famille", "nom", "titre", "pv", "atq", "def", "trait",
+    ["image", "famille", "nom", "titre", "pv", "atq", "def", "trait",
      "affinite", "nature"].forEach(function (champ) {
       if (e[champ] === undefined) champsManquants.push(id + "." + champ);
     });
@@ -771,6 +771,80 @@ function lancerTests() {
 
   collection = collectionAvantG;
   equipe = equipeAvantG;
+
+
+  /* --- Le journal de combat : le rythme et l'appui ---
+
+     On remplace l'horloge par une fausse, dont on declenche les
+     reveils a la main. Sans ca, impossible de verifier "un appui
+     fait avancer d'exactement une ligne" : tout se joue entre deux
+     minuteurs. */
+
+  bloc("Journal de combat");
+
+  verifie("le delai par defaut est de 900 ms", DELAI_JOURNAL, 900);
+
+  var vraiSetTimeout = setTimeout, vraiClearTimeout = clearTimeout;
+  var reveils = {}, prochainId = 1;
+
+  setTimeout = function (f, delai) {
+    reveils[prochainId] = { f: f, delai: delai };
+    return prochainId++;
+  };
+  clearTimeout = function (id) { delete reveils[id]; };
+
+  // Declenche le reveil en attente dont le delai vaut exactement d.
+  function sonner(d) {
+    for (var id in reveils) {
+      if (reveils[id].delai === d) {
+        var f = reveils[id].f;
+        delete reveils[id];
+        f();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  viderJournal();
+  var suiteAppelee = 0;
+  raconter(["une", "deux", "trois", "quatre"], function () { suiteAppelee++; });
+
+  verifie("raconter affiche la premiere ligne tout de suite",
+    journalVisible.slice(), ["une"]);
+
+  avancerJournal();
+  verifie("un appui fait avancer d'une ligne",
+    journalVisible.slice(), ["une", "deux"]);
+
+  // Le clic fantome du tactile : deuxieme evenement pour un seul doigt.
+  avancerJournal();
+  verifie("un deuxieme appui immediat ne consomme rien",
+    journalVisible.slice(), ["une", "deux"]);
+
+  sonner(DELAI_APPUI);                    // le verrou se rouvre
+  avancerJournal();
+  verifie("apres le verrou, l'appui suivant avance d'une seule ligne",
+    journalVisible.slice(), ["une", "deux", "trois"]);
+
+  // L'attente normale marche toujours : le minuteur du journal sonne.
+  sonner(DELAI_APPUI);
+  sonner(DELAI_JOURNAL);
+  verifie("sans appui, le journal defile tout seul",
+    journalVisible.slice(), ["une", "deux", "trois", "quatre"]);
+
+  verifie("la suite du combat n'a pas encore ete appelee", suiteAppelee, 0);
+
+  sonner(DELAI_JOURNAL);                  // le fil est vide
+  verifie("la suite est appelee une fois le fil epuise", suiteAppelee, 1);
+
+  // Fil vide : l'appui ne doit plus rien declencher.
+  avancerJournal();
+  verifie("un appui sur un journal vide ne rappelle pas la suite", suiteAppelee, 1);
+
+  setTimeout = vraiSetTimeout;
+  clearTimeout = vraiClearTimeout;
+  viderJournal();
 
 
   /* --- Cinematique d'ouverture --- */
