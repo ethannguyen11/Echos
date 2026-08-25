@@ -220,6 +220,60 @@
       "Oubli"</b> : ce sont les cles internes, elles ne se montrent jamais.</li>
   <li><b>Fin.</b> Apres une assimilation reussie, le rond du lieu devient
       gris, et l'Echo apparait dans le grimoire.</li>
+  <li><b>Le bouton Ico.</b> Dans la barre du haut, a droite de Grimoire.
+      <b>Sur un ecran etroit, c'est la fiche d'equipe qui doit se tronquer,
+      jamais les deux boutons</b> : ce sont eux qu'on touche au pouce.</li>
+  <li><b>La couche reference, des le premier lancement.</b> Efface tes
+      donnees, recommence, et ouvre Ico avant meme le premier combat.
+      <b>Les sept sections doivent etre la et toutes consultables.</b> Rien ne
+      se debloque dans cet ecran, jamais.</li>
+  <li><b>Une seule section a la fois.</b> Touche un titre : il se deroule.
+      Touche-en un autre : le premier se referme. Retouche le meme : il se
+      referme. <b>Il ne doit jamais y en avoir deux d'ouvertes.</b></li>
+  <li><b>Ou j'en suis.</b> La derniere section donne tes chiffres du moment.
+      Assimile un Echo, rouvre l'ecran : <b>le compte a change</b>. Il se
+      recalcule a chaque ouverture, il n'est jamais fige.</li>
+  <li><b>Il te parle a toi.</b> Le texte dit "Voila ou tu en es, {ton nom}",
+      avec le nom que tu as donne pendant la cinematique, et les accords
+      suivent le genre que tu as choisi.</li>
+  <li><b>Le didacticiel se declenche tout seul.</b> Au tout premier combat,
+      une bulle apparait EN HAUT de l'ecran une fois le premier message
+      passe. <b>Elle ne doit jamais recouvrir les cinq commandes</b> :
+      c'est exactement ce qu'elle est en train d'expliquer.</li>
+  <li><b>Elle ne bloque rien, le point delicat.</b> Pendant qu'une bulle est
+      affichee, touche <b>Attaquer</b>. <b>Les deux doivent se produire :
+      l'attaque part ET la bulle disparait.</b> Si l'attaque ne part pas,
+      c'est un bug.</li>
+  <li><b>Ico ne parle pas par-dessus le recit.</b> Provoque un tour ou
+      l'affinite joue. La bulle du triangle ne doit apparaitre
+      <b>qu'une fois les lignes du journal finies de defiler</b>, jamais
+      pendant.</li>
+  <li><b>Chacune une seule fois.</b> Ouvre le grimoire : bulle. Ferme,
+      rouvre : <b>plus rien</b>. Relance meme le jeu : toujours rien.</li>
+  <li><b>Tout retester.</b> Dans la console du navigateur, tape
+      <code>Ico.reinitialiserDidacticiel()</code>. Les sept interventions
+      se rejouent, <b>et ta collection n'a pas bouge</b>.</li>
+  <li><b>Le combat d'essai n'enregistre rien.</b> En mode test, provoque une
+      intervention, puis quitte le combat d'essai et recharge la page :
+      <b>elle doit se rejouer</b>, puisque rien n'a ete ecrit.</li>
+  <li><b>Les deux couches ne se melangent pas.</b> Dans l'ecran d'Ico, les
+      sept sections de regles sont en haut ; <b>"Ce que je retrouve"</b> les
+      separe franchement de ses fragments, en dessous, dans une autre
+      couleur et en italique.</li>
+  <li><b>Le fragment 0 des le depart, sans pastille.</b> Efface tes donnees,
+      recommence, ouvre Ico : <b>"Ce que je suis" est deja lisible</b>, et le
+      bouton Ico ne porte AUCUNE pastille.</li>
+  <li><b>La pastille au franchissement.</b> Assimile une deuxieme espece
+      DIFFERENTE : une pastille apparait sur le bouton Ico. Ouvre le nouveau
+      fragment : <b>elle s'eteint</b>. Un doublon ne doit rien declencher.</li>
+  <li><b>Il se defige.</b> Le portrait en haut de son ecran change avec ta
+      progression : couvert de plaques au debut, elles tombent une par une,
+      il se rechauffe, se balance a partir de 7 especes, et <b>gagne deux
+      cornes a 14</b>. Tu vas dans le sens du Figement, lui dans l'autre.</li>
+  <li><b>Il ne promet rien qu'il n'a pas.</b> Tant qu'il reste des fragments,
+      une seule ligne le dit : "Il y a autre chose. Je ne l'ai pas encore."
+      <b>Aucune case vide, aucun cadenas</b> : il ne peut pas annoncer ce
+      qu'il n'a pas encore retrouve.</li>
 </ol>
 
 <h2>LE MODE TEST</h2>

@@ -365,30 +365,56 @@ function detruireEcran() {
 
 /* --- La machine a ecrire --- */
 
-var minuteurFrappe = null;
-var texteEnCours = "";
+/* La machine a ecrire, ecrite une seule fois pour tout le jeu.
 
-function frapper(texte, surFini) {
-  texteEnCours = texte;
-  zoneTexte.textContent = "";
+   Elle prend le noeud ou ecrire en parametre : c'est ce qui
+   permet a l'ecran d'Ico (js/ico.js) de s'en servir sans qu'on
+   ait a en ecrire une deuxieme. Elle est exposee par
+   Intro.frapperDans.
 
+   Elle rend une POIGNEE plutot que de poser un minuteur global :
+   deux frappes peuvent ainsi vivre en meme temps dans deux
+   endroits differents, sans se marcher dessus.
+     .encours()   la frappe n'est pas finie
+     .completer() pose le texte entier d'un coup */
+function frapperDans(noeud, texte, surFini) {
+  if (!noeud) return { encours: function () { return false; },
+                       completer: function () { return false; } };
+
+  noeud.textContent = "";
   var i = 0;
-  minuteurFrappe = setInterval(function () {
+
+  var minuteur = setInterval(function () {
     i++;
-    zoneTexte.textContent = texte.slice(0, i);
+    noeud.textContent = texte.slice(0, i);
     if (i >= texte.length) {
-      clearInterval(minuteurFrappe);
-      minuteurFrappe = null;
-      surFini();
+      clearInterval(minuteur);
+      minuteur = null;
+      if (surFini) surFini();
     }
   }, VITESSE_FRAPPE);
+
+  return {
+    encours: function () { return minuteur !== null; },
+    completer: function () {
+      if (minuteur === null) return false;
+      clearInterval(minuteur);
+      minuteur = null;
+      noeud.textContent = texte;
+      return true;
+    }
+  };
+}
+
+// La frappe de la cinematique : toujours dans zoneTexte.
+var frappeEnCours = null;
+
+function frapper(texte, surFini) {
+  frappeEnCours = frapperDans(zoneTexte, texte, surFini);
 }
 
 function completerLigne() {
-  if (!minuteurFrappe) return false;
-  clearInterval(minuteurFrappe);
-  minuteurFrappe = null;
-  zoneTexte.textContent = texteEnCours;
+  if (!frappeEnCours || !frappeEnCours.completer()) return false;
   etat = "ligne";
   return true;
 }
@@ -682,7 +708,7 @@ function terminer() {
 
   if (recherche && !recherche.finie) conclure(null);
   if (minuteurPause) { clearTimeout(minuteurPause); minuteurPause = null; }
-  if (minuteurFrappe) { clearInterval(minuteurFrappe); minuteurFrappe = null; }
+  if (frappeEnCours) { frappeEnCours.completer(); frappeEnCours = null; }
 
   profil.nom      = reponses.nom || "";
   profil.genre    = reponses.genre || "";
@@ -713,6 +739,10 @@ function reinitialiser() {
 return {
   demarrer: demarrer,
   reinitialiser: reinitialiser,
+
+  // La machine a ecrire, partagee avec js/ico.js : il n'y a
+  // qu'un seul moteur de texte dans le jeu.
+  frapperDans: frapperDans,
 
   // Exposes pour verifier.js et verifier/tests.js uniquement
   SCRIPT: SCRIPT,

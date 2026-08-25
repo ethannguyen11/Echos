@@ -28,6 +28,7 @@ var FICHIERS = [
   "js/combat.js",
   "js/grimoire.js",
   "js/intro.js",
+  "js/ico.js",
   "js/modetest.js",
   "js/jeu.js"
 ];
@@ -119,7 +120,11 @@ var ctx = {
       idsDemandes.push(id);
       return idsPage.indexOf(id) === -1 ? null : fauxNoeud();
     },
-    querySelectorAll: function () { return []; }
+    querySelectorAll: function () { return []; },
+
+    // Le vrai document en a un : js/jeu.js y branche l'appui qui
+    // efface l'intervention d'Ico.
+    addEventListener: function () {}
   },
   localStorage: { getItem: function () { return null; }, setItem: function () {} },
   navigator: { geolocation: { watchPosition: function () {} } },
@@ -198,7 +203,7 @@ ligne(manquants.length === 0,
       manquants.length ? "introuvable(s) : " + manquants.join(", ") : null);
 
 // Les classes CSS employees par le JS doivent exister dans les feuilles
-var css = lire("css/style.css") + "\n" + lire("css/intro.css");
+var css = lire("css/style.css") + "\n" + lire("css/intro.css") + "\n" + lire("css/ico.css");
 var classesManquantes = [];
 ["actif", "visible", "secoue", "ko", "bas", "danger", "assimilation", "sortie",
  "carte-echo", "mini-jauge", "ligne-echo", "equipee", "pastille", "infos",
@@ -207,6 +212,10 @@ var classesManquantes = [];
  "figement", "grosse", "fleche-haut", "fleche-bas",
  "affinite", "affinite-plus", "affinite-moins",
  "past-affinite", "ligne-affinite",
+ "ico-section", "ouverte", "ico-titre", "ico-chevron", "ico-corps",
+ "ico-ligne", "ico-chiffres", "ico-chiffre", "ico-libelle", "ico-valeur",
+ "ico-rubrique", "fragment", "ico-neuf", "ico-a-venir",
+ "ico-bulle-nom", "ico-bulle-ligne",
  "difficulte", "discret", "journal-ligne", "mt-titre", "mt-ligne", "apt-echo", "apt-ligne", "apt-nom", "apt-texte", "apt-attente",
  "intro-ouverte", "intro-overlay", "intro-visuel", "intro-dialogue",
  "sortant", "recit", "ico", "lieu", "nom-lieu", "parti",
@@ -218,8 +227,49 @@ ligne(classesManquantes.length === 0,
       "chaque classe CSS employee par le JS existe",
       classesManquantes.length ? "absente(s) du CSS : " + classesManquantes.join(", ") : null);
 
+/* UN SEUL MOTEUR DE TEXTE DANS LE JEU.
+
+   js/ico.js doit se servir de la machine a ecrire de intro.js
+   (Intro.frapperDans) et surtout pas en poser une deuxieme. Le
+   jour ou quelqu'un ecrira un setInterval de frappe dans ico.js,
+   ce controle le dira : deux moteurs finissent toujours par
+   diverger, et le personnage n'aurait plus la meme voix selon
+   l'ecran. */
+var srcIco = lire("js/ico.js");
+var moteurDouble = [];
+if (srcIco.indexOf("Intro.frapperDans") === -1) {
+  moteurDouble.push("ico.js ne se sert pas de Intro.frapperDans");
+}
+if (/setInterval/.test(srcIco)) {
+  moteurDouble.push("ico.js pose son propre setInterval");
+}
+ligne(moteurDouble.length === 0,
+      "un seul moteur de texte : ico.js reutilise celui de intro.js",
+      moteurDouble.length ? moteurDouble.join(", ") : null);
+
+/* Les cles du didacticiel sont des chaines de caracteres posees
+   dans quatre fichiers differents. Une faute de frappe dans un
+   Ico.dire() ne se verrait nulle part : l'intervention ne se
+   jouerait jamais, sans la moindre erreur. On croise donc les
+   deux listes dans les deux sens. */
+if (demarrageOk && ctx.TEXTES_ICO_DIDACTICIEL) {
+  var declenchees = tousLes(/Ico\.dire\("([^"]+)"\)/g, codeJs);
+  var ecrites = ctx.TEXTES_ICO_DIDACTICIEL.map(function (d) { return d.cle; });
+
+  var inconnues = declenchees.filter(function (c) { return ecrites.indexOf(c) === -1; });
+  var muettes   = ecrites.filter(function (c) { return declenchees.indexOf(c) === -1; });
+
+  var detail = [];
+  if (inconnues.length) detail.push("declenchee mais inexistante : " + inconnues.join(", "));
+  if (muettes.length)   detail.push("jamais declenchee : " + muettes.join(", "));
+
+  ligne(detail.length === 0,
+        "chaque intervention d'Ico a un declencheur, et reciproquement",
+        detail.length ? detail.join(" | ") : null);
+}
+
 // Tous les fichiers doivent etre appeles par index.html
-var oublies = FICHIERS.concat(["css/style.css", "css/intro.css"]).filter(function (f) {
+var oublies = FICHIERS.concat(["css/style.css", "css/intro.css", "css/ico.css"]).filter(function (f) {
   return html.indexOf(f) === -1;
 });
 ligne(oublies.length === 0, "index.html appelle bien tous les fichiers",

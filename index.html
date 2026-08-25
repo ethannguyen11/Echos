@@ -12,6 +12,7 @@
 
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/intro.css">
+<link rel="stylesheet" href="css/ico.css">
 </head>
 <body>
 
@@ -20,6 +21,9 @@
 <div id="barre-haut">
   <div id="fiche">Équipe vide</div>
   <button id="btn-grimoire">Grimoire</button>
+  <!-- La pastille signale qu'Ico s'est rappelé quelque chose.
+       Cachee tant que js/ico.js ne lui pose pas la classe "visible". -->
+  <button id="btn-ico">Ico<span id="ico-pastille"></span></button>
 </div>
 
 <!-- Le panneau du mode test. Invisible tant que js/modetest.js ne lui
@@ -110,6 +114,56 @@
   <button id="btn-fermer-grimoire">Fermer</button>
 </div>
 
+<!-- L'intervention du didacticiel. Elle flotte par-dessus le jeu et
+     ne recoit JAMAIS les touchers (pointer-events: none en CSS) :
+     un appui la fait disparaitre tout en atteignant le bouton qui
+     se trouve dessous. Elle ne bloque donc jamais l'action. -->
+<div id="ico-bulle">
+  <div class="ico-bulle-nom">ICO</div>
+  <div id="ico-bulle-l1" class="ico-bulle-ligne"></div>
+  <div id="ico-bulle-l2" class="ico-bulle-ligne"></div>
+</div>
+
+<!-- ------------------ ICO ------------------ -->
+<div id="ico">
+  <div id="ico-entete">
+    <!-- La silhouette. data-defigement va de 0 a 5 : c'est lui
+         qui pilote son apparence, entierement en CSS. -->
+    <div id="ico-portrait" data-defigement="0">
+      <svg viewBox="0 0 100 130" aria-hidden="true">
+        <ellipse class="ico-tete" cx="50" cy="34" rx="20" ry="23"></ellipse>
+        <path class="ico-corps-forme" d="M50 57 C22 57 14 82 14 130 L86 130 C86 82 78 57 50 57 Z"></path>
+        <g class="ico-plaques">
+          <rect x="30" y="18" width="40" height="9"></rect>
+          <rect x="26" y="36" width="48" height="9"></rect>
+          <rect x="22" y="66" width="56" height="10"></rect>
+          <rect x="18" y="88" width="64" height="10"></rect>
+          <rect x="16" y="110" width="68" height="10"></rect>
+        </g>
+        <g class="ico-cornes">
+          <path d="M34 16 L28 2 L42 12 Z"></path>
+          <path d="M66 16 L72 2 L58 12 Z"></path>
+        </g>
+        <circle class="ico-lueur" cx="50" cy="34" r="3"></circle>
+      </svg>
+    </div>
+    <div>
+      <h2>ICO</h2>
+      <div class="aide">Ce que je sais du monde. Demande quand tu veux.</div>
+    </div>
+  </div>
+
+  <!-- Les deux couches ne se melangent jamais. La reference est
+       complete des le depart ; l'identite, en dessous, est la
+       seule chose qui se debloque. -->
+  <div id="ico-defilement">
+    <div id="ico-sections"></div>
+    <div id="ico-fragments"></div>
+  </div>
+
+  <button id="btn-fermer-ico">Fermer</button>
+</div>
+
 <div id="depart">
   <h1>ECHOS</h1>
   <p>Chaque lieu garde un savoir perdu. Tu ne combats pas : tu assimiles.</p>
@@ -126,6 +180,7 @@
 <script src="js/combat.js"></script>
 <script src="js/grimoire.js"></script>
 <script src="js/intro.js"></script>
+<script src="js/ico.js"></script>
 <script src="js/modetest.js"></script>
 <script src="js/jeu.js"></script>
 

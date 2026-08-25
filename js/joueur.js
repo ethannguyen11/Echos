@@ -11,6 +11,15 @@ var equipe = [];       // jusqu'a 3 identifiants d'espece
 // sauvegarde, en revanche, le bloc s'appelle bien "joueur".
 var profil = profilParDefaut();
 
+/* Ce qu'Ico a deja dit et ce qu'il a deja retrouve.
+
+   Attention au nom, comme pour profil / joueur plus haut : la
+   VARIABLE s'appelle suiviIco, le BLOC de sauvegarde s'appelle
+   "ico", et le namespace du guide s'appelle Ico avec une
+   majuscule (js/ico.js). Trois choses differentes ; melanger les
+   deux dernieres serait facile et penible a debusquer. */
+var suiviIco = icoParDefaut();
+
 function profilParDefaut() {
   return {
     nom: "",
@@ -18,6 +27,14 @@ function profilParDefaut() {
     voie: "",           // archiviste | arpenteur | gardien
     lieuZero: null,     // { nom, lat, lon }
     introVue: false
+  };
+}
+
+function icoParDefaut() {
+  return {
+    didacticiensVus: [],   // identifiants des interventions deja jouees
+    palierLu: 0,           // dernier fragment d'identite consulte
+    palierAtteint: 0       // dernier palier franchi, pour la pastille
   };
 }
 
@@ -89,7 +106,8 @@ function sauverJoueur() {
       version: VERSION_JOUEUR,
       collection: collection,
       equipe: equipe,
-      joueur: profil
+      joueur: profil,
+      ico: suiviIco
     }));
   } catch (e) {}
 }
@@ -163,16 +181,53 @@ function normaliserProfil(brut) {
   return p;
 }
 
+/* Le bloc d'Ico. Une sauvegarde v3 n'en a pas : brut vaut alors
+   undefined, et on rend les valeurs par defaut sans broncher.
+
+   Comme pour la collection, on ne suppose jamais qu'un champ
+   existe ni qu'il a le bon type. Un palier absurde (negatif, 900,
+   "sept") ne doit pas pouvoir bloquer l'ecran d'Ico. */
+function normaliserIco(brut) {
+  var i = icoParDefaut();
+  if (!brut || typeof brut !== "object") return i;
+
+  var vus = brut.didacticiensVus;
+  if (vus && typeof vus.length === "number") {
+    for (var k = 0; k < vus.length; k++) {
+      var id = vus[k];
+      if (typeof id !== "string") continue;              // pas un identifiant
+      if (i.didacticiensVus.indexOf(id) !== -1) continue; // doublon
+      i.didacticiensVus.push(id);
+    }
+  }
+
+  i.palierLu      = palierValide(brut.palierLu);
+  i.palierAtteint = palierValide(brut.palierAtteint);
+
+  return i;
+}
+
+function palierValide(valeur) {
+  var p = Math.round(Number(valeur));
+  if (!(p >= 0)) return 0;                    // absent, negatif, ou pas un nombre
+  return Math.min(p, ICO_PALIER_MAX);
+}
+
 function chargerJoueur() {
   var d = null;
 
   try {
     var brut = localStorage.getItem(CLE_JOUEUR);
 
-    // Rien en v3 : on va chercher l'ancienne sauvegarde. Elle n'a
-    // pas de bloc "joueur", donc introVue reste faux et l'intro
-    // se jouera : c'est le comportement voulu.
-    if (!brut) brut = localStorage.getItem(CLE_JOUEUR_ANCIENNE);
+    /* Rien en v4 : on descend les cles anciennes, de la plus
+       recente a la plus vieille, et on prend la premiere qui
+       repond. Une v3 n'a pas de bloc "ico" : il sera cree avec ses
+       valeurs par defaut. Une v2 n'a pas non plus de bloc
+       "joueur", donc introVue reste faux et l'intro se rejouera :
+       c'est le comportement voulu depuis la v3. */
+    for (var i = 0; !brut && i < CLES_JOUEUR_ANCIENNES.length; i++) {
+      brut = localStorage.getItem(CLES_JOUEUR_ANCIENNES[i]);
+    }
 
     if (brut) d = JSON.parse(brut);
   } catch (e) { d = null; }
@@ -181,10 +236,12 @@ function chargerJoueur() {
     collection = normaliserCollection(d.collection);
     equipe     = normaliserEquipe(d.equipe, collection);
     profil     = normaliserProfil(d.joueur);
+    suiviIco   = normaliserIco(d.ico);
   } else {
     collection = {};
     equipe     = [];
     profil     = profilParDefaut();
+    suiviIco   = icoParDefaut();
   }
 
   // Premier lancement : Jin Chan te suit deja, au niveau 3.
@@ -198,6 +255,13 @@ function chargerJoueur() {
 }
 
 function majFiche() {
+  /* Le seul endroit appele a chaque fois que la collection peut
+     avoir change : chargerJoueur, basculerEquipe, finDeCombat.
+     C'est donc ici qu'Ico verifie s'il vient de se rappeler
+     quelque chose. Le garde protege l'ordre de chargement :
+     joueur.js est lu avant ico.js. */
+  if (typeof Ico !== "undefined") Ico.majPastille();
+
   var f = document.getElementById("fiche");
 
   if (equipe.length === 0) {

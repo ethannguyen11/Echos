@@ -71,4 +71,13 @@ elem("btn-fermer-grimoire").addEventListener("click", function () {
   elem("grimoire").classList.remove("actif");
 });
 
+elem("btn-ico").addEventListener("click", Ico.ouvrir);
+elem("btn-fermer-ico").addEventListener("click", Ico.fermer);
+
+/* Un appui n'importe ou efface l'intervention d'Ico en cours.
+   Branche sur le document entier, et volontairement en DERNIER :
+   quand il s'execute, le bouton ou la carte ont deja recu le meme
+   appui et fait leur travail. Ico efface, il ne bloque rien. */
+document.addEventListener("click", Ico.surAppui);
+
 brancherBoutonsCombat();

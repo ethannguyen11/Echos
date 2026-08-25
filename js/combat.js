@@ -399,6 +399,13 @@ function defilerJournal() {
   minuteurJournal = setTimeout(defilerJournal, DELAI_JOURNAL);
 }
 
+/* Le journal est-il en train de defiler ?
+   Ico s'en sert pour ne jamais parler par-dessus le recit d'un
+   tour : il attend que la main soit revenue au joueur. */
+function journalEnCours() {
+  return minuteurJournal !== null;
+}
+
 /* L'APPUI QUI FAIT AVANCER
 
    Le joueur n'attend pas les 900 ms s'il a deja lu : un appui
@@ -517,6 +524,11 @@ function mentionAffinite(especeAttaquant, especeCible, joueurAttaque) {
   var m = multiplicateurAffinite(especeAttaquant, especeCible);
   if (m === AFFINITE_NEUTRE) return "";
 
+  // DIDACTICIEL : le triangle, au premier coup ou l'affinite joue.
+  // C'est le seul point de passage des deux sens, avantage comme
+  // desavantage, quel que soit celui qui frappe.
+  Ico.dire("affinite");
+
   var renforce = m > AFFINITE_NEUTRE;
 
   // Qui profite du coup : celui qui frappe s'il est renforce,
@@ -589,7 +601,11 @@ function majBoutonAssimiler() {
     b.textContent = "Il ne t'écoutera pas.";
     return;
   }
-  b.textContent = "Assimiler " + chanceAssimilation(combat) + " %";
+  var chance = chanceAssimilation(combat);
+  b.textContent = "Assimiler " + chance + " %";
+
+  // DIDACTICIEL : quand tenter, la premiere fois que ca vaut le coup
+  if (chance > ICO_SEUIL_ASSIMILATION) Ico.dire("assimilation-seuil");
 }
 
 /* Toutes les aptitudes que l'equipe peut employer maintenant :
@@ -768,7 +784,10 @@ function demarrerCombat(donjon, preemptif) {
      le joueur apprend la convention sans qu'on la lui explique. */
   raconter([NOM_ADVERSAIRE + " se manifeste : <b>" + e.nom + "</b>, " + e.titre + "."].concat(
     preemptif ? ["<span style='color:#b455d4'>Tu l'as surpris : il perd son premier tour.</span>"] : []
-  ), function () { boutonsActifs(true); });
+  ), function () {
+    boutonsActifs(true);
+    Ico.dire("combat");        // DIDACTICIEL : les cinq commandes
+  });
 
   elem("combat").classList.add("actif");
 }
@@ -884,6 +903,10 @@ function actionAssimiler() {
   }
 
   majAffichageCombat();
+
+  // DIDACTICIEL : ce qu'on perd, ce qu'on garde
+  Ico.dire("assimilation-ratee");
+
   raconter(["Assimilation ratée. " + NOM_ADVERSAIRE + " t'ignore."], tourAdverse);
 }
 
@@ -1010,6 +1033,12 @@ function distribuerXp(bonusFortune) {
     var montees = gagnerXp(c.espece, gain);
     if (montees > 0) {
       lignes.push(ESPECES[c.espece].nom + " atteint le niveau " + collection[c.espece].niveau + " !");
+
+      /* DIDACTICIEL : les aptitudes, quand un Echo atteint le
+         niveau qui ouvre la premiere. On regarde la MONTEE, pas le
+         niveau possede : un Echo capture deja au-dessus de 5 n'a
+         rien "atteint". */
+      if (collection[c.espece].niveau >= APTITUDE_NIVEAUX[0]) Ico.dire("aptitudes");
     }
   }
 
@@ -1092,10 +1121,17 @@ function finDeCombat() {
   elem("combat-actions").innerHTML =
     '<button class="sortie" id="btn-sortir">Revenir à la carte</button>';
 
+  /* On retient l'issue MAINTENANT : le gestionnaire ci-dessous met
+     combat a null avant qu'Ico ait son mot a dire. */
+  var gagne = !!(combat.donjon && combat.donjon.capture);
+
   elem("btn-sortir").addEventListener("click", function () {
     elem("combat").classList.remove("actif");
     combat = null;
     if (dernierePosition) mettreAJourHud(dernierePosition[0], dernierePosition[1]);
+
+    // DIDACTICIEL : la suite, au premier retour apres une victoire
+    if (gagne) Ico.dire("victoire");
   });
 }
 

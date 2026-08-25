@@ -12,13 +12,22 @@ var EQUIPE_MAX         = 3;
 
 var CLE_DONJONS = "echos_donjons_v5";
 
-// La sauvegarde du joueur passe en v3 : elle contient desormais
-// un bloc "joueur" (nom, genre, voie, lieu zero, intro vue).
-// L'ancienne cle n'est plus ecrite, seulement relue une fois
-// pour recuperer la collection et l'equipe.
-var CLE_JOUEUR          = "echos_joueur_v3";
-var CLE_JOUEUR_ANCIENNE = "echos_joueur_v2";
-var VERSION_JOUEUR      = 3;
+/* La sauvegarde du joueur passe en v4 : elle contient desormais un
+   bloc "ico" (didacticiels deja joues, paliers de la couche
+   identite), a cote du bloc "joueur" apparu en v3.
+
+   Les anciennes cles ne sont plus JAMAIS ecrites : elles sont
+   seulement relues, une fois, pour recuperer ce qu'elles
+   contiennent. La liste va de la plus recente a la plus vieille,
+   et chargerJoueur() prend la premiere qui repond.
+
+   C'est une LISTE et non une seule cle : sinon, passer en v4
+   aurait rendu illisibles les sauvegardes v2, qui se lisaient
+   encore hier. Une partie ne doit pas se perdre parce qu'on a
+   ajoute un ecran. */
+var CLE_JOUEUR           = "echos_joueur_v4";
+var CLES_JOUEUR_ANCIENNES = ["echos_joueur_v3", "echos_joueur_v2"];
+var VERSION_JOUEUR       = 4;
 
 // Overpass est gratuit et sature souvent. On essaie les miroirs
 // l'un apres l'autre ; le japonais est le plus proche de Taipei.
@@ -31,6 +40,303 @@ var SERVEURS_OVERPASS = [
 
 var DELAI_NOUVEL_ESSAI = 20000;   // 20 s avant de retenter apres un echec total
 var DOSSIER_MONSTRES = "monstres/";
+
+
+/* ============================================================
+   ICO
+   Le guide. Sa couche REFERENCE (les regles) est complete des le
+   premier lancement ; sa couche IDENTITE (qui il est) se debloque
+   par paliers. Les deux ne se melangent jamais : un joueur qui
+   revient apres trois semaines doit pouvoir relire comment marche
+   l'Assimilation sans avoir rien a debloquer.
+
+   Les textes eux-memes sont plus bas, dans TEXTES_ICO.
+   ============================================================ */
+
+/* Six paliers, de 0 a 5. Ils sont pilotes par
+   experienceDuGardien() : le nombre d'especes DISTINCTES
+   assimilees, pas le niveau du meilleur Echo. Ico se defige a
+   mesure que le joueur comprend le monde.
+
+   Chaque entree donne le seuil a partir duquel le palier est
+   atteint. La liste doit rester triee du plus haut au plus bas :
+   palierIco() prend la premiere qui passe. */
+var ICO_PALIER_MAX = 5;
+
+var ICO_PALIERS = [
+  { seuil: 14, palier: 5 },   // 14-16 : un homme amaigri, et deux cornes
+  { seuil: 10, palier: 4 },   // 10-13 : presque humain
+  { seuil:  7, palier: 3 },   //  7-9  : il fait des gestes en parlant
+  { seuil:  4, palier: 2 },   //  4-6  : visage partiel
+  { seuil:  2, palier: 1 },   //  2-3  : premieres plaques detachees
+  { seuil:  0, palier: 0 }    //  0-1  : couvert de plaques, un point de lumiere
+];
+
+
+/* ------------------------------------------------------------
+   LA COUCHE REFERENCE
+
+   Les regles du jeu, dites par Ico. COMPLETE DES LE PREMIER
+   LANCEMENT : rien ici ne se debloque, jamais. Un joueur qui
+   revient apres trois semaines doit pouvoir relire comment marche
+   l'Assimilation sans condition.
+
+   Ico dit TOUJOURS la verite sur les mecaniques. Chaque
+   affirmation chiffree ci-dessous a ete verifiee contre le code :
+   trente pour cent vient d'AFFINITE_AVANTAGE (1.3), le socle de
+   trente d'ASSIMILATION_SOCLE, les trois tours de recharge
+   d'APTITUDE_RECHARGE. Si tu changes un de ces nombres, RELIS CE
+   TEXTE : une seule ligne fausse ici detruit la confiance sur
+   laquelle repose tout le personnage.
+
+   Il ment par omission sur LUI-MEME, et seulement sur lui : les
+   lignes a double sens sont signalees en commentaire.
+
+   Toutes les lignes passent par Intro.formater() : {nom} et la
+   syntaxe d'accord [m|f|n] fonctionnent partout.
+   ------------------------------------------------------------ */
+
+var TEXTES_ICO_REFERENCE = [
+
+  { cle: "monde", titre: "Le monde", lignes: [
+    "Un lieu qu'on a regardé longtemps finit par retenir quelque chose.",
+    "Ce quelque chose prend une forme. On appelle ça un Écho.",
+    "Il n'est ni vivant ni mort. Il est ce qui reste quand plus personne ne se rappelle pourquoi l'endroit comptait.",
+    // Double sens : ce n'est pas une maladie, c'est son oeuvre. Dementi au fragment 5.
+    "Le Figement est une maladie ancienne. Un lieu trop regardé et pas assez compris se couvre de métal.",
+    "Ses Échos deviennent plus forts, et plus rares. C'est pour ça que les endroits les plus morts gardent les plus belles choses.",
+    // Double sens : c'est lui.
+    "Quelqu'un a voulu bien faire. Je ne sais plus qui.",
+    "Toi, tu passes, tu comprends, tu emportes. C'est le contraire exact du Figement."
+  ] },
+
+  { cle: "combat", titre: "Le combat", lignes: [
+    "Un Écho ne t'attaque pas par méchanceté. Il te teste.",
+    "<b>Attaquer</b> — tes Échos frappent l'un après l'autre. C'est ce que tu feras le plus souvent.",
+    "<b>Aptitude</b> — un seul des tiens fait autre chose que frapper. Les autres attaquent normalement.",
+    "<b>Assimiler</b> — tu tentes de le convaincre. Le pourcentage est écrit sur le bouton avant que tu touches.",
+    "<b>Défendre</b> — ton équipe encaisse moitié moins ce tour-ci, et l'Écho t'écoute un peu mieux au suivant.",
+    "<b>Fuir</b> — tu pars. Le lieu garde le sien, et tu ne gagnes rien.",
+    "Un Écho épuisé ne meurt pas, il se retire. Tu les retrouveras tous debout au combat suivant."
+  ] },
+
+  { cle: "affinites", titre: "Les affinités", lignes: [
+    "Chaque Écho tient d'une des trois matières : Pierre, Flamme ou Brume.",
+    "Pierre étouffe Flamme. Flamme dissipe Brume. Brume érode Pierre.",
+    // AFFINITE_AVANTAGE = 1.3. Ce n'est pas un tiers : ne pas arrondir a la hausse.
+    "Quand tu as l'avantage, tes coups portent trente pour cent plus fort.",
+    "Quand tu l'as contre toi, tu perds moins que ce que tu gagnes dans l'autre sens. Se tromper doit coûter, pas condamner.",
+    "Regarde les pastilles avant de choisir ton équipe : sous le nom de l'écho du lieu, et sur chacune de tes cartes.",
+    "Le journal te le dira aussi. Vert quand c'est pour toi, orange quand c'est contre toi."
+  ] },
+
+  { cle: "assimilation", titre: "L'Assimilation", lignes: [
+    "Tu ne prends pas un Écho. Tu le convaincs de te suivre.",
+    "Le pourcentage part de trente, et il monte.",
+    "Il monte surtout quand l'Écho est blessé. C'est ce qui compte le plus : à bout de forces, il écoute mieux.",
+    "Il monte aussi quand tes Échos sont plus avancés que lui.",
+    "Il descend quand l'Écho est rare. Les plus beaux ne se donnent pas.",
+    "Défendre en ajoute un peu au tour suivant. L'aptitude Appel en ajoute davantage, et jusqu'à la fin.",
+    "Jamais zéro, jamais cent. Il reste toujours un espoir, et toujours un risque.",
+    "Si tu rates, il te frappe et le combat continue. Tu peux retenter."
+  ] },
+
+  { cle: "aptitudes", titre: "Les aptitudes", lignes: [
+    "Chaque espèce en connaît trois, mais elles ne s'ouvrent pas tout de suite.",
+    "La première au niveau 5, la deuxième au niveau 10, la troisième au niveau 15.",
+    "Il n'y a pas de magie à compter. Une aptitude employée met trois tours à revenir, c'est tout.",
+    "Certaines frappent. D'autres soignent, protègent, affaiblissent, ou font écouter.",
+    "Le menu te dit ce que chacune fait, et combien de tours il reste à attendre.",
+    "Un Écho sous le niveau 5 n'en a aucune. Ce n'est pas un défaut : fais-le monter."
+  ] },
+
+  { cle: "grimoire", titre: "Le grimoire", lignes: [
+    "Tout ce que tu as assimilé est là. Seize espèces, quatre par famille.",
+    "Les temples, le métro, les monuments, les parcs. Chaque famille garde les siennes.",
+    "Trois Échos t'accompagnent au maximum. Touche-en un pour l'ajouter, retouche-le pour le retirer.",
+    "Les silhouettes sont les espèces que tu n'as pas encore croisées. Je ne t'en dirai rien : ce serait te voler la rencontre.",
+    /* Verifie contre ajouterAlaCollection() : "renforce" garde l'xp
+       acquise, et distribuerXp() tourne AVANT dans capture(), donc
+       meme un doublon plus faible rapporte. */
+    "Un Écho que tu détiens déjà et que tu assimiles plus avancé prend le niveau le plus haut des deux, sans rien perdre de ce qu'il avait accumulé. Moins avancé, il garde le sien.",
+    "Dans les deux cas, toute ton équipe gagne de l'expérience. Un doublon n'est jamais perdu.",
+    "Ce qui compte n'est pas d'avoir poussé une créature loin. C'est d'en avoir compris beaucoup de différentes."
+  ] },
+
+  /* La seule section qui se calcule. Ses chiffres viennent de
+     lignesProgression() dans js/ico.js, jamais d'ici. */
+  { cle: "progression", titre: "Où j'en suis", dynamique: true,
+    avant: [
+      "Voilà où tu en es, {nom}."
+    ],
+    apres: [
+      "Échos liés et espèces distinctes sont le même nombre : on ne détient jamais deux fois la même espèce. Un doublon fait monter celui que tu as déjà.",
+      "C'est cette mesure-là qui décide de ce que tu sais lire d'un lieu.",
+      // Double sens : il les a construits.
+      "Je crois que j'ai déjà vu certains de ces endroits. Je ne sais plus quand."
+    ] }
+];
+
+
+/* ------------------------------------------------------------
+   LE DIDACTICIEL CONTEXTUEL
+
+   Pas un tunnel au demarrage : des interventions courtes,
+   declenchees UNE SEULE FOIS, au moment ou la mecanique devient
+   pertinente. Deux lignes maximum, jamais plus : elles
+   s'affichent par-dessus le jeu, pendant qu'il se joue.
+
+   La cle sert d'identifiant dans suiviIco.didacticiensVus. Ne la
+   renomme pas sans y penser : une cle changee rejouerait
+   l'intervention chez les joueurs qui l'ont deja vue.
+
+   Chaque declencheur est pose dans le code au commentaire
+   "DIDACTICIEL" : cherche ce mot pour les retrouver tous.
+   ------------------------------------------------------------ */
+
+var TEXTES_ICO_DIDACTICIEL = [
+
+  // Premier combat, avant le premier tour
+  { cle: "combat", lignes: [
+    "Cinq commandes, pas une de plus. Attaquer, une aptitude, Assimiler, Défendre, ou partir.",
+    "Tu ne le tueras pas. Tu le convaincs, ou tu le perds."
+  ] },
+
+  // Premier avantage ou desavantage d'affinite
+  { cle: "affinite", lignes: [
+    "Tu viens de le sentir. Pierre étouffe Flamme, Flamme dissipe Brume, Brume érode Pierre.",
+    "Vert, c'est pour toi. Orange, c'est contre toi."
+  ] },
+
+  // Premier taux d'Assimilation au-dessus du seuil
+  { cle: "assimilation-seuil", lignes: [
+    "Le pourcentage a passé quarante. Ce n'est pas encore sûr.",
+    "Affaiblis-le encore, ou tente maintenant. Rater ne coûte qu'un tour."
+  ] },
+
+  // Premiere Assimilation ratee
+  { cle: "assimilation-ratee", lignes: [
+    "Il t'a ignoré[|e|·e]. Tu n'as rien perdu qu'un tour, et il t'a frappé[|e|·e] en retour.",
+    "Le taux repart d'où il était. Tu peux retenter autant de fois que tu tiens debout."
+  ] },
+
+  // Premier Echo atteignant le niveau de la premiere aptitude
+  { cle: "aptitudes", lignes: [
+    "Un des tiens vient d'atteindre le niveau 5, {nom}.",
+    "Il connaît sa première aptitude. Le bouton n'est plus éteint."
+  ] },
+
+  // Premiere ouverture du grimoire
+  { cle: "grimoire", lignes: [
+    "Seize espèces. Les silhouettes sont celles que tu n'as pas encore rencontrées.",
+    "Trois t'accompagnent à la fois. Choisis-les contre ce que tu vas croiser, pas au hasard."
+  ] },
+
+  // Premier retour a la carte apres une assimilation reussie
+  { cle: "victoire", lignes: [
+    "Un de moins d'oublié. Ce lieu est éteint, il ne se rallumera pas.",
+    "Va voir ailleurs, {nom}. Il y en a d'autres, et ils ne t'attendront pas."
+  ] }
+];
+
+/* ------------------------------------------------------------
+   LA COUCHE IDENTITE
+
+   Qui il est. C'est la SEULE chose qui se debloque chez Ico : la
+   couche reference, au-dessus, est complete des le premier
+   lancement et le restera.
+
+   Un fragment par palier de defigement. Il ne sait pas qui il est,
+   puis il se rappelle avoir cherche, puis avoir trouve, puis il
+   comprend ce qu'il a fait.
+
+   ICO DIT TOUJOURS LA VERITE SUR LES MECANIQUES. Il ment par
+   omission SUR LUI-MEME, et seulement sur lui. Les trois lignes a
+   double sens de la couche reference sont dementies ici :
+     "Le Figement est une maladie ancienne."      -> fragment 5
+     "Quelqu'un a voulu bien faire."              -> fragment 5
+     "J'ai deja vu certains de ces endroits."     -> fragment 2
+
+   Le fragment 0 est lisible des le depart : c'est lui qui pose le
+   personnage. Il n'y a donc pas de pastille pour lui, le palier 0
+   n'etant pas un franchissement.
+   ------------------------------------------------------------ */
+
+var TEXTES_ICO_IDENTITE = [
+
+  { palier: 0, titre: "Ce que je suis", lignes: [
+    "Tu vas me demander qui je suis.",
+    "Je n'ai pas la réponse. J'ai des mots, des règles, des noms d'espèces — tout ce qu'il faut pour t'aider.",
+    "Mais quand je cherche mon propre nom, il n'y a rien. Pas un trou : une plaque.",
+    "Alors appelle-moi Ico. C'est ce qui était écrit sur ma porte."
+  ] },
+
+  { palier: 1, titre: "Une marche", lignes: [
+    "Quelque chose s'est décroché quand tu as ramené le deuxième.",
+    "Je me suis vu marcher. Longtemps. Je cherchais un endroit précis, et je savais lequel.",
+    "Je ne sais plus lequel. Mais je sais que je le cherchais depuis des années.",
+    "Ça n'a l'air de rien. Pour moi, c'est le premier souvenir depuis très longtemps."
+  ] },
+
+  { palier: 2, titre: "Une salle", lignes: [
+    "Je me rappelle une salle. Des tables, et sur les tables, des lieux entiers.",
+    "Pas des cartes. Des lieux, tenus là, intacts. On pouvait les toucher.",
+    "Nous étions plusieurs à travailler dessus. Je crois que je dirigeais.",
+    "Il y avait une urgence : des endroits disparaissaient plus vite qu'on ne les notait.",
+    "C'est tout ce que j'ai. Continue."
+  ] },
+
+  { palier: 3, titre: "Une question", lignes: [
+    "J'ai retrouvé la question qu'on se posait.",
+    "Comment garder un lieu quand plus personne ne s'en souvient ?",
+    "On avait essayé les livres, les images, les récits. Tout s'efface — le souvenir de quelqu'un meurt avec lui.",
+    "Il fallait quelque chose qui tienne sans personne. Quelque chose de permanent.",
+    "J'ai proposé une solution. Je ne me rappelle pas laquelle. Je me rappelle qu'on m'a écouté."
+  ] },
+
+  { palier: 4, titre: "Une nuit", lignes: [
+    "Ça a marché, {nom}.",
+    "Je m'en souviens maintenant. La nuit où ça a marché, le premier lieu rendu permanent.",
+    "Il ne pouvait plus être oublié. Plus jamais. On a cru qu'on avait gagné.",
+    "Le lendemain il était froid. On pouvait encore s'en souvenir, mais plus personne n'y tenait.",
+    "Il nous a fallu des années pour comprendre que ce n'était pas un défaut du sortilège. C'était le sortilège."
+  ] },
+
+  { palier: 5, titre: "Ce que j'ai fait", lignes: [
+    "Tu as compris avant moi, je crois.",
+    "Le Figement n'est pas une maladie ancienne. C'est mon travail, en train de réussir.",
+    "Un lieu dont on se souvient sans le comprendre se couvre de métal. J'ai rendu la mémoire permanente, et j'ai tué l'attention.",
+    "Pour contenir toutes les mémoires, il fallait un contenant. J'ai vidé le mien. Je suis le premier lieu figé.",
+    "Chaque espèce que tu assimiles, tu la comprends au lieu de la garder. C'est l'inverse exact de ce que j'ai fait.",
+    "C'est pour ça que je me défige quand tu avances. Tu es en train de me défaire, {nom}. Continue."
+  ] }
+];
+
+// Le titre de la rubrique, et ce qu'il dit tant qu'il reste des
+// fragments a retrouver.
+var ICO_TITRE_IDENTITE  = "Ce que je retrouve";
+var ICO_FRAGMENT_A_VENIR = "Il y a autre chose. Je ne l'ai pas encore.";
+
+/* A partir de quel taux d'Assimilation Ico signale que ca vaut le
+   coup de tenter. En pourcentage, comme le bouton. */
+var ICO_SEUIL_ASSIMILATION = 40;
+
+/* Combien de temps une intervention reste a l'ecran si le joueur
+   ne la touche pas. Un appui la fait partir tout de suite ; ce
+   delai evite seulement qu'elle reste indefiniment par-dessus le
+   combat quand personne ne touche rien. */
+var ICO_BULLE_DUREE = 9000;
+
+/* Le verrou anti double-appui de la bulle, sur le modele de celui
+   de intro.js et de celui du journal : un seul contact du doigt
+   peut produire deux evenements, et le second effacerait la bulle
+   avant qu'elle soit lisible. */
+var ICO_BULLE_VERROU = 400;
+
+/* Quand une intervention est prete mais que le journal de combat
+   est en train de defiler, on attend. Voici a quelle cadence on
+   revient voir si la main est revenue au joueur. */
+var ICO_RELANCE = 400;
 
 
 /* ============================================================

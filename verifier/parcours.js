@@ -146,7 +146,8 @@ function creerMonde(options) {
       body: corps,
       createElement: creerElement,
       getElementById: function (id) { return statiques[id] || null; },
-      querySelectorAll: function () { return []; }
+      querySelectorAll: function () { return []; },
+      addEventListener: function () {}
     },
     localStorage: {
       getItem: function (c) {
@@ -319,10 +320,18 @@ function lancerParcours() {
           m.ctx.profil.nom === "Ethan" && m.ctx.profil.genre === "f" && m.ctx.profil.introVue === true,
           JSON.stringify(m.ctx.profil));
   verifie("lieuZero reste null sans GPS", m.ctx.profil.lieuZero === null);
-  verifie("la sauvegarde v3 contient le bloc joueur",
-          !!m.stockage.echos_joueur_v3 &&
-          JSON.parse(m.stockage.echos_joueur_v3).joueur.introVue === true);
-  verifie("l'ancienne cle v2 n'est jamais reecrite", m.stockage.echos_joueur_v2 === undefined);
+  verifie("la sauvegarde v4 contient le bloc joueur",
+          !!m.stockage.echos_joueur_v4 &&
+          JSON.parse(m.stockage.echos_joueur_v4).joueur.introVue === true);
+  verifie("la sauvegarde v4 contient le bloc ico",
+          !!m.stockage.echos_joueur_v4 &&
+          JSON.stringify(JSON.parse(m.stockage.echos_joueur_v4).ico) ===
+          '{"didacticiensVus":[],"palierLu":0,"palierAtteint":0}',
+          m.stockage.echos_joueur_v4 &&
+          JSON.stringify(JSON.parse(m.stockage.echos_joueur_v4).ico));
+  verifie("les anciennes cles ne sont jamais reecrites",
+          m.stockage.echos_joueur_v3 === undefined &&
+          m.stockage.echos_joueur_v2 === undefined);
   verifie("l'overlay est retire de la page a la fin",
           m.corps.enfants.filter(function (e) { return e.id === "intro"; }).length === 0);
   verifie("le corps de page n'est plus verrouille",
@@ -445,6 +454,51 @@ function lancerParcours() {
           m5.statiques.fiche.textContent.indexOf("Komainu") !== -1,
           m5.statiques.fiche.textContent);
 
+  /* Une v3 : elle a un bloc joueur, mais aucun bloc ico. Le bloc
+     doit etre cree avec ses valeurs par defaut, sans rien perdre
+     du reste. C'est la migration ajoutee avec l'ecran d'Ico. */
+  var v3 = {
+    version: 3,
+    collection: { peng: { espece: "peng", niveau: 5, xp: 8, pv: 40 } },
+    equipe: ["peng"],
+    joueur: { nom: "Ethan", genre: "n", voie: "gardien", lieuZero: null, introVue: true }
+  };
+
+  var m7 = creerMonde({ stockage: { echos_joueur_v3: JSON.stringify(v3) } });
+  var erreurV3 = null;
+  try { m7.ctx.chargerJoueur(); } catch (e) { erreurV3 = e; }
+
+  verifie("une sauvegarde v3 se lit sans erreur", erreurV3 === null, erreurV3 && erreurV3.message);
+  verifie("v3 : le bloc ico est cree par defaut",
+          JSON.stringify(m7.ctx.suiviIco) === '{"didacticiensVus":[],"palierLu":0,"palierAtteint":0}',
+          JSON.stringify(m7.ctx.suiviIco));
+  verifie("v3 : le profil est conserve",
+          m7.ctx.profil.nom === "Ethan" && m7.ctx.profil.introVue === true,
+          JSON.stringify(m7.ctx.profil));
+  verifie("v3 : la collection est conservee", m7.ctx.collection.peng.xp === 8);
+
+  // Un bloc ico abime ne doit pas plus bloquer qu'une collection abimee.
+  [["palier negatif", -3, "sept"],
+   ["palier absurde", 900, 900],
+   ["paliers absents", undefined, undefined]
+  ].forEach(function (cas) {
+    var abime = {
+      version: 4, collection: {}, equipe: [], joueur: {},
+      ico: { didacticiensVus: ["combat", 42, "combat", null], palierLu: cas[1], palierAtteint: cas[2] }
+    };
+    var mi = creerMonde({ stockage: { echos_joueur_v4: JSON.stringify(abime) } });
+    var err = null;
+    try { mi.ctx.chargerJoueur(); } catch (e) { err = e; }
+
+    var i = mi.ctx.suiviIco;
+    var sain = err === null &&
+               JSON.stringify(i.didacticiensVus) === '["combat"]' &&
+               i.palierLu >= 0 && i.palierLu <= 5 &&
+               i.palierAtteint >= 0 && i.palierAtteint <= 5;
+    verifie("bloc ico abime (" + cas[0] + ") : remis d'aplomb", sain,
+            err ? err.message : JSON.stringify(i));
+  });
+
   [["chaine vide", ""],
    ["JSON casse", "{oups"],
    ["un tableau au lieu d'un objet", "[1,2,3]"],
@@ -453,7 +507,7 @@ function lancerParcours() {
    ["types absurdes", '{"collection":{"komainu":{"niveau":"sept","pv":-9}},"equipe":"komainu","joueur":42}'],
    ["profil incomplet", '{"collection":{},"equipe":[],"joueur":{"genre":"z","voie":"pirate","lieuZero":"ici"}}']
   ].forEach(function (cas) {
-    var mx = creerMonde({ stockage: { echos_joueur_v3: cas[1] } });
+    var mx = creerMonde({ stockage: { echos_joueur_v4: cas[1] } });
     var err = null;
     try { mx.ctx.chargerJoueur(); } catch (e) { err = e; }
     verifie("sauvegarde abimee (" + cas[0] + ") : aucun crash", err === null, err && err.message);
@@ -464,7 +518,7 @@ function lancerParcours() {
 
   bloc("Second lancement");
 
-  var m6 = creerMonde({ stockage: { echos_joueur_v3: m.stockage.echos_joueur_v3 } });
+  var m6 = creerMonde({ stockage: { echos_joueur_v4: m.stockage.echos_joueur_v4 } });
   m6.ctx.chargerJoueur();
 
   verifie("introVue est relue a vrai : pas de seconde intro", m6.ctx.profil.introVue === true);

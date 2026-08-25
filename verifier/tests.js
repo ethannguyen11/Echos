@@ -921,6 +921,326 @@ function lancerTests() {
     [-1, -1]);
 
 
+  /* --- Ico : la couche reference --- */
+
+  bloc("Ico");
+
+  verifie("sept sections de reference", TEXTES_ICO_REFERENCE.length, 7);
+
+  verifie("les sections, dans l'ordre",
+    TEXTES_ICO_REFERENCE.map(function (s) { return s.cle; }),
+    ["monde", "combat", "affinites", "assimilation", "aptitudes", "grimoire", "progression"]);
+
+  /* LA REGLE CENTRALE : la couche reference est complete des le
+     premier lancement. Aucune section ne porte de condition, de
+     seuil ni de palier, et aucune n'est vide. */
+  var sectionsFautives = [];
+  TEXTES_ICO_REFERENCE.forEach(function (s) {
+    if (s.condition !== undefined || s.palier !== undefined || s.seuil !== undefined) {
+      sectionsFautives.push(s.cle + " : conditionnee");
+    }
+    if (!s.titre) sectionsFautives.push(s.cle + " : sans titre");
+
+    var lignes = s.dynamique ? (s.avant || []).concat(s.apres || []) : s.lignes;
+    if (!lignes || lignes.length === 0) sectionsFautives.push(s.cle + " : sans texte");
+  });
+  verifie("la couche reference ne debloque rien", sectionsFautives, []);
+
+  verifie("une seule section se calcule",
+    TEXTES_ICO_REFERENCE.filter(function (s) { return s.dynamique; })
+                        .map(function (s) { return s.cle; }),
+    ["progression"]);
+
+  // Tout passe par formater() : ni {nom} ni accord ne doit rester.
+  var restesIco = [];
+  TEXTES_ICO_REFERENCE.forEach(function (s) {
+    var lignes = s.dynamique ? s.avant.concat(s.apres) : s.lignes;
+    lignes.forEach(function (l) {
+      var t = Intro.formater(l, { nom: "Ethan", genre: "f", voie: "archiviste" });
+      if (/\{[a-z]+\}/.test(t)) restesIco.push(s.cle + " : " + l);
+      if (/\[[^\[\]]*\|[^\[\]]*\|[^\[\]]*\]/.test(t)) restesIco.push(s.cle + " : accord non resolu");
+    });
+  });
+  verifie("aucun {nom} ni accord oublie", restesIco, []);
+
+  /* ICO DIT TOUJOURS LA VERITE SUR LES MECANIQUES.
+
+     Son texte annonce ces nombres-la, mot pour mot : "trente pour
+     cent plus fort", "part de trente", "jamais zero, jamais cent",
+     "trois tours a revenir", "niveau 5, 10, 15", "moitie moins",
+     "trois Echos", "seize especes".
+
+     Si un de ces nombres change, ce test passe au rouge : c'est le
+     signal qu'il faut RELIRE TEXTES_ICO_REFERENCE, pas corriger le
+     test. Une seule ligne fausse dans la couche reference detruit
+     la confiance sur laquelle repose tout le personnage. */
+  verifie("les nombres qu'Ico annonce sont ceux du jeu",
+    [AFFINITE_AVANTAGE, ASSIMILATION_SOCLE, ASSIMILATION_MIN, ASSIMILATION_MAX,
+     APTITUDE_RECHARGE, APTITUDE_NIVEAUX.join("/"), DEFENDRE_REDUCTION,
+     EQUIPE_MAX, Object.keys(ESPECES).length],
+    [1.3, 30, 5, 95, 3, "5/10/15", 0.5, 3, 16]);
+
+  // Et le desavantage doit rester moins fort que l'avantage :
+  // "tu perds moins que ce que tu gagnes dans l'autre sens".
+  verifie("perdre coute moins que gagner ne rapporte",
+    (AFFINITE_NEUTRE - AFFINITE_DESAVANTAGE) < (AFFINITE_AVANTAGE - AFFINITE_NEUTRE), true);
+
+  /* Le palier de defigement suit experienceDuGardien(), donc le
+     nombre d'especes distinctes. On fabrique des collections de
+     taille croissante et on lit le palier. */
+  var collectionAvantIco = collection;
+
+  function collectionDe(n) {
+    var c = {};
+    Object.keys(ESPECES).slice(0, n).forEach(function (id) {
+      c[id] = { espece: id, niveau: 1, xp: 0, pv: 1 };
+    });
+    return c;
+  }
+
+  var paliersLus = [];
+  [0, 1, 2, 3, 4, 6, 7, 9, 10, 13, 14, 16].forEach(function (n) {
+    collection = collectionDe(n);
+    paliersLus.push(n + "->" + Ico.palier());
+  });
+  collection = collectionAvantIco;
+
+  verifie("le palier suit le nombre d'especes distinctes", paliersLus,
+    ["0->0", "1->0", "2->1", "3->1", "4->2", "6->2",
+     "7->3", "9->3", "10->4", "13->4", "14->5", "16->5"]);
+
+
+  /* --- Ico : la couche identite --- */
+
+  bloc("Ico : identite");
+
+  verifie("six fragments, un par palier",
+    TEXTES_ICO_IDENTITE.map(function (f) { return f.palier; }),
+    [0, 1, 2, 3, 4, 5]);
+
+  var fragMalFormes = [];
+  TEXTES_ICO_IDENTITE.forEach(function (f) {
+    if (!f.titre) fragMalFormes.push("palier " + f.palier + " : sans titre");
+    if (!f.lignes || f.lignes.length < 4) fragMalFormes.push("palier " + f.palier + " : moins de 4 lignes");
+    if (f.lignes && f.lignes.length > 6) fragMalFormes.push("palier " + f.palier + " : plus de 6 lignes");
+
+    f.lignes.forEach(function (l) {
+      var t = Intro.formater(l, { nom: "Ethan", genre: "f", voie: "gardien" });
+      if (/\{[a-z]+\}/.test(t)) fragMalFormes.push("palier " + f.palier + " : {nom} oublie");
+    });
+  });
+  verifie("quatre a six lignes par fragment, aucun {nom} oublie", fragMalFormes, []);
+
+  /* LE MENSONGE PAR OMISSION. La couche reference affirme trois
+     choses sur le Figement qui ne sont vraies qu'en surface. Le
+     dernier fragment doit les dementir : si quelqu'un reecrit l'un
+     sans l'autre, la revelation tombe a plat. */
+  var revelation = TEXTES_ICO_IDENTITE[5].lignes.join(" ");
+  var monde = TEXTES_ICO_REFERENCE[0].lignes.join(" ");
+  verifie("la reference dit 'maladie ancienne', le fragment 5 la dement",
+    [monde.indexOf("maladie ancienne") !== -1,
+     revelation.indexOf("n'est pas une maladie ancienne") !== -1],
+    [true, true]);
+  verifie("'quelqu'un a voulu bien faire' trouve sa reponse",
+    [monde.indexOf("Quelqu'un a voulu bien faire") !== -1,
+     revelation.indexOf("C'est mon travail") !== -1],
+    [true, true]);
+
+  /* Les fragments se debloquent, la reference JAMAIS. C'est la
+     regle de conception centrale : on la verifie ici. */
+  var collAvantFrag = collection;
+  var icoAvantFrag = suiviIco;
+  suiviIco = { didacticiensVus: [], palierLu: 0, palierAtteint: 0 };
+
+  var obtenusParPalier = [];
+  [0, 2, 4, 7, 10, 14].forEach(function (n) {
+    collection = collectionDe(n);
+    obtenusParPalier.push(Ico.fragmentsObtenus().length);
+  });
+  verifie("les fragments se debloquent un par un", obtenusParPalier, [1, 2, 3, 4, 5, 6]);
+
+  collection = collectionDe(0);
+  verifie("le fragment 0 est lisible des le depart",
+    Ico.fragmentsObtenus()[0].palier, 0);
+
+  // Au premier lancement : aucun franchissement, donc aucune pastille.
+  suiviIco = { didacticiensVus: [], palierLu: 0, palierAtteint: 0 };
+  Ico.majPastille();
+  verifie("au depart, pas de pastille",
+    [suiviIco.palierAtteint, suiviIco.palierLu], [0, 0]);
+
+  // Deux especes : le palier 1 est franchi, la pastille doit s'allumer.
+  collection = collectionDe(2);
+  Ico.majPastille();
+  verifie("un palier franchi allume la pastille",
+    [suiviIco.palierAtteint, suiviIco.palierLu, suiviIco.palierAtteint > suiviIco.palierLu],
+    [1, 0, true]);
+
+  // Le palier atteint ne redescend jamais, meme si on relit un vieux fragment.
+  collection = collectionDe(10);
+  Ico.majPastille();
+  verifie("le palier atteint ne fait que monter", suiviIco.palierAtteint, 4);
+
+  collection = collAvantFrag;
+  suiviIco = icoAvantFrag;
+
+
+  /* --- Ico : le didacticiel contextuel ---
+
+     On remplace l'horloge par une fausse, comme pour le journal :
+     la file d'attente et les verrous ne se verifient qu'en
+     declenchant les reveils a la main. */
+
+  bloc("Ico : didacticiel");
+
+  verifie("sept interventions", TEXTES_ICO_DIDACTICIEL.length, 7);
+
+  var didMalFormes = [], clesDeja = {};
+  TEXTES_ICO_DIDACTICIEL.forEach(function (d) {
+    if (!d.cle) didMalFormes.push("intervention sans cle");
+    if (clesDeja[d.cle]) didMalFormes.push(d.cle + " : cle en double");
+    clesDeja[d.cle] = true;
+
+    if (!d.lignes || d.lignes.length === 0) didMalFormes.push(d.cle + " : sans texte");
+    // La contrainte tenue par le format : jamais plus de deux lignes.
+    if (d.lignes && d.lignes.length > 2) didMalFormes.push(d.cle + " : plus de deux lignes");
+  });
+  verifie("jamais plus de deux lignes, aucune cle en double", didMalFormes, []);
+
+  var restesDid = [];
+  TEXTES_ICO_DIDACTICIEL.forEach(function (d) {
+    d.lignes.forEach(function (l) {
+      var t = Intro.formater(l, { nom: "Ethan", genre: "f", voie: "gardien" });
+      if (/\{[a-z]+\}/.test(t)) restesDid.push(d.cle);
+      if (/\[[^\[\]]*\|[^\[\]]*\|[^\[\]]*\]/.test(t)) restesDid.push(d.cle + " : accord non resolu");
+    });
+  });
+  verifie("aucun {nom} ni accord oublie dans le didacticiel", restesDid, []);
+
+  // --- Le comportement ---
+
+  var icoAvant = suiviIco;
+  var journalAvant = minuteurJournal;
+  var vraiST = setTimeout, vraiCT = clearTimeout;
+
+  var reveilsIco = {}, idIco = 1;
+  setTimeout = function (f, delai) {
+    reveilsIco[idIco] = { f: f, delai: delai };
+    return idIco++;
+  };
+  clearTimeout = function (id) { delete reveilsIco[id]; };
+
+  function sonnerIco(delai) {
+    for (var id in reveilsIco) {
+      if (reveilsIco[id].delai === delai) {
+        var f = reveilsIco[id].f;
+        delete reveilsIco[id];
+        f();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  suiviIco = { didacticiensVus: [], palierLu: 0, palierAtteint: 0 };
+  minuteurJournal = null;
+  Ico.reinitialiserDidacticiel();
+
+  Ico.dire("grimoire");
+  verifie("une intervention s'affiche", Ico.bulleAffichee(), true);
+
+  // Le clic fantome du tactile : deux evenements pour un doigt.
+  Ico.surAppui();
+  verifie("un appui immediat n'efface pas (clic fantome)", Ico.bulleAffichee(), true);
+
+  Ico.dire("grimoire");
+  verifie("une intervention deja jouee ne revient pas", Ico.enAttente(), []);
+
+  Ico.dire("combat");
+  verifie("une deuxieme intervention passe en file", Ico.enAttente(), ["combat"]);
+
+  Ico.dire("combat");
+  verifie("elle n'entre pas deux fois dans la file", Ico.enAttente(), ["combat"]);
+
+  sonnerIco(ICO_BULLE_VERROU);          // le verrou se rouvre
+  Ico.surAppui();
+  verifie("l'appui efface, et la suivante prend sa place",
+    [Ico.bulleAffichee(), Ico.enAttente()], [true, []]);
+
+  sonnerIco(ICO_BULLE_VERROU);
+  Ico.surAppui();
+  verifie("file vide : plus rien ne s'affiche", Ico.bulleAffichee(), false);
+
+  /* Le recit du combat passe avant Ico : tant que le journal
+     defile, rien ne s'affiche par-dessus. */
+  minuteurJournal = 1;
+  Ico.dire("victoire");
+  verifie("rien ne s'affiche pendant un enchainement de journal",
+    [Ico.bulleAffichee(), Ico.enAttente()], [false, ["victoire"]]);
+
+  minuteurJournal = null;               // la main revient au joueur
+  sonnerIco(ICO_RELANCE);
+  verifie("elle s'affiche des que la main revient au joueur",
+    [Ico.bulleAffichee(), Ico.enAttente()], [true, []]);
+
+  // L'effacement automatique, quand le joueur ne touche rien.
+  sonnerIco(ICO_BULLE_DUREE);
+  verifie("sans appui, elle s'efface d'elle-meme", Ico.bulleAffichee(), false);
+
+  verifie("les interventions jouees sont retenues",
+    suiviIco.didacticiensVus.slice().sort(), ["combat", "grimoire", "victoire"]);
+
+  var neuf = Ico.reinitialiserDidacticiel();
+  verifie("reinitialiserDidacticiel remet tout a neuf",
+    [suiviIco.didacticiensVus, Ico.enAttente(), Ico.bulleAffichee(), typeof neuf],
+    [[], [], false, "string"]);
+
+  Ico.dire("grimoire");
+  verifie("apres reinitialisation, elles se rejouent", Ico.bulleAffichee(), true);
+  sonnerIco(ICO_BULLE_VERROU);
+  Ico.surAppui();
+
+  /* LE COMBAT D'ESSAI N'ECRIT RIEN.
+
+     Meme regle que pour l'Echo capture et l'experience gagnee : un
+     essai ne laisse aucune trace sur le disque. Ico parle quand
+     meme, sinon on ne pourrait pas tester ses interventions ; il
+     ne retient simplement rien. */
+  var combatAvantIco = combat;
+  combat = { donjon: { fictif: true }, fini: false };
+
+  suiviIco = { didacticiensVus: [], palierLu: 0, palierAtteint: 0 };
+  Ico.reinitialiserDidacticiel();
+
+  Ico.dire("victoire");
+  verifie("combat d'essai : la bulle s'affiche quand meme", Ico.bulleAffichee(), true);
+  verifie("combat d'essai : rien n'est ecrit dans le bloc ico",
+    suiviIco.didacticiensVus, []);
+
+  sonnerIco(ICO_BULLE_VERROU);
+  Ico.surAppui();
+  Ico.dire("victoire");
+  verifie("combat d'essai : elle ne se repete pas dans le meme essai",
+    [Ico.bulleAffichee(), Ico.enAttente()], [false, []]);
+
+  /* Hors essai, la meme intervention s'enregistre bien : sinon le
+     test ci-dessus passerait au vert pour une mauvaise raison. */
+  combat = null;
+  Ico.reinitialiserDidacticiel();
+  Ico.dire("victoire");
+  verifie("hors essai, elle est bien enregistree",
+    suiviIco.didacticiensVus, ["victoire"]);
+
+  sonnerIco(ICO_BULLE_VERROU);
+  Ico.surAppui();
+  combat = combatAvantIco;
+
+  setTimeout = vraiST;
+  clearTimeout = vraiCT;
+  suiviIco = icoAvant;
+  minuteurJournal = journalAvant;
+
+
   /* --- Cinematique d'ouverture --- */
 
   bloc("Intro");

@@ -152,6 +152,8 @@ function ouvrirGrimoire() {
   }
 
   elem("grimoire").classList.add("actif");
+
+  Ico.dire("grimoire");   // DIDACTICIEL : la collection
 }
 
 function basculerEquipe(especeId) {
