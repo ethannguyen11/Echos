@@ -28,8 +28,20 @@ var ATTENTE_MAX_LIEU = 2500;    // hold maximum quand la scene 1 arrive trop tot
    Des donnees, pas du DOM : on peut reecrire tout le texte
    ci-dessous sans toucher une ligne du moteur.
 
-   Le texte vient de echos-ico-ouverture.md, mot pour mot.
-   verifier.js compare les deux a chaque execution.
+   IL N'Y A PLUS UNE SEULE PHRASE ICI. Chaque etape porte une
+   CLE (cleTexte), et la phrase vit dans TEXTES, js/langues.js,
+   une fois par langue. Le moteur fait donc, dans cet ordre :
+   t(cle) va chercher la phrase, puis formater() resout les
+   accords et les {jetons}.
+
+   Attention : le champ s'appelle cleTexte et NON cle. "cle" est
+   deja pris, sur les etapes saisie et choix, pour designer la
+   case de reponse ("nom", "genre", "voie1"). Deux choses
+   differentes, deux noms differents.
+
+   Le texte francais vient de echos-ico-ouverture.md, mot pour
+   mot. verifier.js compare le .md a TEXTES.fr a chaque
+   execution.
 
    Types d'etapes :
      pause       attente automatique, qu'un tap peut abreger
@@ -54,96 +66,100 @@ var SCRIPT = [
   /* --- Scene 1 : le reveil --- */
 
   { type: "pause", duree: 2000 },
-  { type: "recit", texte: "Tu ne dormais pas." },
-  { type: "recit", texte: "Tu n'étais pas réveillé[|e|·e] non plus." },
-  { type: "recit", texte: "Tu étais simplement là, sans savoir depuis combien de temps." },
+  { type: "recit", cleTexte: "intro.eveil.pasDormi" },
+  { type: "recit", cleTexte: "intro.eveil.pasReveille" },
+  { type: "recit", cleTexte: "intro.eveil.simplementLa" },
   { type: "pause", duree: 1500 },
 
-  { type: "recit", texte: "Puis le nom du lieu t'est revenu.", bloc: "lieu" },
+  { type: "recit", cleTexte: "intro.eveil.nomRevenu", bloc: "lieu" },
   { type: "lieu", bloc: "lieu" },
 
-  { type: "recit", texte: "Puis tu as cherché le nom du lieu.", bloc: "repli" },
-  { type: "recit", texte: "Il n'est pas venu.", bloc: "repli" },
+  { type: "recit", cleTexte: "intro.eveil.chercheNom", bloc: "repli" },
+  { type: "recit", cleTexte: "intro.eveil.pasVenu", bloc: "repli" },
 
   { type: "pause", duree: 2000 },
-  { type: "recit", texte: "Tu le connaissais. Tu es sûr[|e|·e] de l'avoir connu." },
-  { type: "recit", texte: "Mais quelque chose manquait autour. Quelque chose qui aurait dû être là et qui ne l'était plus." },
+  { type: "recit", cleTexte: "intro.eveil.tuLeConnaissais" },
+  { type: "recit", cleTexte: "intro.eveil.quelqueChoseManquait" },
 
   /* --- Scene 2 : Ico --- */
 
   { type: "apparition" },
-  { type: "recit", texte: "Il y avait quelqu'un." },
-  { type: "ico", texte: "Ah." },
-  { type: "ico", texte: "Tu l'as entendu, toi aussi." },
+  { type: "recit", cleTexte: "intro.apparition.quelquun" },
+  { type: "ico", cleTexte: "intro.ico.ah" },
+  { type: "ico", cleTexte: "intro.ico.entenduAussi" },
   { type: "pause", duree: 1000 },
-  { type: "ico", texte: "Ne cherche pas d'où ça venait. Ça ne vient de nulle part. Ça reste, c'est tout." },
-  { type: "ico", texte: "Les gens appellent ça un écho. Faute de mieux." },
+  { type: "ico", cleTexte: "intro.ico.neCherchePas" },
+  { type: "ico", cleTexte: "intro.ico.appelleEcho" },
   { type: "pause", duree: 1000 },
-  { type: "ico", texte: "Un lieu apprend des choses. Pendant des siècles, parfois. Et puis on cesse de venir, on cesse de raconter, et ce qu'il savait commence à s'effacer." },
-  { type: "ico", texte: "Ce que tu entends, c'est ce qui reste. Le dernier morceau." },
-  { type: "ico", texte: "Quand il s'éteint, il ne se rallume pas." },
+  { type: "ico", cleTexte: "intro.ico.lieuApprend" },
+  { type: "ico", cleTexte: "intro.ico.dernierMorceau" },
+  { type: "ico", cleTexte: "intro.ico.neSeRallumePas" },
 
   /* --- Scene 3 : le nom --- */
 
-  { type: "ico", texte: "Tu peux encore les entendre. C'est rare." },
-  { type: "ico", texte: "Alors autant que je sache à qui je parle." },
+  { type: "ico", cleTexte: "intro.nom.tuPeuxEntendre" },
+  { type: "ico", cleTexte: "intro.nom.aQuiJeParle" },
   { type: "saisie", cle: "nom", max: 16 },
-  { type: "ico", texte: "{nom}." },
-  { type: "ico", texte: "Bien. Je le retiendrai plus longtemps que la plupart." },
+  { type: "ico", cleTexte: "intro.nom.echo" },
+  { type: "ico", cleTexte: "intro.nom.jeLeRetiendrai" },
 
   /* --- Scene 4 : le genre ---
      (Didascalie du script : Ico se tourne a demi, comme s'il
-     parlait a quelqu'un d'autre -- ou a personne.) */
+     parlait a quelqu'un d'autre -- ou a personne.)
 
-  { type: "ico", texte: "Il faudra bien que je le note quelque part." },
+     En anglais, les trois reponses ne portent pas un accord mais
+     un pronom : He / She / Someone. C'est la meme question, et
+     c'est le meme genre enregistre. */
+
+  { type: "ico", cleTexte: "intro.genre.noterQuelquePart" },
   { type: "choix", cle: "genre", options: [
-      { texte: "Il est venu.", valeur: "m" },
-      { texte: "Elle est venue.", valeur: "f" },
-      { texte: "Quelqu'un est venu.", valeur: "n" }
+      { cleTexte: "intro.genre.masculin", valeur: "m" },
+      { cleTexte: "intro.genre.feminin",  valeur: "f" },
+      { cleTexte: "intro.genre.neutre",   valeur: "n" }
   ]},
-  { type: "ico", texte: "C'est noté." },
+  { type: "ico", cleTexte: "intro.genre.cestNote" },
 
   /* --- Scene 5 : les trois questions --- */
 
-  { type: "ico", texte: "Trois questions. Réponds vite, ne réfléchis pas." },
+  { type: "ico", cleTexte: "intro.voies.troisQuestions" },
   { type: "pause", duree: 1000 },
 
-  { type: "ico", texte: "Un lieu que tu aimais va disparaître demain. Tu as une nuit." },
+  { type: "ico", cleTexte: "intro.voies.q1" },
   { type: "choix", cle: "voie1", options: [
-      { texte: "J'écris tout ce que j'en sais.", valeur: "archiviste" },
-      { texte: "J'y retourne une dernière fois.", valeur: "arpenteur" },
-      { texte: "Je préviens les gens.", valeur: "gardien" }
+      { cleTexte: "intro.voies.q1.archiviste", valeur: "archiviste" },
+      { cleTexte: "intro.voies.q1.arpenteur",  valeur: "arpenteur" },
+      { cleTexte: "intro.voies.q1.gardien",    valeur: "gardien" }
   ]},
 
-  { type: "ico", texte: "Tu trouves un carnet. L'écriture est illisible, mais elle parle d'un endroit que personne ne connaît." },
+  { type: "ico", cleTexte: "intro.voies.q2" },
   { type: "choix", cle: "voie2", options: [
-      { texte: "Je le recopie avant qu'il ne s'abîme.", valeur: "archiviste" },
-      { texte: "Je pars le chercher.", valeur: "arpenteur" },
-      { texte: "Je le mets à l'abri.", valeur: "gardien" }
+      { cleTexte: "intro.voies.q2.archiviste", valeur: "archiviste" },
+      { cleTexte: "intro.voies.q2.arpenteur",  valeur: "arpenteur" },
+      { cleTexte: "intro.voies.q2.gardien",    valeur: "gardien" }
   ]},
 
-  { type: "ico", texte: "Dernière. Un écho s'éteint devant toi. Tu ne peux pas l'arrêter." },
+  { type: "ico", cleTexte: "intro.voies.q3" },
   { type: "choix", cle: "voie3", options: [
-      { texte: "Je retiens tout ce que j'entends.", valeur: "archiviste" },
-      { texte: "Je vais voir d'où il venait.", valeur: "arpenteur" },
-      { texte: "Je reste jusqu'à la fin.", valeur: "gardien" }
+      { cleTexte: "intro.voies.q3.archiviste", valeur: "archiviste" },
+      { cleTexte: "intro.voies.q3.arpenteur",  valeur: "arpenteur" },
+      { cleTexte: "intro.voies.q3.gardien",    valeur: "gardien" }
   ]},
 
   { type: "calculVoie" },
   { type: "pause", duree: 1500 },
-  { type: "ico", texte: "Voilà." },
-  { type: "ico", texte: "Tu es un[|e|·e] {voie}. Ça se voyait déjà, mais maintenant c'est dit." },
+  { type: "ico", cleTexte: "intro.voies.voila" },
+  { type: "ico", cleTexte: "intro.voies.resultat" },
 
   /* --- Scene 6 : le premier Echo --- */
 
-  { type: "ico", texte: "Tu n'iras pas seul[|e|·e]." },
-  { type: "ico", texte: "Celui-là traîne ici depuis longtemps. Il a survécu à trois temples et à deux villes. Ne te fie pas à son allure." },
+  { type: "ico", cleTexte: "intro.echo.pasSeul" },
+  { type: "ico", cleTexte: "intro.echo.traineIci" },
   { type: "echoDepart" },
-  { type: "ico", texte: "Il t'écoutera. Pas toujours, mais souvent." },
+  { type: "ico", cleTexte: "intro.echo.tEcoutera" },
   { type: "pause", duree: 1000 },
-  { type: "ico", texte: "Le reste, tu l'apprendras dehors." },
-  { type: "ico", texte: "Va vers les lieux. Écoute ce qu'ils ont encore à dire." },
-  { type: "ico", texte: "Et {nom} — ce que tu n'assimiles pas, personne ne le fera après toi." },
+  { type: "ico", cleTexte: "intro.echo.leResteDehors" },
+  { type: "ico", cleTexte: "intro.echo.vaVersLieux" },
+  { type: "ico", cleTexte: "intro.echo.adieu" },
 
   { type: "fin" }
 ];
@@ -151,6 +167,18 @@ var SCRIPT = [
 
 /* ------------------------------------------------------------
    3. INTERPOLATION DU TEXTE
+   ELLE PASSE APRES t(), JAMAIS AVANT. t() rend la phrase brute
+   de la langue courante, avec ses marqueurs intacts ; formater()
+   les resout ensuite. L'ordre compte deux fois :
+
+     - l'accord [m|f|n] doit etre resolu dans la langue
+       effectivement affichee. En francais il porte un accord
+       d'adjectif, en anglais un pronom (he / she / they) : meme
+       syntaxe, meme fonction, phrase differente ;
+     - a l'interieur de formater(), les accords passent AVANT
+       {nom}. Un joueur qui se nomme "[a|b|c]" ne peut donc pas
+       faire prendre son pseudo pour un accord.
+
    Deux mecanismes dans une seule fonction :
      {nom} et {voie}   remplaces par ce que le joueur a donne
      [m|f|n]           accord de genre, ex. "un[|e|·e]"
@@ -490,11 +518,11 @@ function jouerEtape() {
       break;
 
     case "recit":
-      afficherLigne(formater(e.texte, reponses), "recit");
+      afficherLigne(formater(t(e.cleTexte), reponses), "recit");
       break;
 
     case "ico":
-      afficherLigne(formater(e.texte, reponses), "ico");
+      afficherLigne(formater(t(e.cleTexte), reponses), "ico");
       break;
 
     case "lieu":
@@ -567,30 +595,78 @@ function validerSaisie() {
 }
 
 
-/* --- Choix --- */
+/* --- Choix ---
+   poserOptions() est le SEUL endroit du jeu qui fabrique un
+   bouton de choix. L'ecran de langue et les choix du script s'en
+   servent tous les deux : ils ont donc forcement le meme aspect
+   (#intro-choix button, dans css/intro.css) et surtout le meme
+   VERROU.
 
-function demanderChoix(etape) {
+   Le verrou n'est pas une precaution theorique : un seul contact
+   du doigt peut produire deux evenements sur mobile, et sans lui
+   un tap consommerait deux etapes d'un coup. Ecrire un second
+   fabricant de boutons pour l'ecran de langue aurait voulu dire
+   ecrire un second verrou, et l'oublier un jour. */
+
+function poserOptions(libelles, surChoix) {
   etat = "interaction";
   zoneChoix.innerHTML = "";
 
-  etape.options.forEach(function (option) {
+  libelles.forEach(function (libelle, rang) {
     var b = document.createElement("button");
     b.type = "button";
-    b.textContent = formater(option.texte, reponses);
+    b.textContent = libelle;
     b.addEventListener("click", function (ev) {
       ev.stopPropagation();
       if (etat !== "interaction" || verrou) return;
       verrou = true;
-      reponses[etape.cle] = option.valeur;
       zoneChoix.classList.remove("visible");
       zoneChoix.innerHTML = "";
       verrou = false;
-      suivant();
+      surChoix(rang);
     });
     zoneChoix.appendChild(b);
   });
 
   zoneChoix.classList.add("visible");
+}
+
+function demanderChoix(etape) {
+  poserOptions(
+    etape.options.map(function (o) { return formater(t(o.cleTexte), reponses); }),
+    function (rang) {
+      reponses[etape.cle] = etape.options[rang].valeur;
+      suivant();
+    }
+  );
+}
+
+
+/* --- Le choix de la langue ---
+   La toute premiere chose que le joueur voit, avant meme la
+   premiere ligne du recit.
+
+   Il n'est volontairement PAS dans SCRIPT. SCRIPT est le script
+   narratif, celui que echos-ico-ouverture.md decrit mot pour mot
+   et que verifier.js compare ligne a ligne ; un reglage
+   d'interface n'y a pas sa place.
+
+   Aucune question au-dessus des boutons : "Français" et
+   "English" se lisent seuls, chacun ecrit dans sa propre langue.
+   Poser la question aurait demande de choisir dans quelle langue
+   la poser -- ce qui est exactement ce qu'on demande. */
+
+function demanderLangue(apres) {
+  zoneTexte.className = "";
+  zoneTexte.textContent = "";
+
+  poserOptions(
+    LANGUES.map(function (code) { return t("intro.langue." + code); }),
+    function (rang) {
+      definirLangue(LANGUES[rang]);
+      apres();
+    }
+  );
 }
 
 
@@ -643,7 +719,9 @@ function carteEchoDepart() {
          '</div>' +
          '<div class="echo-nom">' + echapper(e.nom) + '</div>' +
          '<div class="echo-titre">' + echapper(e.titre) + '</div>' +
-         '<div class="echo-niveau">niveau ' + echo.niveau + '</div>' +
+         '<div class="echo-niveau">' +
+         echapper(t("intro.echoDepart.niveau", { niveau: echo.niveau })) +
+         '</div>' +
          '</div>';
 }
 
@@ -696,8 +774,17 @@ function demarrer(surFin) {
   reponses = { nom: "", genre: "", voie: "", lieuZero: null };
 
   construireEcran();
-  lancerRechercheLieuZero();      // en arriere-plan, des la premiere ligne
-  jouerEtape();
+
+  /* La recherche du lieu zero ne demarre qu'APRES le choix de la
+     langue, pas avant. Ses deux delais (DELAI_LIEU_ZERO,
+     PLAFOND_LIEU_ZERO) sont comptes a partir de la premiere
+     ligne : les lancer pendant que le joueur hesite entre deux
+     boutons les ferait expirer avant meme le debut du recit, et
+     le nom du lieu reel n'apparaitrait plus jamais. */
+  demanderLangue(function () {
+    lancerRechercheLieuZero();    // en arriere-plan, des la premiere ligne
+    jouerEtape();
+  });
 }
 
 // La sauvegarde n'a lieu qu'ici, a la toute fin : fermer l'app

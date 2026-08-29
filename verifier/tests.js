@@ -1282,21 +1282,58 @@ function lancerTests() {
     voie("gardien", "archiviste", "arpenteur")        // egalite parfaite : la 3e tranche
   ], ["archiviste", "gardien", "arpenteur", "gardien", "arpenteur"]);
 
-  // Toutes les lignes du script doivent se formater completement,
-  // quel que soit le genre : aucun {...} ni [...] ne doit survivre.
-  var restes = [];
-  ["m", "f", "n"].forEach(function (g) {
-    Intro.SCRIPT.forEach(function (e, i) {
-      var textes = [];
-      if (e.texte) textes.push(e.texte);
-      if (e.options) e.options.forEach(function (o) { textes.push(o.texte); });
+  /* Chaque cle du script existe-t-elle dans TEXTES.fr ?
 
-      textes.forEach(function (t) {
-        var sortie = f(t, { genre: g, nom: "Ethan", voie: "archiviste" });
-        if (/[\[\]]/.test(sortie) || /\{[a-z]+\}/.test(sortie)) restes.push(g + " #" + i + " : " + sortie);
+     Sans ce controle, une faute de frappe dans un cleTexte ne se
+     verrait nulle part de facon lisible : t() rendrait la cle
+     elle-meme, et l'intro afficherait "intro.eveil.pasDormi" au
+     joueur, sans la moindre erreur. Meme raisonnement que le
+     croisement des cles du didacticiel, dans verifier.js. */
+  var clesDuScript = [];
+  Intro.SCRIPT.forEach(function (e) {
+    if (e.cleTexte) clesDuScript.push(e.cleTexte);
+    if (e.options) e.options.forEach(function (o) { clesDuScript.push(o.cleTexte); });
+  });
+
+  verifie("chaque cle du script existe dans TEXTES.fr",
+    clesDuScript.filter(function (c) { return typeof TEXTES.fr[c] !== "string"; }), []);
+
+  /* Le francais est la langue de repli : une cle qui n'existe QUE
+     en anglais n'a pas de filet, et afficherait sa propre cle. */
+  verifie("aucune cle anglaise orpheline",
+    Object.keys(TEXTES.en).filter(function (c) { return typeof TEXTES.fr[c] !== "string"; }), []);
+
+  /* Toutes les lignes du script doivent se formater completement,
+     quel que soit le genre : aucun {...} ni [...] ne doit survivre.
+
+     On repasse par t() plutot que de lire la table, et dans CHAQUE
+     langue : c'est le seul moyen de voir un accord [m|f|n] mal
+     ecrit dans une traduction. Une cle absente de l'anglais
+     retombe sur le francais et se trouve donc verifiee deux fois,
+     ce qui est sans danger et se corrigera tout seul le jour ou
+     elle sera traduite. */
+  var langueAvant = langueCourante();
+  var restes = [];
+
+  LANGUES.forEach(function (lg) {
+    definirLangue(lg);
+    ["m", "f", "n"].forEach(function (g) {
+      Intro.SCRIPT.forEach(function (e, i) {
+        var cles = [];
+        if (e.cleTexte) cles.push(e.cleTexte);
+        if (e.options) e.options.forEach(function (o) { cles.push(o.cleTexte); });
+
+        cles.forEach(function (cle) {
+          var sortie = f(t(cle), { genre: g, nom: "Ethan", voie: "archiviste" });
+          if (/[[]]/.test(sortie) || /{[a-z]+}/.test(sortie)) {
+            restes.push(lg + " " + g + " #" + i + " : " + sortie);
+          }
+        });
       });
     });
   });
+
+  definirLangue(langueAvant);
   verifie("aucun accord ni {nom} oublie dans tout le script", restes, []);
 
   // Le moteur ne sait traiter que ces types-la
@@ -1307,11 +1344,15 @@ function lancerTests() {
     if (TYPES.indexOf(e.type) === -1) malFormees.push("#" + i + " type " + e.type);
     if (e.type === "pause" && !(e.duree > 0)) malFormees.push("#" + i + " sans duree");
     if (e.type === "saisie" && (!e.cle || !(e.max > 0))) malFormees.push("#" + i + " saisie incomplete");
+    // recit et ico ne portent plus de phrase, seulement une cle.
+    if ((e.type === "recit" || e.type === "ico") && !e.cleTexte) {
+      malFormees.push("#" + i + " " + e.type + " sans cleTexte");
+    }
     if (e.type === "choix") {
       if (!e.cle) malFormees.push("#" + i + " choix sans cle");
       if (!e.options || e.options.length < 2) malFormees.push("#" + i + " choix sans options");
       (e.options || []).forEach(function (o) {
-        if (!o.texte || !o.valeur) malFormees.push("#" + i + " option incomplete");
+        if (!o.cleTexte || !o.valeur) malFormees.push("#" + i + " option incomplete");
       });
     }
   });

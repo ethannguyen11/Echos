@@ -29,6 +29,20 @@ var CLE_JOUEUR           = "echos_joueur_v4";
 var CLES_JOUEUR_ANCIENNES = ["echos_joueur_v3", "echos_joueur_v2"];
 var VERSION_JOUEUR       = 4;
 
+/* La langue de l'interface vit dans SA PROPRE cle, a cote de la
+   sauvegarde et jamais dedans : effacer sa partie ne doit pas
+   redemander la langue, et ajouter un champ a la sauvegarde
+   aurait impose une v5 et une migration de plus pour un reglage
+   qui n'a rien a voir avec la progression du joueur.
+
+   LANGUES est aussi la liste des boutons proposes au tout debut
+   de l'intro : y ajouter un code suffit a proposer la langue,
+   une fois sa table ecrite dans js/langues.js. */
+var CLE_LANGUE    = "echos_langue";
+var LANGUE_DEFAUT = "fr";
+var LANGUES       = ["fr", "en"];
+
+
 // Overpass est gratuit et sature souvent. On essaie les miroirs
 // l'un apres l'autre ; le japonais est le plus proche de Taipei.
 var SERVEURS_OVERPASS = [

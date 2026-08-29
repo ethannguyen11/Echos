@@ -19,7 +19,7 @@ var RACINE = path.join(__dirname, "..");
 
 // Tout sauf jeu.js : on ne veut pas brancher les boutons du jeu,
 // seulement disposer de ses fonctions.
-var FICHIERS = ["js/config.js", "js/especes.js", "js/lieux.js", "js/carte.js",
+var FICHIERS = ["js/config.js", "js/langues.js", "js/especes.js", "js/lieux.js", "js/carte.js",
                 "js/joueur.js", "js/combat.js", "js/grimoire.js", "js/intro.js",
                 "js/modetest.js"];
 
@@ -294,7 +294,7 @@ function lancerParcours() {
 
   var vues = jouerIntro(m, {
     nom: "Ethan",
-    choix: ["Elle est venue.", "J'écris tout ce que j'en sais.",
+    choix: ["Français", "Elle est venue.", "J'écris tout ce que j'en sais.",
             "Je le recopie avant qu'il ne s'abîme.", "Je vais voir d'où il venait."]
   });
 
@@ -354,7 +354,7 @@ function lancerParcours() {
 
   var vues2 = jouerIntro(m2, {
     nom: "  Léo  ",
-    choix: ["Quelqu'un est venu.", "Je préviens les gens.",
+    choix: ["Français", "Quelqu'un est venu.", "Je préviens les gens.",
             "Je le mets à l'abri.", "Je reste jusqu'à la fin."]
   });
 
@@ -386,7 +386,7 @@ function lancerParcours() {
   bloc("Taps rapides et saisie");
 
   function reponsesC() {
-    return { nom: "Ico", choix: ["Il est venu.", "J'y retourne une dernière fois.",
+    return { nom: "Ico", choix: ["Français", "Il est venu.", "J'y retourne une dernière fois.",
                                  "Je pars le chercher.", "Je reste jusqu'à la fin."] };
   }
 

@@ -21,6 +21,7 @@ var RACINE = __dirname;
 // Le meme ordre que dans index.html
 var FICHIERS = [
   "js/config.js",
+  "js/langues.js",
   "js/especes.js",
   "js/lieux.js",
   "js/carte.js",
@@ -307,6 +308,13 @@ ligne(restes.length === 0, 'plus aucune trace du mot "scout"',
    5. LE SCRIPT DE L'INTRO EST FIDELE AU TEXTE
    On relit echos-ico-ouverture.md et on compare, replique par
    replique, avec ce que js/intro.js va reellement afficher.
+
+   Depuis le passage au bilingue, js/intro.js ne contient plus de
+   phrases mais des cles : la comparaison se fait donc contre
+   TEXTES.fr, la table francaise de js/langues.js. La reference
+   reste le .md, et le francais reste mot pour mot. L'anglais
+   n'est pas compare : il n'a pas de fichier de reference, et une
+   cle anglaise absente est un cas prevu, pas une faute.
    Une reformulation, une virgule deplacee, une ligne oubliee :
    ca se voit ici.
    ------------------------------------------------------------ */
@@ -332,12 +340,19 @@ if (!fs.existsSync(path.join(RACINE, CHEMIN_SCRIPT))) {
   });
 
   // --- ce que le moteur jouera ---
+  // Une cle absente de TEXTES.fr se signale ici en toutes lettres
+  // plutot que de sortir un "undefined" illisible dans l'ecart.
+  function fr(cle) {
+    var v = ctx.TEXTES && ctx.TEXTES.fr ? ctx.TEXTES.fr[cle] : undefined;
+    return typeof v === "string" ? v : "(cle absente de TEXTES.fr : " + cle + ")";
+  }
+
   var jouees = [];
   ctx.Intro.SCRIPT.forEach(function (e) {
-    if (e.type === "recit") jouees.push("recit|" + e.texte);
-    else if (e.type === "ico") jouees.push("ico|" + e.texte);
+    if (e.type === "recit") jouees.push("recit|" + fr(e.cleTexte));
+    else if (e.type === "ico") jouees.push("ico|" + fr(e.cleTexte));
     else if (e.type === "choix") {
-      e.options.forEach(function (o) { jouees.push("option|" + o.texte + "|" + o.valeur); });
+      e.options.forEach(function (o) { jouees.push("option|" + fr(o.cleTexte) + "|" + o.valeur); });
     }
   });
 
