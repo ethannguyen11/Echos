@@ -2,7 +2,7 @@
    LE JOUEUR : sa collection et son equipe
    ============================================================ */
 
-var collection = {};   // { komainu: { espece, niveau, xp, pv } }
+var collection = {};   // { komainu: { espece, niveau, xp, pv, conscience, fragments } }
 var equipe = [];       // jusqu'a 3 identifiants d'espece
 
 // Ce que la cinematique d'ouverture a appris du joueur.
@@ -19,6 +19,21 @@ var profil = profilParDefaut();
    majuscule (js/ico.js). Trois choses differentes ; melanger les
    deux dernieres serait facile et penible a debusquer. */
 var suiviIco = icoParDefaut();
+
+/* Les fragments des especes PAS ENCORE assimilees.
+
+   Un Echo assimile garde les siens sur lui, dans
+   collection[espece].fragments. La gourde n'est donc pas un
+   inventaire general : c'est une salle d'attente, et elle se vide
+   dans l'Echo le jour ou l'espece entre au Grimoire.
+
+   { peng: { mince: 3, grand: 1, complet: 0 } } */
+var gourde = {};
+
+// Ce que le joueur a compris du monde. Les listes servent a
+// compter des choses DISTINCTES : sans elles, on ne saurait pas
+// qu'on est deja venu ici, ni qu'on a deja joue aujourd'hui.
+var savoir = savoirParDefaut();
 
 function profilParDefaut() {
   return {
@@ -38,9 +53,29 @@ function icoParDefaut() {
   };
 }
 
+function savoirParDefaut() {
+  return {
+    combats: 0,   // combats menes, victoire ou non
+    jours: [],    // journees distinctes, en "AAAA-MM-JJ"
+    lieux: []     // identifiants de lieux distincts visites
+  };
+}
+
+// Le sac de fragments d'une espece, vide. Une seule forme dans
+// tout le jeu : celle-ci. Elle sert a l'Echo comme a la gourde.
+function fragmentsVides() {
+  var sac = {};
+  FRAGMENT_TAILLES.forEach(function (t) { sac[t] = 0; });
+  return sac;
+}
+
 function nouvelEcho(especeId, niveau) {
   var s = statsAuNiveau(especeId, niveau);
-  return { espece: especeId, niveau: niveau, xp: 0, pv: s.pvMax };
+  return {
+    espece: especeId, niveau: niveau, xp: 0, pv: s.pvMax,
+    conscience: 1,               // de 1 a CONSCIENCE_MAX
+    fragments: fragmentsVides()  // les siens, non fongibles
+  };
 }
 
 function ajouterAlaCollection(especeId, niveau) {
@@ -48,6 +83,14 @@ function ajouterAlaCollection(especeId, niveau) {
 
   if (!existant) {
     collection[especeId] = nouvelEcho(especeId, niveau);
+
+    /* Le seul moment ou la gourde se vide. Ce que le joueur avait
+       ramasse avant de rencontrer l'espece lui revient d'un coup,
+       ici : c'est ce qui rend le ramassage anticipe utile plutot
+       que frustrant. viderGourdeVers vit dans js/fragments.js,
+       charge apres celui-ci ; l'appel n'a lieu qu'a l'execution. */
+    viderGourdeVers(especeId);
+
     if (equipe.length < EQUIPE_MAX) equipe.push(especeId);
     return "nouveau";
   }
@@ -107,7 +150,9 @@ function sauverJoueur() {
       collection: collection,
       equipe: equipe,
       joueur: profil,
-      ico: suiviIco
+      ico: suiviIco,
+      gourde: gourde,
+      savoir: savoir
     }));
   } catch (e) {}
 }
@@ -139,7 +184,112 @@ function normaliserCollection(brut) {
     var pvMax = statsAuNiveau(espece, niveau).pvMax;
     if (!(pv >= 0) || pv > pvMax) pv = pvMax;
 
-    propre[espece] = { espece: espece, niveau: niveau, xp: xp, pv: pv };
+    /* ATTENTION EN RELISANT : cette ligne reconstruit l'Echo a
+       neuf, elle ne le recopie pas. Tout champ absent d'ici est
+       PERDU au prochain chargement, en silence. C'est ce qui
+       protege la sauvegarde des champs inventes a la main, et
+       c'est aussi le piege : ajouter un champ a un Echo veut dire
+       l'ajouter ici, sinon il ne survit pas a un rechargement. */
+    propre[espece] = {
+      espece: espece, niveau: niveau, xp: xp, pv: pv,
+      conscience: normaliserConscience(e.conscience),
+      fragments: normaliserFragments(e.fragments)
+    };
+  }
+
+  return propre;
+}
+
+/* Un Echo d'avant la v5 n'a pas de conscience : il demarre au
+   premier palier, comme un Echo qu'on vient d'assimiler. On ne
+   peut pas faire mieux -- rien dans une v4 ne dit ce qu'un joueur
+   avait compris de sa creature. */
+function normaliserConscience(valeur) {
+  var c = Math.round(Number(valeur));
+  if (!(c >= 1)) return 1;
+  return Math.min(c, CONSCIENCE_MAX);
+}
+
+/* Un sac de fragments, toujours rendu complet : les trois tailles
+   existent meme si elles valent zero. Le reste du jeu peut donc
+   lire sac.complet sans se demander s'il est la. */
+function normaliserFragments(brut) {
+  var sac = fragmentsVides();
+  if (!brut || typeof brut !== "object") return sac;
+
+  FRAGMENT_TAILLES.forEach(function (taille) {
+    var v = Math.round(Number(brut[taille]));
+    if (v >= 0) sac[taille] = v;
+  });
+
+  return sac;
+}
+
+/* LA GOURDE
+
+   Deux nettoyages, et un refus de nettoyer.
+
+   On ecarte les especes disparues du jeu, comme pour la
+   collection. On replie dans l'Echo les especes qui seraient a la
+   fois dans la gourde et dans la collection : c'est une
+   incoherence -- viderGourdeVers aurait du le faire -- et la
+   reparer ici vaut mieux que garder des fragments invisibles.
+
+   En revanche on NE RABOTE PAS une gourde trop pleine. Si la
+   capacite baisse un jour, un joueur qui avait quinze fragments
+   les garde ; il ne peut simplement plus en ajouter. Faire
+   l'inverse ferait disparaitre des fragments au chargement, sans
+   que personne ne l'ait demande. */
+function normaliserGourde(brut, collectionPropre) {
+  var propre = {};
+  if (!brut || typeof brut !== "object") return propre;
+
+  for (var id in brut) {
+    if (!ESPECES[id]) continue;                   // espece disparue
+
+    var sac = normaliserFragments(brut[id]);
+    var echo = collectionPropre[id];
+
+    if (echo) {                                   // deja assimilee : ca lui revient
+      FRAGMENT_TAILLES.forEach(function (t) { echo.fragments[t] += sac[t]; });
+      continue;
+    }
+
+    propre[id] = sac;
+  }
+
+  return propre;
+}
+
+/* LE SAVOIR
+
+   Les doublons passent par un objet temoin et non par indexOf :
+   une sauvegarde bricolee a la main peut contenir des milliers
+   d'entrees, et un indexOf dans une boucle les relirait toutes a
+   chaque tour. */
+function normaliserSavoir(brut) {
+  var sv = savoirParDefaut();
+  if (!brut || typeof brut !== "object") return sv;
+
+  var combats = Math.round(Number(brut.combats));
+  if (combats >= 0) sv.combats = combats;
+
+  sv.jours = listeDistincte(brut.jours);
+  sv.lieux = listeDistincte(brut.lieux);
+
+  return sv;
+}
+
+function listeDistincte(brut) {
+  var propre = [], vus = {};
+  if (!brut || typeof brut.length !== "number") return propre;
+
+  for (var i = 0; i < brut.length; i++) {
+    var v = brut[i];
+    if (typeof v !== "string" || v === "") continue;
+    if (Object.prototype.hasOwnProperty.call(vus, v)) continue;
+    vus[v] = true;
+    propre.push(v);
   }
 
   return propre;
@@ -219,12 +369,19 @@ function chargerJoueur() {
   try {
     var brut = localStorage.getItem(CLE_JOUEUR);
 
-    /* Rien en v4 : on descend les cles anciennes, de la plus
+    /* Rien en v5 : on descend les cles anciennes, de la plus
        recente a la plus vieille, et on prend la premiere qui
-       repond. Une v3 n'a pas de bloc "ico" : il sera cree avec ses
-       valeurs par defaut. Une v2 n'a pas non plus de bloc
-       "joueur", donc introVue reste faux et l'intro se rejouera :
-       c'est le comportement voulu depuis la v3. */
+       repond.
+
+       Une v4 n'a ni "gourde" ni "savoir", et ses Echos n'ont ni
+       conscience ni fragments : tout cela est cree vide, et la
+       partie reprend exactement ou elle en etait. Une v3 n'a pas
+       de bloc "ico". Une v2 n'a pas non plus de bloc "joueur",
+       donc introVue reste faux et l'intro se rejouera : c'est le
+       comportement voulu depuis la v3.
+
+       La cle lue n'est jamais effacee. La prochaine sauvegarde
+       ecrit sous CLE_JOUEUR et laisse l'ancienne ou elle est. */
     for (var i = 0; !brut && i < CLES_JOUEUR_ANCIENNES.length; i++) {
       brut = localStorage.getItem(CLES_JOUEUR_ANCIENNES[i]);
     }
@@ -237,11 +394,19 @@ function chargerJoueur() {
     equipe     = normaliserEquipe(d.equipe, collection);
     profil     = normaliserProfil(d.joueur);
     suiviIco   = normaliserIco(d.ico);
+
+    // Apres la collection : normaliserGourde a besoin de savoir
+    // quelles especes sont deja assimilees pour leur rendre leurs
+    // fragments au lieu de les laisser en attente.
+    gourde     = normaliserGourde(d.gourde, collection);
+    savoir     = normaliserSavoir(d.savoir);
   } else {
     collection = {};
     equipe     = [];
     profil     = profilParDefaut();
     suiviIco   = icoParDefaut();
+    gourde     = {};
+    savoir     = savoirParDefaut();
   }
 
   // Premier lancement : Jin Chan te suit deja, au niveau 3.

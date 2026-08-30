@@ -12,22 +12,28 @@ var EQUIPE_MAX         = 3;
 
 var CLE_DONJONS = "echos_donjons_v5";
 
-/* La sauvegarde du joueur passe en v4 : elle contient desormais un
-   bloc "ico" (didacticiels deja joues, paliers de la couche
-   identite), a cote du bloc "joueur" apparu en v3.
+/* La sauvegarde du joueur passe en v5 : elle contient desormais
+   deux blocs de plus, "gourde" et "savoir", et chaque Echo de la
+   collection porte sa conscience et ses fragments. Le bloc "ico"
+   est apparu en v4, le bloc "joueur" en v3.
 
    Les anciennes cles ne sont plus JAMAIS ecrites : elles sont
    seulement relues, une fois, pour recuperer ce qu'elles
    contiennent. La liste va de la plus recente a la plus vieille,
    et chargerJoueur() prend la premiere qui repond.
 
-   C'est une LISTE et non une seule cle : sinon, passer en v4
-   aurait rendu illisibles les sauvegardes v2, qui se lisaient
-   encore hier. Une partie ne doit pas se perdre parce qu'on a
-   ajoute un ecran. */
-var CLE_JOUEUR           = "echos_joueur_v4";
-var CLES_JOUEUR_ANCIENNES = ["echos_joueur_v3", "echos_joueur_v2"];
-var VERSION_JOUEUR       = 4;
+   C'est une LISTE et non une seule cle : sinon, passer en v5
+   aurait rendu illisibles les sauvegardes v3 et v2, qui se
+   lisaient encore hier. Une partie ne doit pas se perdre parce
+   qu'on a ajoute un ecran.
+
+   La cle d'une version quittee n'est jamais effacee, seulement
+   delaissee. Une v4 lue puis migree reste donc INTACTE sur le
+   disque : si la v5 se revele fautive, il suffit de revenir en
+   arriere et la partie d'hier repond encore. */
+var CLE_JOUEUR           = "echos_joueur_v5";
+var CLES_JOUEUR_ANCIENNES = ["echos_joueur_v4", "echos_joueur_v3", "echos_joueur_v2"];
+var VERSION_JOUEUR       = 5;
 
 /* La langue de l'interface vit dans SA PROPRE cle, a cote de la
    sauvegarde et jamais dedans : effacer sa partie ne doit pas
@@ -734,6 +740,69 @@ var ASSIMILATION_MAX = 95;
    l'espece. POINT D'ACCROCHE, rien ne le pose aujourd'hui. */
 var ASSIMILATION_MALUS_RANG = { D: 0, C: 5, B: 10, A: 15, S: 25 };
 var RANG_INASSIMILABLE = "X";
+
+
+/* ============================================================
+   LES FRAGMENTS, LA GOURDE ET LE SAVOIR
+
+   Un fragment n'est pas une monnaie. Il appartient a UNE espece
+   et ne sert qu'a elle : huit fragments minces de Komainu ne
+   feront jamais monter un Baku. C'est le contraire d'une monnaie,
+   et c'est voulu -- ce que tu comprends d'une creature ne se
+   depense pas ailleurs.
+   ============================================================ */
+
+/* Trois tailles, de la plus commune a la plus rare. L'ordre
+   compte : il va du moins au plus precieux, et plusieurs
+   fonctions le parcourent dans ce sens. */
+var FRAGMENT_TAILLES = ["mince", "grand", "complet"];
+
+/* Quatre paliers de conscience. Un Echo assimile demarre a 1.
+
+   Chaque entree donne le COUT pour quitter ce palier, pas pour
+   l'atteindre : CONSCIENCE_COUTS[1] est le prix du passage de 1
+   a 2. Le dernier palier n'a pas d'entree, il n'y a rien apres.
+
+   Le fragment complet n'apparait qu'au dernier passage, et il ne
+   tombe JAMAIS au combat : il se recoit. Un Echo pleinement
+   conscient ne peut donc pas s'obtenir en farmant. */
+var CONSCIENCE_MAX = 4;
+
+var CONSCIENCE_COUTS = {
+  1: { mince: 8, grand: 0, complet: 0 },
+  2: { mince: 5, grand: 2, complet: 0 },
+  3: { mince: 0, grand: 3, complet: 1 }
+};
+
+/* LA GOURDE
+
+   Elle garde les fragments des especes que le joueur n'a pas
+   encore assimilees. Sans elle, trouver un fragment de Peng avant
+   d'avoir rencontre un Peng ne voudrait rien dire, et le jeu
+   punirait l'ordre dans lequel on explore.
+
+   Sa capacite est comptee PAR ESPECE et toutes tailles
+   confondues : dix places veut dire dix fragments de Peng, quelle
+   que soit leur taille. Au-dela, le surplus est perdu -- et
+   donnerFragment() le dit a l'appelant, qui devra prevenir le
+   joueur le jour ou il y aura une interface.
+
+   Ces trois nombres sont un point de depart, pas un equilibrage.
+   Ils n'ont encore ete eprouves par aucune partie. */
+var GOURDE_CAPACITE_BASE    = 6;    // places par espece au premier jour
+var GOURDE_CAPACITE_MAX     = 30;   // plafond absolu, savoir ou pas
+var GOURDE_SAVOIR_PAR_PLACE = 20;   // points de savoir pour une place de plus
+
+/* LES POINTS DE SAVOIR
+
+   Ce que le joueur a compris du monde, et non ce qu'il a gagne.
+   Les trois sources sont volontairement lentes et non cumulables
+   par acharnement : rejouer trente combats dans la meme journee
+   au meme endroit rapporte les combats, mais ni le jour ni le
+   lieu. La gourde s'agrandit en sortant, pas en restant. */
+var SAVOIR_PAR_COMBAT = 1;
+var SAVOIR_PAR_JOUR   = 5;    // par journee DISTINCTE de jeu
+var SAVOIR_PAR_LIEU   = 3;    // par lieu DISTINCT visite
 
 
 /* ============================================================

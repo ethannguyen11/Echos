@@ -20,7 +20,7 @@ var RACINE = path.join(__dirname, "..");
 // Tout sauf jeu.js : on ne veut pas brancher les boutons du jeu,
 // seulement disposer de ses fonctions.
 var FICHIERS = ["js/config.js", "js/langues.js", "js/especes.js", "js/lieux.js", "js/carte.js",
-                "js/joueur.js", "js/combat.js", "js/grimoire.js", "js/intro.js",
+                "js/joueur.js", "js/fragments.js", "js/combat.js", "js/grimoire.js", "js/intro.js",
                 "js/modetest.js"];
 
 
@@ -320,16 +320,28 @@ function lancerParcours() {
           m.ctx.profil.nom === "Ethan" && m.ctx.profil.genre === "f" && m.ctx.profil.introVue === true,
           JSON.stringify(m.ctx.profil));
   verifie("lieuZero reste null sans GPS", m.ctx.profil.lieuZero === null);
-  verifie("la sauvegarde v4 contient le bloc joueur",
-          !!m.stockage.echos_joueur_v4 &&
-          JSON.parse(m.stockage.echos_joueur_v4).joueur.introVue === true);
-  verifie("la sauvegarde v4 contient le bloc ico",
-          !!m.stockage.echos_joueur_v4 &&
-          JSON.stringify(JSON.parse(m.stockage.echos_joueur_v4).ico) ===
+  verifie("la sauvegarde v5 contient le bloc joueur",
+          !!m.stockage.echos_joueur_v5 &&
+          JSON.parse(m.stockage.echos_joueur_v5).joueur.introVue === true);
+  verifie("la sauvegarde v5 contient le bloc ico",
+          !!m.stockage.echos_joueur_v5 &&
+          JSON.stringify(JSON.parse(m.stockage.echos_joueur_v5).ico) ===
           '{"didacticiensVus":[],"palierLu":0,"palierAtteint":0}',
-          m.stockage.echos_joueur_v4 &&
-          JSON.stringify(JSON.parse(m.stockage.echos_joueur_v4).ico));
+          m.stockage.echos_joueur_v5 &&
+          JSON.stringify(JSON.parse(m.stockage.echos_joueur_v5).ico));
+  verifie("la sauvegarde v5 contient la gourde et le savoir",
+          !!m.stockage.echos_joueur_v5 &&
+          JSON.stringify(JSON.parse(m.stockage.echos_joueur_v5).gourde) === "{}" &&
+          JSON.stringify(JSON.parse(m.stockage.echos_joueur_v5).savoir) ===
+          '{"combats":0,"jours":[],"lieux":[]}',
+          m.stockage.echos_joueur_v5);
+  verifie("l'Echo de depart nait au premier palier de conscience",
+          m.ctx.collection.jinchan.conscience === 1 &&
+          JSON.stringify(m.ctx.collection.jinchan.fragments) ===
+          '{"mince":0,"grand":0,"complet":0}',
+          JSON.stringify(m.ctx.collection.jinchan));
   verifie("les anciennes cles ne sont jamais reecrites",
+          m.stockage.echos_joueur_v4 === undefined &&
           m.stockage.echos_joueur_v3 === undefined &&
           m.stockage.echos_joueur_v2 === undefined);
   verifie("l'overlay est retire de la page a la fin",
@@ -477,16 +489,78 @@ function lancerParcours() {
           JSON.stringify(m7.ctx.profil));
   verifie("v3 : la collection est conservee", m7.ctx.collection.peng.xp === 8);
 
+  /* Une v4 : elle a tout ce que la v3 avait, plus le bloc ico,
+     mais ni gourde, ni savoir, et ses Echos n'ont ni conscience ni
+     fragments. C'est la sauvegarde que les vrais joueurs ont sur
+     leur telephone aujourd'hui : ce scenario decrit exactement ce
+     qui leur arrivera au prochain lancement. */
+  var v4 = {
+    version: 4,
+    collection: { komainu: { espece: "komainu", niveau: 22, xp: 40, pv: 90 } },
+    equipe: ["komainu"],
+    joueur: { nom: "Ethan", genre: "f", voie: "arpenteur", lieuZero: null, introVue: true },
+    ico: { didacticiensVus: ["combat"], palierLu: 2, palierAtteint: 3 }
+  };
+
+  var m8 = creerMonde({ stockage: { echos_joueur_v4: JSON.stringify(v4) } });
+  var erreurV4 = null;
+  try { m8.ctx.chargerJoueur(); } catch (e) { erreurV4 = e; }
+
+  verifie("une sauvegarde v4 se lit sans erreur", erreurV4 === null, erreurV4 && erreurV4.message);
+  verifie("v4 : rien n'est perdu de la collection",
+          m8.ctx.collection.komainu.niveau === 22 && m8.ctx.collection.komainu.xp === 40,
+          JSON.stringify(m8.ctx.collection.komainu));
+  verifie("v4 : le profil et le bloc ico sont conserves",
+          m8.ctx.profil.nom === "Ethan" && m8.ctx.suiviIco.palierAtteint === 3,
+          JSON.stringify(m8.ctx.profil) + " " + JSON.stringify(m8.ctx.suiviIco));
+  verifie("v4 : l'equipe est conservee",
+          JSON.stringify(m8.ctx.equipe) === '["komainu"]', JSON.stringify(m8.ctx.equipe));
+
+  /* Le coeur de la migration. Un Echo de niveau 22 redemarre au
+     premier palier de conscience, les mains vides : rien dans une
+     v4 ne dit ce que le joueur avait compris de sa creature, et
+     inventer une conscience retroactive serait pire que de la
+     laisser a 1. */
+  verifie("v4 : chaque Echo demarre au premier palier, sans fragment",
+          m8.ctx.collection.komainu.conscience === 1 &&
+          m8.ctx.collection.komainu.fragments.mince === 0 &&
+          m8.ctx.collection.komainu.fragments.grand === 0 &&
+          m8.ctx.collection.komainu.fragments.complet === 0,
+          JSON.stringify(m8.ctx.collection.komainu));
+  verifie("v4 : la gourde et le savoir sont crees vides",
+          JSON.stringify(m8.ctx.gourde) === "{}" &&
+          JSON.stringify(m8.ctx.savoir) === '{"combats":0,"jours":[],"lieux":[]}',
+          JSON.stringify(m8.ctx.gourde) + " " + JSON.stringify(m8.ctx.savoir));
+
+  /* Et surtout : la v4 reste sur le disque. Tant que le joueur ne
+     sauvegarde pas, rien n'est ecrit ; et quand il sauvegarde,
+     c'est sous la cle v5. La partie d'hier repond encore. */
+  verifie("v4 : la sauvegarde d'origine n'est pas touchee",
+          m8.stockage.echos_joueur_v4 === JSON.stringify(v4),
+          m8.stockage.echos_joueur_v4);
+
+  m8.ctx.sauverJoueur();
+  verifie("v4 : la sauvegarde suivante s'ecrit en v5, a cote",
+          !!m8.stockage.echos_joueur_v5 &&
+          JSON.parse(m8.stockage.echos_joueur_v5).version === 5 &&
+          m8.stockage.echos_joueur_v4 === JSON.stringify(v4),
+          m8.stockage.echos_joueur_v5);
+  verifie("v4 : la conscience survit a un aller-retour sur le disque",
+          JSON.parse(m8.stockage.echos_joueur_v5).collection.komainu.conscience === 1 &&
+          !!JSON.parse(m8.stockage.echos_joueur_v5).collection.komainu.fragments,
+          m8.stockage.echos_joueur_v5);
+
+
   // Un bloc ico abime ne doit pas plus bloquer qu'une collection abimee.
   [["palier negatif", -3, "sept"],
    ["palier absurde", 900, 900],
    ["paliers absents", undefined, undefined]
   ].forEach(function (cas) {
     var abime = {
-      version: 4, collection: {}, equipe: [], joueur: {},
+      version: 5, collection: {}, equipe: [], joueur: {},
       ico: { didacticiensVus: ["combat", 42, "combat", null], palierLu: cas[1], palierAtteint: cas[2] }
     };
-    var mi = creerMonde({ stockage: { echos_joueur_v4: JSON.stringify(abime) } });
+    var mi = creerMonde({ stockage: { echos_joueur_v5: JSON.stringify(abime) } });
     var err = null;
     try { mi.ctx.chargerJoueur(); } catch (e) { err = e; }
 
@@ -507,7 +581,7 @@ function lancerParcours() {
    ["types absurdes", '{"collection":{"komainu":{"niveau":"sept","pv":-9}},"equipe":"komainu","joueur":42}'],
    ["profil incomplet", '{"collection":{},"equipe":[],"joueur":{"genre":"z","voie":"pirate","lieuZero":"ici"}}']
   ].forEach(function (cas) {
-    var mx = creerMonde({ stockage: { echos_joueur_v4: cas[1] } });
+    var mx = creerMonde({ stockage: { echos_joueur_v5: cas[1] } });
     var err = null;
     try { mx.ctx.chargerJoueur(); } catch (e) { err = e; }
     verifie("sauvegarde abimee (" + cas[0] + ") : aucun crash", err === null, err && err.message);
@@ -518,7 +592,7 @@ function lancerParcours() {
 
   bloc("Second lancement");
 
-  var m6 = creerMonde({ stockage: { echos_joueur_v4: m.stockage.echos_joueur_v4 } });
+  var m6 = creerMonde({ stockage: { echos_joueur_v5: m.stockage.echos_joueur_v5 } });
   m6.ctx.chargerJoueur();
 
   verifie("introVue est relue a vrai : pas de seconde intro", m6.ctx.profil.introVue === true);

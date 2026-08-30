@@ -481,7 +481,7 @@ function lancerTests() {
     var champs = Object.keys(collection.komainu).sort();
     collection = avant;
     return champs;
-  })(), ["espece", "niveau", "pv", "xp"]);
+  })(), ["conscience", "espece", "fragments", "niveau", "pv", "xp"]);
 
 
   /* --- Le Figement --- */
@@ -665,14 +665,18 @@ function lancerTests() {
 
   verifie("l'equipe s'arrete a 3", equipe, ["komainu", "baku", "peng"]);
   verifie("un doublon plus fort remplace l'ancien",
-    collection.komainu, { espece: "komainu", niveau: 7, xp: 0, pv: 72 });
+    collection.komainu,
+    { espece: "komainu", niveau: 7, xp: 0, pv: 72,
+      conscience: 1, fragments: { mince: 0, grand: 0, complet: 0 } });
 
   verifie("xpRequis", [1, 2, 5, 10, 49].map(xpRequis), [26, 40, 82, 152, 698]);
   verifie("gagnerXp (montees de niveau)",
     [gagnerXp("baku", 25), gagnerXp("baku", 500), gagnerXp("inconnu", 10)],
     [0, 7, null]);
   verifie("gagnerXp soigne a la montee",
-    collection.baku, { espece: "baku", niveau: 8, xp: 49, pv: 79 });
+    collection.baku,
+    { espece: "baku", niveau: 8, xp: 49, pv: 79,
+      conscience: 1, fragments: { mince: 0, grand: 0, complet: 0 } });
 
   // basculerEquipe ecrit normalement la sauvegarde et redessine le
   // grimoire : on neutralise ces deux effets, pour que lancer les
@@ -697,6 +701,146 @@ function lancerTests() {
 
   collection = collectionAvant;
   equipe = equipeAvant;
+
+
+  /* --- Les fragments, la gourde et le savoir --- */
+
+  bloc("Fragments");
+
+  var collAvantF = collection, equipeAvantF = equipe;
+  var gourdeAvantF = gourde, savoirAvantF = savoir;
+
+  collection = {};
+  equipe = [];
+  gourde = {};
+  savoir = savoirParDefaut();
+
+  // Une espece inconnue du joueur : le fragment attend en gourde.
+  var r1 = donnerFragment("peng", "mince", 3);
+  verifie("un fragment d'espece non assimilee va en gourde",
+    [r1.ou, r1.recus, r1.perdus, gourde.peng.mince], ["gourde", 3, 0, 3]);
+
+  // La capacite de depart, sans un seul point de savoir.
+  verifie("la gourde part a sa capacite de base",
+    [pointsDeSavoir(), capaciteGourde()], [0, GOURDE_CAPACITE_BASE]);
+
+  /* Le debordement. On en demande bien plus que la capacite : ce
+     qui rentre rentre, le reste est PERDU, et donnerFragment le
+     dit. C'est cette valeur qu'une interface devra montrer au
+     joueur -- sans elle, il perdrait des fragments sans le
+     savoir, ce qui serait le pire des deux mondes. */
+  var r2 = donnerFragment("peng", "grand", 99);
+  verifie("la gourde deborde, et le dit",
+    [r2.recus, r2.perdus, totalFragments(gourde.peng)],
+    [GOURDE_CAPACITE_BASE - 3, 99 - (GOURDE_CAPACITE_BASE - 3), GOURDE_CAPACITE_BASE]);
+
+  verifie("une gourde pleine ne prend plus rien",
+    donnerFragment("peng", "mince", 1).recus, 0);
+
+  /* Le savoir agrandit la gourde. Trois sources, et le refus des
+     doublons : le meme jour ou le meme lieu ne comptent qu'une
+     fois, sinon rester chez soi rapporterait autant que sortir. */
+  noterCombat(); noterCombat();
+  verifie("un jour deja compte ne compte pas deux fois",
+    [noterJour("2026-08-30"), noterJour("2026-08-30"), noterJour("2026-08-31")],
+    [true, false, true]);
+  verifie("un lieu deja visite ne compte pas deux fois",
+    [noterLieu("node/1"), noterLieu("node/1"), noterLieu("")],
+    [true, false, false]);
+
+  verifie("les points de savoir suivent le bareme",
+    pointsDeSavoir(),
+    2 * SAVOIR_PAR_COMBAT + 2 * SAVOIR_PAR_JOUR + 1 * SAVOIR_PAR_LIEU);
+
+  verifie("la capacite ne depasse jamais son plafond",
+    (function () {
+      var vrai = savoir;
+      savoir = { combats: 100000, jours: [], lieux: [] };
+      var c = capaciteGourde();
+      savoir = vrai;
+      return c;
+    })(), GOURDE_CAPACITE_MAX);
+
+  /* L'espece entre au Grimoire : la gourde se vide dans l'Echo,
+     d'un coup, et la place se libere pour une autre espece. */
+  var avantAssim = totalFragments(gourde.peng);
+  ajouterAlaCollection("peng", 5);
+  verifie("l'assimilation vide la gourde dans l'Echo",
+    [gourde.peng === undefined, totalFragments(collection.peng.fragments)],
+    [true, avantAssim]);
+
+  verifie("un Echo assimile n'a plus de plafond",
+    donnerFragment("peng", "mince", 500).perdus, 0);
+
+  /* Un fragment ne sert qu'a SON espece. Komainu peut crouler
+     sous les fragments de Peng, il n'en profitera jamais. */
+  collection = {};
+  gourde = {};
+  ajouterAlaCollection("komainu", 5);
+  ajouterAlaCollection("baku", 5);
+  donnerFragment("komainu", "mince", 8);
+  verifie("un fragment ne sert qu'a son espece",
+    [collection.komainu.fragments.mince, collection.baku.fragments.mince], [8, 0]);
+
+  /* Les quatre paliers de conscience, dans l'ordre et au prix
+     exact. Komainu a ses 8 minces : il passe a 2, et il ne lui
+     reste rien. */
+  verifie("1 -> 2 : huit minces, exactement",
+    [peutMonterConscience("komainu"), monterConscience("komainu"),
+     collection.komainu.fragments.mince],
+    [true, 2, 0]);
+
+  verifie("le palier suivant se refuse tant qu'il manque une piece",
+    [peutMonterConscience("komainu"), monterConscience("komainu")], [false, null]);
+
+  donnerFragment("komainu", "mince", 5);
+  donnerFragment("komainu", "grand", 1);
+  verifie("manquePourConscience dit ce qui manque encore",
+    manquePourConscience("komainu"), { mince: 0, grand: 1, complet: 0 });
+
+  /* Tout ou rien : un paiement partiel laisserait l'Echo sans ses
+     fragments et sans son palier. On verifie que le refus ne
+     preleve rien du tout. */
+  verifie("un refus ne preleve aucun fragment",
+    [monterConscience("komainu"), collection.komainu.fragments.mince,
+     collection.komainu.fragments.grand],
+    [null, 5, 1]);
+
+  donnerFragment("komainu", "grand", 1);
+  verifie("2 -> 3 : cinq minces et deux grands",
+    [monterConscience("komainu"), collection.komainu.fragments.mince,
+     collection.komainu.fragments.grand],
+    [3, 0, 0]);
+
+  /* Le dernier passage demande un fragment complet, qui ne tombe
+     jamais au combat. Sans lui, l'Echo reste a 3 quel que soit le
+     nombre de grands accumules. */
+  donnerFragment("komainu", "grand", 3);
+  verifie("3 -> 4 se refuse sans le fragment complet",
+    [peutMonterConscience("komainu"), manquePourConscience("komainu").complet],
+    [false, 1]);
+
+  donnerFragmentComplet("komainu");
+  verifie("3 -> 4 : trois grands et un complet",
+    [monterConscience("komainu"), collection.komainu.conscience], [4, 4]);
+
+  verifie("le dernier palier n'a rien apres lui",
+    [coutConscience(CONSCIENCE_MAX), manquePourConscience("komainu"),
+     peutMonterConscience("komainu"), monterConscience("komainu")],
+    [null, null, false, null]);
+
+  // Ce qui n'existe pas ne fait rien planter.
+  verifie("une espece ou une taille inconnue ne donne rien",
+    [donnerFragment("cequinexistepas", "mince", 1).recus,
+     donnerFragment("komainu", "enorme", 1).recus,
+     manquePourConscience("cequinexistepas"),
+     monterConscience("cequinexistepas")],
+    [0, 0, null, null]);
+
+  collection = collAvantF;
+  equipe = equipeAvantF;
+  gourde = gourdeAvantF;
+  savoir = savoirAvantF;
 
 
   /* --- Le grimoire : ce qu'il montre du bestiaire ---
