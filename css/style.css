@@ -514,6 +514,47 @@ button { font-family: inherit; }
 .ligne-echo .manque.prete  { color: #7ddc9a; }
 .ligne-echo .manque.acheve { color: #7d7288; font-style: italic; }
 
+/* LE BOUTON DE MONTEE DE PALIER
+
+   Il n'apparait que quand les fragments sont reunis, donc il est
+   rare : il a le droit d'attirer l'oeil.
+
+   44 px de haut, comme partout ailleurs dans le jeu. Il vit dans
+   une ligne dense ou tout le reste est en 12 px, mais on ne rogne
+   pas une cible tactile pour gagner six pixels -- surtout celle
+   qui depense definitivement des fragments. */
+.montee { display: flex; gap: 8px; margin-top: 10px; }
+
+.ligne-echo .monter {
+  flex: 1; min-height: 44px;
+  padding: 10px 12px;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  color: #fff; background: #3d2b4d;
+  border: 1px solid #b455d4; border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ligne-echo .monter:active { background: #4d3760; }
+
+/* Le second appui, celui qui depense. Il est plein et non
+   contour : la difference doit se voir sans lire, parce que c'est
+   la seule chose qui separe "je regarde" de "c'est parti". */
+.ligne-echo .monter.confirmer {
+  color: #1a1020; background: #b455d4; border-color: #b455d4;
+}
+
+.ligne-echo .monter.confirmer:active { background: #c76ee2; }
+
+/* Annuler ne prend que la place qu'il lui faut : c'est une issue,
+   pas une proposition. */
+.ligne-echo .monter.annuler {
+  flex: 0 0 auto;
+  color: #b0a4bd; background: transparent;
+  border-color: #4a3f57; font-weight: 500;
+}
+
+
 /* La gourde, sur une ligne inconnue. Elle reste dans les gris
    eteints de la silhouette : cette ligne annonce une reserve, pas
    une decouverte, et elle ne doit pas attirer l'oeil plus que les

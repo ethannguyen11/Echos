@@ -7,6 +7,9 @@
    Deux etats, pas trois :
      lie      l'espece est dans la collection. Tout est visible,
               et la ligne se touche pour entrer dans l'equipe ;
+     lie      ... et c'est le seul ecran d'ou l'on peut DEPENSER
+              des fragments, en franchissant un palier de
+              conscience. Deux appuis, parce que c'est definitif ;
      inconnu  jamais assimilee. Une silhouette : on annonce la
               famille, jamais le nom ni les statistiques. Seule
               exception depuis les fragments : si la gourde garde
@@ -19,6 +22,20 @@
    sauvegarde ; rien ne le fait aujourd'hui, et bestiaire()
    n'aurait qu'un champ de plus a poser sur chaque ligne.
    ============================================================ */
+
+
+/* L'Echo dont la montee de palier attend d'etre confirmee.
+
+   Un seul a la fois, et jamais plus d'un : armer le bouton d'un
+   autre Echo desarme le precedent. La depense est irreversible,
+   donc il ne doit exister aucun moment ou deux boutons sont armes
+   et ou l'on ne sait plus lequel on va toucher.
+
+   Cet etat ne va PAS dans la sauvegarde : une confirmation en
+   attente ne survit ni a la fermeture du grimoire, ni au
+   rechargement de la page. C'est voulu -- une question posee hier
+   n'attend pas de reponse aujourd'hui. */
+var palierAConfirmer = null;
 
 
 /* ------------------------------------------------------------
@@ -162,11 +179,45 @@ function blocConscience(l) {
     html += '<div class="manque acheve">Pleinement conscient.</div>';
   } else if (totalFragments(l.manque) === 0) {
     html += '<div class="manque prete">Le palier suivant est réuni.</div>';
+    html += boutonMontee(l);
   } else {
     html += '<div class="manque">Il manque ' + libelleSac(l.manque) + '.</div>';
   }
 
   return html;
+}
+
+/* LE BOUTON DE MONTEE
+
+   Il n'apparait que la ou blocConscience l'appelle : quand le
+   manque est a zero. Au dernier palier, manque vaut null et la
+   branche n'est jamais atteinte -- il n'y a donc pas de condition
+   a ecrire ici pour l'exclure, et pas de condition a oublier.
+
+   DEUX APPUIS, PAS UN. La depense est irreversible : huit
+   fragments minces mis dans un palier ne se recuperent pas, et
+   ils ont demande plusieurs sorties. Un appui malheureux dans une
+   liste ou tout le reste se touche pour changer d'equipe serait
+   la pire facon de les perdre.
+
+   Le second appui nomme ce qu'il prend. "Confirmer" seul ne
+   dirait pas le prix ; "Confirmer, 8 fragments minces" le dit,
+   et c'est la derniere occasion de le lire. */
+function boutonMontee(l) {
+  var cout = coutConscience(l.conscience);
+  if (!cout) return "";                   // ceinture : plus rien apres le dernier palier
+
+  if (palierAConfirmer !== l.espece) {
+    return '<div class="montee">' +
+           '<button type="button" class="monter" data-monter="' + l.espece + '">' +
+           'Franchir le palier ' + (l.conscience + 1) + '</button></div>';
+  }
+
+  return '<div class="montee">' +
+         '<button type="button" class="monter confirmer" data-monter="' + l.espece + '">' +
+         'Confirmer &middot; ' + libelleSac(cout) + '</button>' +
+         '<button type="button" class="monter annuler" data-annuler="' + l.espece + '">' +
+         'Annuler</button></div>';
 }
 
 /* Les quatre paliers en pastilles. Dessines en CSS et non ecrits
@@ -211,7 +262,20 @@ function ligneInconnue(l) {
   return html + '</div></div>';
 }
 
+/* Ouvrir remet toujours la confirmation a zero : on ne retrouve
+   jamais un bouton arme en revenant sur l'ecran. Redessiner, au
+   contraire, la conserve -- c'est ce qui permet au premier appui
+   d'armer le bouton et au rendu suivant de le montrer arme. */
 function ouvrirGrimoire() {
+  palierAConfirmer = null;
+  redessinerGrimoire();
+
+  elem("grimoire").classList.add("actif");
+
+  Ico.dire("grimoire");   // DIDACTICIEL : la collection
+}
+
+function redessinerGrimoire() {
   var b = bestiaire();
   var html = "";
 
@@ -239,9 +303,42 @@ function ouvrirGrimoire() {
     });
   }
 
-  elem("grimoire").classList.add("actif");
+  /* Les boutons de montee vivent DANS une ligne qui se touche pour
+     changer d'equipe. Sans stopPropagation, franchir un palier
+     ferait aussi entrer ou sortir l'Echo de l'equipe -- deux
+     actions pour un doigt, dont une non voulue. */
+  var montees = document.querySelectorAll(".ligne-echo .monter");
+  for (var m = 0; m < montees.length; m++) {
+    montees[m].addEventListener("click", surAppuiMontee);
+  }
+}
 
-  Ico.dire("grimoire");   // DIDACTICIEL : la collection
+function surAppuiMontee(ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+
+  var annule = this.getAttribute("data-annuler");
+  if (annule) { palierAConfirmer = null; redessinerGrimoire(); return; }
+
+  var id = this.getAttribute("data-monter");
+
+  // Premier appui : on arme, on ne depense rien.
+  if (palierAConfirmer !== id) {
+    palierAConfirmer = id;
+    redessinerGrimoire();
+    return;
+  }
+
+  /* Second appui. On desarme AVANT de depenser : si monterConscience
+     refuse pour une raison qu'on n'a pas prevue, on ne laisse pas
+     un bouton arme derriere soi. */
+  palierAConfirmer = null;
+
+  if (monterConscience(id) !== null) {
+    sauverJoueur();
+    majFiche();
+  }
+
+  redessinerGrimoire();
 }
 
 function basculerEquipe(especeId) {

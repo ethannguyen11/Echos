@@ -224,7 +224,8 @@ var classesManquantes = [];
  "echo-depart", "echo-vignette", "echo-substitut", "echo-nom", "echo-titre",
  "echo-niveau",
  "conscience", "paliers", "acquis", "fragments", "manque",
- "prete", "acheve", "gourde"].forEach(function (c) {
+ "prete", "acheve", "gourde",
+ "montee", "monter", "confirmer", "annuler"].forEach(function (c) {
   if (css.indexOf("." + c) === -1) classesManquantes.push(c);
 });
 ligne(classesManquantes.length === 0,

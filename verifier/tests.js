@@ -1127,17 +1127,17 @@ function lancerTests() {
      Ce sont trois phrases differentes parce que ce sont trois
      situations differentes pour le joueur. */
   verifie("les trois etats du palier se disent differemment",
-    [blocConscience({ conscience: 1, fragments: fragmentsVides(),
+    [blocConscience({ espece: "komainu", conscience: 1, fragments: fragmentsVides(),
                       manque: { mince: 8, grand: 0, complet: 0 } }).indexOf("Il manque") !== -1,
-     blocConscience({ conscience: 2, fragments: fragmentsVides(),
+     blocConscience({ espece: "komainu", conscience: 2, fragments: fragmentsVides(),
                       manque: fragmentsVides() }).indexOf("réuni") !== -1,
-     blocConscience({ conscience: CONSCIENCE_MAX, fragments: fragmentsVides(),
+     blocConscience({ espece: "komainu", conscience: CONSCIENCE_MAX, fragments: fragmentsVides(),
                       manque: null }).indexOf("Pleinement") !== -1],
     [true, true, true]);
 
   // Un Echo sans le moindre fragment ne montre pas une ligne vide.
   verifie("aucun fragment se dit, plutot que de laisser un blanc",
-    blocConscience({ conscience: 1, fragments: fragmentsVides(),
+    blocConscience({ espece: "komainu", conscience: 1, fragments: fragmentsVides(),
                      manque: { mince: 8, grand: 0, complet: 0 } })
       .indexOf("Aucun fragment") !== -1, true);
 
@@ -1146,6 +1146,128 @@ function lancerTests() {
     [1, 2, CONSCIENCE_MAX].map(function (c) {
       return (paliersDessines(c).match(/acquis/g) || []).length;
     }), [1, 2, CONSCIENCE_MAX]);
+
+
+  /* --- Le bouton de montee de palier --- */
+
+  /* Le bouton n'existe que dans un seul cas : le manque est a zero
+     ET il reste un palier apres. Les deux autres cas ne doivent
+     rien afficher du tout -- un bouton grise se touche quand meme,
+     et un bouton absent, non. */
+  verifie("le bouton n'apparait que quand les fragments sont reunis",
+    [blocConscience({ espece: "komainu", conscience: 1, fragments: fragmentsVides(),
+                      manque: { mince: 8, grand: 0, complet: 0 } }).indexOf("monter") !== -1,
+     blocConscience({ espece: "komainu", conscience: 1, fragments: fragmentsVides(),
+                      manque: fragmentsVides() }).indexOf("monter") !== -1,
+     blocConscience({ espece: "komainu", conscience: CONSCIENCE_MAX,
+                      fragments: fragmentsVides(), manque: null }).indexOf("monter") !== -1],
+    [false, true, false]);
+
+  /* Le second appui doit nommer son prix. "Confirmer" seul ne
+     dirait pas ce qu'on perd, et c'est la derniere occasion de le
+     lire. */
+  palierAConfirmer = "komainu";
+  var htmlArme = blocConscience({ espece: "komainu", conscience: 1,
+                                  fragments: fragmentsVides(), manque: fragmentsVides() });
+  verifie("le bouton arme annonce ce qu'il va depenser",
+    [htmlArme.indexOf("Confirmer") !== -1,
+     htmlArme.indexOf(libelleSac(coutConscience(1))) !== -1,
+     htmlArme.indexOf("Annuler") !== -1],
+    [true, true, true]);
+
+  // Un autre Echo, arme ailleurs, ne montre pas de confirmation.
+  verifie("un seul Echo arme a la fois",
+    blocConscience({ espece: "baku", conscience: 1,
+                     fragments: fragmentsVides(), manque: fragmentsVides() })
+      .indexOf("Confirmer") !== -1, false);
+  palierAConfirmer = null;
+
+
+  /* LE POINT LE PLUS IMPORTANT DE CE BLOC.
+
+     Le premier appui ne doit RIEN depenser. Si cette garantie
+     tombe, un joueur perd huit fragments d'un doigt pose de
+     travers, et rien ne les lui rendra. */
+  var vraiSauverM = sauverJoueur, vraieFicheM = majFiche;
+  var vraiRedessin = redessinerGrimoire;
+  sauverJoueur = function () {};
+  majFiche = function () {};
+  redessinerGrimoire = function () {};
+
+  function appuyer(id, annuler) {
+    surAppuiMontee.call({
+      getAttribute: function (nom) {
+        if (nom === "data-annuler") return annuler ? id : null;
+        return annuler ? null : id;
+      }
+    }, { stopPropagation: function () {} });
+  }
+
+  collection = {};
+  equipe = [];
+  gourde = {};
+  ajouterAlaCollection("komainu", 5);
+  donnerFragment("komainu", "mince", 8);
+
+  appuyer("komainu");
+  verifie("premier appui : on arme, on ne depense rien",
+    [palierAConfirmer, collection.komainu.conscience, collection.komainu.fragments.mince],
+    ["komainu", 1, 8]);
+
+  appuyer("komainu");
+  verifie("second appui : le palier monte et les fragments partent",
+    [palierAConfirmer, collection.komainu.conscience, collection.komainu.fragments.mince],
+    [null, 2, 0]);
+
+  /* Annuler doit desarmer sans rien prendre. C'est la sortie de
+     secours, et une sortie de secours qui depense n'en est pas
+     une. */
+  ajouterAlaCollection("baku", 5);
+  donnerFragment("baku", "mince", 8);
+  appuyer("baku");
+  appuyer("baku", true);
+  verifie("annuler desarme sans rien depenser",
+    [palierAConfirmer, collection.baku.conscience, collection.baku.fragments.mince],
+    [null, 1, 8]);
+
+  // Apres annulation, il faut de nouveau deux appuis.
+  appuyer("baku");
+  verifie("apres annulation, il faut de nouveau deux appuis",
+    [palierAConfirmer, collection.baku.conscience], ["baku", 1]);
+
+  // Armer un autre Echo desarme le premier, sans le depenser.
+  ajouterAlaCollection("peng", 5);
+  donnerFragment("peng", "mince", 8);
+  appuyer("peng");
+  verifie("armer un autre Echo desarme le premier sans le depenser",
+    [palierAConfirmer, collection.baku.conscience, collection.baku.fragments.mince],
+    ["peng", 1, 8]);
+  palierAConfirmer = null;
+
+  /* Un appui sur un Echo qui n'a pas de quoi monter ne doit rien
+     faire, meme si l'appel arrive : le bouton n'existe pas dans
+     l'ecran, mais monterConscience reste la derniere barriere. */
+  collection = {};
+  gourde = {};
+  ajouterAlaCollection("chiguo", 5);
+  appuyer("chiguo");
+  appuyer("chiguo");
+  verifie("sans les fragments, deux appuis ne changent rien",
+    [collection.chiguo.conscience, palierAConfirmer], [1, null]);
+
+  /* Ouvrir l'ecran repart toujours a zero : on ne retrouve jamais
+     un bouton arme en revenant, meme si on l'avait laisse ainsi. */
+  var vraiIco = Ico.dire;
+  Ico.dire = function () {};
+  palierAConfirmer = "chiguo";
+  ouvrirGrimoire();
+  verifie("ouvrir le grimoire desarme toute confirmation en attente",
+    palierAConfirmer, null);
+  Ico.dire = vraiIco;
+
+  sauverJoueur = vraiSauverM;
+  majFiche = vraieFicheM;
+  redessinerGrimoire = vraiRedessin;
 
   collection = collectionAvantG;
   equipe = equipeAvantG;
