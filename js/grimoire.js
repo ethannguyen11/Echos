@@ -8,7 +8,10 @@
      lie      l'espece est dans la collection. Tout est visible,
               et la ligne se touche pour entrer dans l'equipe ;
      inconnu  jamais assimilee. Une silhouette : on annonce la
-              famille, jamais le nom ni les statistiques.
+              famille, jamais le nom ni les statistiques. Seule
+              exception depuis les fragments : si la gourde garde
+              quelque chose pour cette espece, on le dit -- sans
+              rien nommer.
 
    POINT D'ACCROCHE : un troisieme etat "apercu" (croise en
    combat, mais jamais assimile) recompenserait les combats
@@ -31,6 +34,10 @@ function bestiaire() {
   var familles = [];
   var liesEnTout = 0, especesEnTout = 0;
 
+  // La capacite de la gourde est la meme pour toutes les especes :
+  // on la lit une fois, pas seize.
+  var capacite = capaciteGourde();
+
   // L'ordre des familles et des especes est celui d'especes.js :
   // une seule liste a tenir a jour, pas deux.
   var noms = Object.keys(ESPECES_PAR_LIEU);
@@ -45,11 +52,29 @@ function bestiaire() {
       var c = collection[id];
       if (c) lies++;
 
+      /* Deux jeux de champs qui ne se melangent jamais.
+
+         Une espece LIEE porte sa conscience, les fragments que
+         l'Echo detient en propre, et ce qui manque pour le palier
+         suivant (null au dernier palier : il n'y a plus rien
+         apres).
+
+         Une espece INCONNUE porte ce que la gourde garde pour
+         elle, et la capacite du moment. Les deux valent zero et
+         null de l'autre cote : l'affichage n'a jamais a se
+         demander lequel des deux il regarde. */
       lignes.push({
         espece:     id,
         lie:        c ? true : false,
         niveau:     c ? c.niveau : 0,
-        dansEquipe: equipe.indexOf(id) !== -1
+        dansEquipe: equipe.indexOf(id) !== -1,
+
+        conscience: c ? c.conscience : 0,
+        fragments:  c ? c.fragments : fragmentsEnGourde(id),
+        manque:     c ? manquePourConscience(id) : null,
+
+        enGourde:   c ? 0 : totalFragments(fragmentsEnGourde(id)),
+        capacite:   capacite
       });
     }
 
@@ -108,19 +133,82 @@ function ligneLiee(l) {
          '<div class="affinite" style="color:' + COULEURS_AFFINITE[e.affinite] + '">' +
          LIBELLES_AFFINITE[e.affinite] + ' &middot; ' + LIBELLES_NATURE[e.nature] + '</div>' +
          '<div class="trait">' + e.trait + '</div>' +
+         blocConscience(l) +
          '</div></div>';
+}
+
+/* CE QUE L'ECHO A COMPRIS
+
+   Trois lignes au plus, sous le trait : ou il en est, ce qu'il
+   detient, ce qu'il lui manque. Lecture seule -- rien ici ne se
+   touche, et monterConscience() n'a toujours aucun bouton.
+
+   L'ordre est celui d'une question qu'on se pose en jouant :
+   "il en est ou ?", puis "j'ai quoi ?", puis "il me faut quoi ?".
+   La derniere ligne est la seule qui compte vraiment quand on
+   cherche ou aller ce soir. */
+function blocConscience(l) {
+  var html = '<div class="conscience">' + paliersDessines(l.conscience) +
+             ' Conscience ' + l.conscience + ' / ' + CONSCIENCE_MAX + '</div>';
+
+  var tenus = libelleSac(l.fragments);
+  html += '<div class="fragments">' +
+          (tenus ? tenus : 'Aucun fragment.') + '</div>';
+
+  /* manque vaut null au dernier palier. On le dit, plutot que de
+     ne rien afficher : une ligne absente se lit comme un oubli,
+     une ligne qui dit "c'est fini" se lit comme une fin. */
+  if (l.manque === null) {
+    html += '<div class="manque acheve">Pleinement conscient.</div>';
+  } else if (totalFragments(l.manque) === 0) {
+    html += '<div class="manque prete">Le palier suivant est réuni.</div>';
+  } else {
+    html += '<div class="manque">Il manque ' + libelleSac(l.manque) + '.</div>';
+  }
+
+  return html;
+}
+
+/* Les quatre paliers en pastilles. Dessines en CSS et non ecrits
+   en caracteres : un rond plein et un rond vide ne se ressemblent
+   pas d'une police a l'autre, et la fiche se lit sur un telephone
+   ou l'on ne choisit pas la police. */
+function paliersDessines(conscience) {
+  var html = '<span class="paliers">';
+
+  for (var i = 1; i <= CONSCIENCE_MAX; i++) {
+    html += '<i' + (i <= conscience ? ' class="acquis"' : '') + '></i>';
+  }
+
+  return html + '</span>';
 }
 
 /* La ligne inconnue ne recoit pas d'attribut data-espece : elle
    ne doit rien apprendre a qui regarderait le code de la page,
    et elle ne se touche pas. */
-function ligneInconnue() {
-  return '<div class="ligne-echo inconnu">' +
-         '<div class="pastille vide">?</div>' +
-         '<div class="infos">' +
-         '<div class="nom">Écho inconnu</div>' +
-         '<div class="titre">Jamais assimilé.</div>' +
-         '</div></div>';
+function ligneInconnue(l) {
+  var html = '<div class="ligne-echo inconnu">' +
+             '<div class="pastille vide">?</div>' +
+             '<div class="infos">' +
+             '<div class="nom">Écho inconnu</div>' +
+             '<div class="titre">Jamais assimilé.</div>';
+
+  /* La gourde, quand elle garde quelque chose pour cette espece.
+
+     C'est la SEULE chose qu'une ligne inconnue accepte de dire de
+     plus, et elle ne nomme rien : ni l'espece, ni sa famille, ni
+     sa couleur. Le joueur apprend qu'il a ramasse quelque chose
+     ici, pas quoi. Sans cette ligne, les fragments d'une espece
+     jamais croisee seraient invisibles jusqu'au jour de
+     l'assimilation -- et ce jour-la, la gourde se viderait sans
+     que personne n'ait jamais su qu'elle etait pleine. */
+  if (l && l.enGourde > 0) {
+    html += '<div class="gourde">Ta gourde en retient ' +
+            l.enGourde + ' / ' + l.capacite + '</div>' +
+            '<div class="fragments">' + libelleSac(l.fragments) + '</div>';
+  }
+
+  return html + '</div></div>';
 }
 
 function ouvrirGrimoire() {
@@ -135,7 +223,7 @@ function ouvrirGrimoire() {
             '<span>' + f.lies + ' / ' + f.total + '</span></div>';
 
     for (var j = 0; j < f.lignes.length; j++) {
-      html += f.lignes[j].lie ? ligneLiee(f.lignes[j]) : ligneInconnue();
+      html += f.lignes[j].lie ? ligneLiee(f.lignes[j]) : ligneInconnue(f.lignes[j]);
     }
   }
 

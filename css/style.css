@@ -471,6 +471,62 @@ button { font-family: inherit; }
   margin-top: 3px;
 }
 
+/* CE QUE L'ECHO A COMPRIS
+
+   Trois lignes sous le trait, separees du reste par un filet :
+   ce bloc repond a une autre question que les statistiques
+   au-dessus, et l'oeil doit pouvoir sauter de l'un a l'autre.
+
+   Tout est en 12px comme les lignes voisines, et rien n'a de
+   largeur fixe : sur un ecran etroit, "Il manque 3 fragments
+   minces et 1 grand fragment" passe a la ligne au lieu de pousser
+   la vignette. C'est .infos { min-width: 0 } plus haut qui le
+   permet -- ne pas l'enlever. */
+.ligne-echo .conscience {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid #2b2436;
+  font-size: 12px; font-weight: 600; color: #cfc3d8;
+}
+
+/* Les quatre paliers. Dessines plutot qu'ecrits : un rond plein
+   et un rond vide ne se ressemblent pas d'une police a l'autre. */
+.paliers { display: inline-flex; gap: 3px; flex-shrink: 0; }
+
+.paliers i {
+  width: 7px; height: 7px; border-radius: 50%;
+  border: 1px solid #6b5f78;
+  box-sizing: border-box;
+}
+
+.paliers i.acquis { background: #b455d4; border-color: #b455d4; }
+
+.ligne-echo .fragments {
+  font-size: 12px; color: #8f84a0; margin-top: 3px; line-height: 1.3;
+}
+
+/* Ce qu'il manque : la ligne qu'on lit quand on cherche ou aller
+   ce soir. Elle est donc la plus claire des trois. */
+.ligne-echo .manque {
+  font-size: 12px; color: #b98fd0; margin-top: 3px; line-height: 1.3;
+}
+
+.ligne-echo .manque.prete  { color: #7ddc9a; }
+.ligne-echo .manque.acheve { color: #7d7288; font-style: italic; }
+
+/* La gourde, sur une ligne inconnue. Elle reste dans les gris
+   eteints de la silhouette : cette ligne annonce une reserve, pas
+   une decouverte, et elle ne doit pas attirer l'oeil plus que les
+   Echos que le joueur possede vraiment. */
+.ligne-echo .gourde {
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid #2b2436;
+  font-size: 12px; font-weight: 600; color: #8a7d99;
+}
+
+.ligne-echo.inconnu .fragments { color: #6b5f78; }
+
+
 /* La vignette d'un Echo : elle porte son illustration. Le bord
    prend la couleur de la famille, posee en style inline par
    vignetteEcho(). Taille fixe et flex-shrink a 0 : l'arrivee d'une

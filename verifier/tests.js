@@ -969,7 +969,15 @@ function lancerTests() {
 
   bloc("Grimoire");
 
+  /* La gourde et le savoir sont remis a neuf comme la collection :
+     bestiaire() lit maintenant la capacite de la gourde, et cette
+     capacite depend du savoir. Sans ce garde-fou, ces tests
+     dependraient de l'ordre dans lequel les blocs precedents ont
+     tourne. */
   var collectionAvantG = collection, equipeAvantG = equipe;
+  var gourdeAvantG = gourde, savoirAvantG = savoir;
+  gourde = {};
+  savoir = savoirParDefaut();
 
   // Grimoire vierge : les seize especes sont la, aucune n'est liee.
   collection = {};
@@ -1023,17 +1031,126 @@ function lancerTests() {
     b.familles[0].lignes.map(function (l) { return l.espece; }),
     ["komainu", "chiguo", "sunwukong", "palantir"]);
 
+  /* Ces trois-la comparent la LIGNE ENTIERE, exprès : c'est le
+     seul endroit qui fige la forme de ce que bestiaire() rend, et
+     un champ ajoute sans y penser se voit ici. */
+  var sacVide = { mince: 0, grand: 0, complet: 0 };
+  var premierPalier = { mince: 8, grand: 0, complet: 0 };
+
   verifie("une espece liee porte son niveau",
-    b.familles[0].lignes[0], { espece: "komainu", lie: true, niveau: 7, dansEquipe: false });
+    b.familles[0].lignes[0],
+    { espece: "komainu", lie: true, niveau: 7, dansEquipe: false,
+      conscience: 1, fragments: sacVide, manque: premierPalier,
+      enGourde: 0, capacite: GOURDE_CAPACITE_BASE });
 
   verifie("une espece inconnue ne porte aucun niveau",
-    b.familles[0].lignes[1], { espece: "chiguo", lie: false, niveau: 0, dansEquipe: false });
+    b.familles[0].lignes[1],
+    { espece: "chiguo", lie: false, niveau: 0, dansEquipe: false,
+      conscience: 0, fragments: sacVide, manque: null,
+      enGourde: 0, capacite: GOURDE_CAPACITE_BASE });
 
   verifie("l'equipe est signalee sur la ligne",
-    b.familles[1].lignes[3], { espece: "baku", lie: true, niveau: 4, dansEquipe: true });
+    b.familles[1].lignes[3],
+    { espece: "baku", lie: true, niveau: 4, dansEquipe: true,
+      conscience: 1, fragments: sacVide, manque: premierPalier,
+      enGourde: 0, capacite: GOURDE_CAPACITE_BASE });
+
+
+  /* --- Ce que le grimoire dit des fragments --- */
+
+  /* Un Echo qui a de quoi monter, et un autre qui n'a rien : les
+     deux lignes doivent se lire d'un coup d'oeil sans qu'on ait a
+     compter soi-meme ce qui manque. */
+  collection = {};
+  equipe = [];
+  gourde = {};
+  ajouterAlaCollection("komainu", 7);
+  donnerFragment("komainu", "mince", 3);
+
+  var bf = bestiaire();
+  var ligneKomainu = bf.familles[0].lignes[0];
+
+  verifie("une ligne liee porte sa conscience et ses fragments",
+    [ligneKomainu.conscience, ligneKomainu.fragments.mince, ligneKomainu.enGourde],
+    [1, 3, 0]);
+
+  verifie("une ligne liee dit ce qui manque pour le palier suivant",
+    ligneKomainu.manque, { mince: 5, grand: 0, complet: 0 });
+
+  // Palier atteint : le manque tombe a zero, mais reste un sac.
+  donnerFragment("komainu", "mince", 5);
+  verifie("un palier reuni se signale par un manque a zero",
+    totalFragments(bestiaire().familles[0].lignes[0].manque), 0);
+
+  /* Dernier palier : manque vaut null et non un sac vide. C'est ce
+     qui distingue "il ne manque rien" de "il n'y a plus rien
+     apres", et l'affichage ne dit pas la meme chose des deux. */
+  collection.komainu.conscience = CONSCIENCE_MAX;
+  verifie("au dernier palier, il n'y a plus de manque du tout",
+    bestiaire().familles[0].lignes[0].manque, null);
+
+  /* Une espece jamais assimilee dont la gourde garde quelque
+     chose. C'est le seul cas ou une ligne inconnue dit plus que
+     sa silhouette. */
+  collection = {};
+  equipe = [];
+  gourde = {};
+  donnerFragment("chiguo", "mince", 2);
+  donnerFragment("chiguo", "grand", 1);
+
+  var ligneChiguo = bestiaire().familles[0].lignes[1];
+  verifie("une ligne inconnue porte l'etat de la gourde",
+    [ligneChiguo.lie, ligneChiguo.conscience, ligneChiguo.enGourde,
+     ligneChiguo.capacite, ligneChiguo.manque],
+    [false, 0, 3, GOURDE_CAPACITE_BASE, null]);
+
+  /* Le texte, et pas seulement les nombres : une ligne inconnue ne
+     doit JAMAIS laisser filtrer le nom de l'espece, meme quand
+     elle annonce la gourde. C'est la regle du grimoire depuis le
+     depart, et les fragments ne lui font pas exception. */
+  var htmlChiguo = ligneInconnue(ligneChiguo);
+  verifie("la ligne inconnue annonce la gourde sans rien nommer",
+    [htmlChiguo.indexOf("gourde") !== -1,
+     htmlChiguo.indexOf("3 / " + GOURDE_CAPACITE_BASE) !== -1,
+     htmlChiguo.indexOf(ESPECES.chiguo.nom) !== -1,
+     htmlChiguo.indexOf("data-espece") !== -1],
+    [true, true, false, false]);
+
+  // Sans rien en gourde, la silhouette reste muette comme avant.
+  gourde = {};
+  var htmlMuet = ligneInconnue(bestiaire().familles[0].lignes[1]);
+  verifie("une silhouette sans gourde ne dit toujours rien de plus",
+    [htmlMuet.indexOf("gourde") !== -1, htmlMuet.indexOf("fragments") !== -1],
+    [false, false]);
+
+  /* Les trois etats de la ligne "manque", dans le texte affiche.
+     Ce sont trois phrases differentes parce que ce sont trois
+     situations differentes pour le joueur. */
+  verifie("les trois etats du palier se disent differemment",
+    [blocConscience({ conscience: 1, fragments: fragmentsVides(),
+                      manque: { mince: 8, grand: 0, complet: 0 } }).indexOf("Il manque") !== -1,
+     blocConscience({ conscience: 2, fragments: fragmentsVides(),
+                      manque: fragmentsVides() }).indexOf("réuni") !== -1,
+     blocConscience({ conscience: CONSCIENCE_MAX, fragments: fragmentsVides(),
+                      manque: null }).indexOf("Pleinement") !== -1],
+    [true, true, true]);
+
+  // Un Echo sans le moindre fragment ne montre pas une ligne vide.
+  verifie("aucun fragment se dit, plutot que de laisser un blanc",
+    blocConscience({ conscience: 1, fragments: fragmentsVides(),
+                     manque: { mince: 8, grand: 0, complet: 0 } })
+      .indexOf("Aucun fragment") !== -1, true);
+
+  // Les pastilles suivent le palier : ni plus, ni moins.
+  verifie("les pastilles dessinees suivent le palier",
+    [1, 2, CONSCIENCE_MAX].map(function (c) {
+      return (paliersDessines(c).match(/acquis/g) || []).length;
+    }), [1, 2, CONSCIENCE_MAX]);
 
   collection = collectionAvantG;
   equipe = equipeAvantG;
+  gourde = gourdeAvantG;
+  savoir = savoirAvantG;
 
 
   /* --- Le journal de combat : le rythme et l'appui ---

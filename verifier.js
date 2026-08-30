@@ -222,7 +222,9 @@ var classesManquantes = [];
  "intro-ouverte", "intro-overlay", "intro-visuel", "intro-dialogue",
  "sortant", "recit", "ico", "lieu", "nom-lieu", "parti",
  "echo-depart", "echo-vignette", "echo-substitut", "echo-nom", "echo-titre",
- "echo-niveau"].forEach(function (c) {
+ "echo-niveau",
+ "conscience", "paliers", "acquis", "fragments", "manque",
+ "prete", "acheve", "gourde"].forEach(function (c) {
   if (css.indexOf("." + c) === -1) classesManquantes.push(c);
 });
 ligne(classesManquantes.length === 0,
