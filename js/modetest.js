@@ -4,6 +4,11 @@
    regler le palier de Figement, le niveau et l'espece de
    l'adversaire. De quoi essayer un combat sans sortir de chez soi.
 
+   Le panneau regle aussi le CHAPITRE force. Celui-la ne touche pas
+   au donjon fictif -- qui prend son espece du selecteur -- mais a
+   ce que les VRAIS lieux peuvent contenir. C'est le seul reglage
+   du panneau qui agit en dehors du terrain d'essai.
+
    Ce fichier expose un seul global : window.ModeTest.
 
    IL NE FAIT RIEN quand MODE_TEST vaut false dans config.js :
@@ -21,7 +26,14 @@ window.ModeTest = (function () {
 /* Ce que le panneau regle. Ce sont les seules valeurs modifiables
    du mode test ; le donjon fictif est reconstruit a partir d'elles
    a chaque rafraichissement du bandeau. */
-var reglages = { palier: 5, niveau: 5, espece: "sunwukong" };
+var reglages = {
+  palier: 5, niveau: 5, espece: "sunwukong",
+
+  /* 0 = ne force rien, on suit chapitreAtteint(). Sa valeur de
+     depart vient de MODE_TEST_CHAPITRE, comme le reste du panneau
+     part de constantes de config.js. */
+  chapitre: MODE_TEST_CHAPITRE
+};
 
 var panneauPret = false;
 
@@ -41,6 +53,29 @@ function actif() {
   if (!MODE_TEST) return false;
   if (!MODE_TEST_LOCAL_SEULEMENT) return true;
   return enLocal();
+}
+
+/* LE CHAPITRE FORCE
+
+   Lu par chapitreAtteint() dans js/lieux.js, et par personne
+   d'autre. Rend 0 quand le mode test est eteint : le jeu retombe
+   alors sur sa propre progression, sans rien avoir a defaire.
+
+   Il n'ECRIT NULLE PART. Le chapitre n'existe pas dans la
+   sauvegarde, donc le forcer ne peut rien y abimer, et couper le
+   mode test suffit a revenir a l'etat normal.
+
+   Ce qu'il ne peut pas defaire, en revanche : un lieu deja
+   decouvert garde l'espece qu'il avait, figee dans le cache des
+   donjons. Le chapitre force ne change que les lieux rencontres
+   ensuite. */
+function chapitreForce() {
+  if (!actif()) return 0;
+
+  var c = Math.round(Number(reglages.chapitre));
+  if (!(c >= 1)) return 0;
+
+  return Math.min(c, CHAPITRE_MAX);
 }
 
 
@@ -100,6 +135,17 @@ function preparerPanneau() {
   }
   elem("mt-espece").innerHTML = options;
 
+  /* Le chapitre. "Progression" est la valeur 0 : elle ne force
+     rien et laisse le jeu decider, ce qui doit rester le defaut
+     evident quand on ouvre le panneau. */
+  var chapitres = '<option value="0">Progression</option>';
+  for (var c = 1; c <= CHAPITRE_MAX; c++) {
+    chapitres += '<option value="' + c + '"' +
+                 (c === reglages.chapitre ? " selected" : "") + '>' +
+                 'Chapitre ' + c + '</option>';
+  }
+  elem("mt-chapitre").innerHTML = chapitres;
+
   elem("mt-palier").value = reglages.palier;
   elem("mt-niveau").value = reglages.niveau;
 
@@ -113,6 +159,10 @@ function preparerPanneau() {
   });
   elem("mt-espece").addEventListener("change", function () {
     reglages.espece = this.value;
+    rafraichir();
+  });
+  elem("mt-chapitre").addEventListener("change", function () {
+    reglages.chapitre = Number(this.value);
     rafraichir();
   });
 
@@ -138,6 +188,7 @@ function rafraichir() {
 
 return {
   actif: actif,
+  chapitreForce: chapitreForce,
   donjonDeTest: donjonDeTest,
   preparerPanneau: preparerPanneau,
   reglages: reglages

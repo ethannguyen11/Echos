@@ -63,6 +63,28 @@ var DOSSIER_MONSTRES = "monstres/";
 
 
 /* ============================================================
+   LES CHAPITRES
+
+   Chaque espece porte un chapitre (js/especes.js). Un lieu ne
+   tire que parmi les especes des chapitres ATTEINTS OU
+   INFERIEURS : le monde s'ouvre par paliers au lieu de tout
+   montrer au premier pas.
+
+   ATTENTION, RIEN NE FAIT ENCORE PROGRESSER LE CHAPITRE.
+   chapitreAtteint() rend CHAPITRE_DEPART et rien d'autre. Tant
+   qu'aucune regle de progression n'existe, les onze especes de
+   chapitre 4 n'apparaissent nulle part -- sauf en forcant le
+   chapitre depuis le panneau du mode test. C'est voulu pour
+   l'instant : le chapitre est pose, la progression viendra.
+
+   Le chapitre n'est PAS dans la sauvegarde. Le jour ou il le
+   sera, ce sera une v6 et une migration, et chapitreAtteint()
+   sera le seul endroit a reprendre. */
+var CHAPITRE_MAX    = 4;
+var CHAPITRE_DEPART = 1;
+
+
+/* ============================================================
    ICO
    Le guide. Sa couche REFERENCE (les regles) est complete des le
    premier lancement ; sa couche IDENTITE (qui il est) se debloque
@@ -382,6 +404,19 @@ var MODE_TEST = true;
    Pour essayer le mode test depuis ton telephone via GitHub Pages,
    passe cette constante a false. */
 var MODE_TEST_LOCAL_SEULEMENT = false;
+
+/* Le chapitre force par le panneau du mode test, sur le meme
+   modele que la constante ci-dessus : une valeur ici, un reglage
+   dans le panneau, et RIEN dans la sauvegarde.
+
+   0 veut dire "ne force rien" : on suit chapitreAtteint(). Toute
+   autre valeur remplace le chapitre courant tant que le mode test
+   est actif, et disparait des qu'il s'eteint.
+
+   Un lieu deja decouvert garde l'espece qu'il avait : elle est
+   figee dans le cache des donjons. Le chapitre force ne change
+   donc que les lieux rencontres APRES le changement. */
+var MODE_TEST_CHAPITRE = 0;
 
 // Une couleur par famille de lieu : marqueurs de la carte et pastilles
 // du grimoire piochent ici.

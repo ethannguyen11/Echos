@@ -142,19 +142,28 @@ function lancerTests() {
       tags: { "name:en": "Sun Yat-sen Memorial Hall", historic: "memorial" } }
   ];
 
+  /* Les especes attendues sont celles du CHAPITRE 1 : komainu au
+     temple, mechadrill au metro, eiffel au monument, penghou au
+     parc. Deux monuments differents donnent donc le meme eiffel,
+     parce que le chapitre 1 n'en ouvre pas d'autre -- ce n'est pas
+     une collision de graine, c'est le vivier qui est etroit.
+
+     Ce test reste avant tout celui du DETERMINISME : meme lieu,
+     meme Echo, meme niveau. */
   verifie("donjonDepuisLieu (meme lieu, meme Echo, meme niveau)",
     echantillons.map(function (el) {
       var d = donjonDepuisLieu(el);
       return d.id + " | " + d.nom + " | " + d.categorie + " | " + d.espece + " | niv " + d.niveau;
     }), [
-      // Les especes suivent le Figement du lieu : au palier 5, le
-      // metro ne peut plus sortir Mecha Drill (rang S), et le
-      // monument sort Eiffel (B) au lieu de Tortue Dragon (S).
-      "node/1 | Porte du Temple de Longshan | temple | palantir | niv 3",
+      // Le chapitre passe AVANT le Figement : au chapitre 1, chaque
+      // famille n'a qu'une espece ouverte, deux pour le parc. Deux
+      // monuments differents rendent donc le meme Eiffel -- ce n'est
+      // pas une collision de graine, c'est le vivier qui est etroit.
+      "node/1 | Porte du Temple de Longshan | temple | komainu | niv 3",
       "way/42 | Clairière du parc Daan Forest | parc | penghou | niv 8",
-      "node/999999 | Tunnel d'entrée de Taipei Main | metro | teketeke | niv 3",
+      "node/999999 | Tunnel d'entrée de Taipei Main | metro | mechadrill | niv 3",
       "relation/7 | Seuil de Tour Taipei 101 | monument | eiffel | niv 7",
-      "node/123456789 | Seuil de Sun Yat-sen | monument | hephaistos | niv 8"
+      "node/123456789 | Seuil de Sun Yat-sen | monument | eiffel | niv 8"
     ]);
 
   verifie("un lieu sans nom ou sans categorie est ignore", [
@@ -292,9 +301,14 @@ function lancerTests() {
     [0, 2, 3, 5, 6, 8, 9, 10].map(function (p) { return rangsAuPalier(p).join(""); }),
     ["DC", "DC", "DCB", "DCB", "CBA", "CBA", "BAS", "BAS"]);
 
+  /* Les controles de rang qui suivent passent CHAPITRE_MAX : ils
+     verifient la logique des rangs, pas la progression, et doivent
+     donc voir les seize especes. Sans ce parametre, ils liraient le
+     vivier du chapitre courant et mesureraient autre chose que ce
+     pour quoi ils ont ete ecrits. */
   verifie("difficulte : un lieu vivant ne sort jamais de rang S",
     [0, 1, 2].map(function (p) {
-      return especesDisponibles("metro", p).indexOf("mechadrill");   // mechadrill est S
+      return especesDisponibles("metro", p, CHAPITRE_MAX).indexOf("mechadrill");
     }), [-1, -1, -1]);
 
 
@@ -364,7 +378,7 @@ function lancerTests() {
   var casesMaigres = [];
   Object.keys(ESPECES_PAR_LIEU).forEach(function (cat) {
     for (var p = 0; p <= FIGEMENT_PALIER_MAX; p++) {
-      var n = especesDisponibles(cat, p).length;
+      var n = especesDisponibles(cat, p, CHAPITRE_MAX).length;
       if (n < RANGS_MINIMUM_ESPECES) casesMaigres.push(cat + " palier " + p + " : " + n);
     }
   });
@@ -372,25 +386,115 @@ function lancerTests() {
 
   // Les deux cas qui ont motive la correction
   verifie("un monument peu fige ne donne plus toujours Vinci",
-    especesDisponibles("monument", 1).length >= RANGS_MINIMUM_ESPECES, true);
+    especesDisponibles("monument", 1, CHAPITRE_MAX).length >= RANGS_MINIMUM_ESPECES, true);
 
   verifie("un parc tres fige ne donne plus toujours Peng",
-    especesDisponibles("parc", 10).length >= RANGS_MINIMUM_ESPECES, true);
+    especesDisponibles("parc", 10, CHAPITRE_MAX).length >= RANGS_MINIMUM_ESPECES, true);
 
   // La bande s'elargit vers le bas en premier
   verifie("l'elargissement commence par le bas",
-    especesDisponibles("temple", 10).map(function (id) { return ESPECES[id].rang; }).sort(),
+    especesDisponibles("temple", 10, CHAPITRE_MAX).map(function (id) { return ESPECES[id].rang; }).sort(),
     ["A", "B", "C"]);          // BAS ne donnait que A et B : C rejoint par le bas
 
   // Quand la bande suffit, elle n'est pas elargie : la tendance tient
   verifie("une bande deja suffisante n'est pas elargie",
-    [especesDisponibles("parc", 0).map(function (id) { return ESPECES[id].rang; }).join(""),
-     especesDisponibles("metro", 10).indexOf("mechadrill") !== -1],
+    [especesDisponibles("parc", 0, CHAPITRE_MAX).map(function (id) { return ESPECES[id].rang; }).join(""),
+     especesDisponibles("metro", 10, CHAPITRE_MAX).indexOf("mechadrill") !== -1],
     ["DDD", true]);            // parc vivant : que du D. metro mort : le S est la.
 
   // Meme categorie, meme palier, meme liste : le tirage reste sur
   var listeA = especesDisponibles("monument", 4).join(",");
   var listeB = especesDisponibles("monument", 4).join(",");
+
+
+  /* --- Les chapitres --- */
+
+  /* Une espece sans chapitre, ou avec un chapitre hors bornes,
+     n'apparaitrait jamais nulle part -- ou partout. Les deux se
+     verraient en jouant, longtemps apres. */
+  verifie("chaque espece porte un chapitre valide",
+    Object.keys(ESPECES).filter(function (id) {
+      var c = ESPECES[id].chapitre;
+      return !(c >= 1) || c > CHAPITRE_MAX || c !== Math.round(c);
+    }), []);
+
+  /* Chaque famille doit avoir au moins une espece des le premier
+     chapitre. Sans ca, especesDuChapitre rendrait la famille
+     entiere par securite, et le chapitre ne filtrerait plus rien
+     pour cette categorie -- en silence. */
+  verifie("chaque famille a une espece des le chapitre 1",
+    Object.keys(ESPECES_PAR_LIEU).filter(function (cat) {
+      return !ESPECES_PAR_LIEU[cat].some(function (id) { return ESPECES[id].chapitre === 1; });
+    }), []);
+
+  verifie("le chapitre 1 ouvre exactement le noyau de depart",
+    Object.keys(ESPECES_PAR_LIEU).map(function (cat) {
+      return cat + " : " + especesDuChapitre(cat, 1).join(",");
+    }),
+    ["temple : komainu", "metro : mechadrill",
+     "monument : eiffel", "parc : penghou,jinchan"]);
+
+  verifie("le dernier chapitre ouvre tout le bestiaire",
+    Object.keys(ESPECES_PAR_LIEU).reduce(function (n, cat) {
+      return n + especesDuChapitre(cat, CHAPITRE_MAX).length;
+    }, 0), Object.keys(ESPECES).length);
+
+  /* Un chapitre qui ne laisse rien doit rendre la liste entiere et
+     non une liste vide : un lieu sans espece ferait un donjon sans
+     adversaire, et le jeu casserait a l'entree. */
+  verifie("un chapitre qui n'ouvre rien retombe sur la famille entiere",
+    especesDuChapitre("temple", 0), ESPECES_PAR_LIEU.temple);
+
+  /* Le point qui compte : aucun tirage ne peut sortir une espece
+     d'un chapitre pas encore atteint, quel que soit le Figement.
+     C'est la garantie que le filtre passe AVANT les rangs. */
+  var fuites = [];
+  [1, 2, 3, CHAPITRE_MAX].forEach(function (ch) {
+    Object.keys(ESPECES_PAR_LIEU).forEach(function (cat) {
+      for (var p = 0; p <= FIGEMENT_PALIER_MAX; p++) {
+        especesDisponibles(cat, p, ch).forEach(function (id) {
+          if (ESPECES[id].chapitre > ch) fuites.push("ch" + ch + " " + cat + " p" + p + " : " + id);
+        });
+      }
+    });
+  });
+  verifie("aucun tirage ne sort d'un chapitre non atteint", fuites, []);
+
+  // Sans progression ni mode test, le chapitre courant est celui du depart.
+  verifie("le chapitre courant vaut celui du depart",
+    (function () {
+      var avant = ModeTest.reglages.chapitre;
+      ModeTest.reglages.chapitre = 0;
+      var c = chapitreAtteint();
+      ModeTest.reglages.chapitre = avant;
+      return c;
+    })(), CHAPITRE_DEPART);
+
+  /* Le panneau force le chapitre sans rien ecrire : on le regle, on
+     lit, on le remet, et la sauvegarde n'a jamais ete touchee --
+     elle ne contient aucun chapitre. */
+  verifie("le mode test force le chapitre, et seulement quand il est actif",
+    (function () {
+      var avant = ModeTest.reglages.chapitre;
+      ModeTest.reglages.chapitre = 3;
+      var force = ModeTest.actif() ? chapitreAtteint() : CHAPITRE_DEPART;
+      ModeTest.reglages.chapitre = 99;
+      var plafonne = ModeTest.actif() ? chapitreAtteint() : CHAPITRE_MAX;
+      ModeTest.reglages.chapitre = avant;
+      return [force, plafonne, ModeTest.reglages.chapitre];
+    })(), [ModeTest.actif() ? 3 : CHAPITRE_DEPART, CHAPITRE_MAX, MODE_TEST_CHAPITRE]);
+
+  verifie("le chapitre n'existe pas dans la sauvegarde",
+    (function () {
+      var avant = ModeTest.reglages.chapitre;
+      ModeTest.reglages.chapitre = 4;
+      var ecrit = JSON.stringify({
+        version: VERSION_JOUEUR, collection: collection, equipe: equipe,
+        joueur: profil, ico: suiviIco, gourde: gourde, savoir: savoir
+      });
+      ModeTest.reglages.chapitre = avant;
+      return ecrit.indexOf("chapitre") !== -1;
+    })(), false);
   verifie("le filtre rend toujours la meme liste, donc la meme espece",
     listeA === listeB && listeA.length > 0, true);
 

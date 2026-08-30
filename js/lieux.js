@@ -84,6 +84,47 @@ function rangsAuPalier(palier) {
   return FIGEMENT_RANGS_PAR_PALIER[FIGEMENT_RANGS_PAR_PALIER.length - 1].rangs;
 }
 
+/* ------------------------------------------------------------
+   LES CHAPITRES
+
+   Le chapitre atteint decide de ce qui peut habiter un lieu,
+   AVANT que le Figement decide des rangs.
+
+   Rien ne le fait encore progresser : il vaut CHAPITRE_DEPART,
+   sauf quand le panneau du mode test le force. C'est le seul
+   endroit a reprendre le jour ou la progression existera.
+   ------------------------------------------------------------ */
+
+function chapitreAtteint() {
+  /* Le garde protege l'ordre de chargement : lieux.js est lu
+     avant modetest.js. A l'execution, tout est en place. */
+  if (typeof ModeTest !== "undefined" && ModeTest.actif()) {
+    var force = ModeTest.chapitreForce();
+    if (force >= 1) return Math.min(force, CHAPITRE_MAX);
+  }
+
+  return CHAPITRE_DEPART;
+}
+
+/* Les especes de cette categorie qu'un joueur au chapitre donne
+   peut rencontrer.
+
+   Si le chapitre ne laisse RIEN dans une categorie, on rend la
+   liste entiere plutot qu'une liste vide : un lieu sans espece
+   ferait un donjon sans adversaire, et le jeu casserait a
+   l'entree. Un mauvais etiquetage doit se voir comme une espece
+   inattendue, jamais comme un ecran noir. */
+function especesDuChapitre(categorie, chapitre) {
+  var toutes = ESPECES_PAR_LIEU[categorie] || [];
+
+  var ouvertes = toutes.filter(function (id) {
+    return ESPECES[id].chapitre <= chapitre;
+  });
+
+  return ouvertes.length ? ouvertes : toutes;
+}
+
+
 /* Les especes de cette categorie de lieu que le Figement laisse
    apparaitre.
 
@@ -94,11 +135,25 @@ function rangsAuPalier(palier) {
    recommence. Sans ca, un monument peu fige n'avait qu'une seule
    espece possible, et tous se ressemblaient.
 
-   Le resultat ne depend que de la categorie et du palier : deux
-   appareils qui regardent le meme lieu obtiennent la meme liste,
-   donc la meme espece. Le tirage reste deterministe. */
-function especesDisponibles(categorie, palier) {
-  var toutes = ESPECES_PAR_LIEU[categorie];
+   Le resultat ne depend que de la categorie, du palier et du
+   chapitre : deux appareils au meme chapitre qui regardent le meme
+   lieu obtiennent la meme liste, donc la meme espece. Le tirage
+   reste deterministe.
+
+   Le chapitre s'applique AVANT les rangs : on part du vivier
+   ouvert, puis la bande s'elargit dedans. Un chapitre etroit rend
+   donc peu d'especes, et c'est exactement ce qu'on lui demande --
+   RANGS_MINIMUM_ESPECES ne peut pas inventer ce que le chapitre
+   n'a pas encore ouvert. */
+function especesDisponibles(categorie, palier, chapitre) {
+  /* Le chapitre est un PARAMETRE et non une lecture directe de
+     chapitreAtteint() : le jeu n'en passe jamais, et prend donc le
+     chapitre courant ; verifier/tests.js en passe un, et peut ainsi
+     verifier la logique des rangs sur le bestiaire entier sans
+     dependre de la progression. */
+  if (chapitre === undefined) chapitre = chapitreAtteint();
+
+  var toutes = especesDuChapitre(categorie, chapitre);
   var bande = rangsAuPalier(palier);
 
   var bas = ECHELLE_RANGS.indexOf(bande[0]);

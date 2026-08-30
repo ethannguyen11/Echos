@@ -8,13 +8,23 @@
 
    C'est une propriete de l'ESPECE, jamais de l'Echo possede :
    elle n'entre pas dans la sauvegarde. normaliserCollection()
-   ne recopie que espece / niveau / xp / pv.
+   ne recopie que espece / niveau / xp / pv, plus la conscience et
+   les fragments depuis la v5.
+
+   "chapitre" (1 a CHAPITRE_MAX) dit a partir de quand l'espece
+   peut apparaitre dans un lieu. Un lieu ne tire que parmi les
+   especes des chapitres atteints ou inferieurs : c'est ce qui
+   permet d'ouvrir le monde par paliers plutot que de tout
+   montrer au premier pas.
+
+   Le filtre lui-meme est dans js/lieux.js (especesDuChapitre).
+   Ici, ce n'est qu'une etiquette.
    ============================================================ */
 
 var ESPECES = {
   /* --- TEMPLES --- */
   komainu: {
-    image: "komainu.png", famille: "temple",
+    image: "komainu.png", famille: "temple", chapitre: 1,
     affinite: "matiere", nature: "organique",
     rang: "A", aptitudes: ["rempart", "sceau", "fissure"],
     nom: "Komainu", titre: "le Lion Gardien",
@@ -22,7 +32,7 @@ var ESPECES = {
     trait: "Garde du Seuil : annule les dégâts d'un tour et en renvoie la moitié."
   },
   chiguo: {
-    image: "chiguo.png", famille: "temple",
+    image: "chiguo.png", famille: "temple", chapitre: 4,
     affinite: "matiere", nature: "hybride",
     rang: "C", aptitudes: ["sceau", "appel", "rempart"],
     nom: "Chi Guo", titre: "Gardien des Terres",
@@ -30,7 +40,7 @@ var ESPECES = {
     trait: "Souffle d'Encens : empoisonne l'adversaire pendant 4 tours."
   },
   sunwukong: {
-    image: "sunwukong.png", famille: "temple",
+    image: "sunwukong.png", famille: "temple", chapitre: 4,
     affinite: "recit", nature: "organique",
     rang: "B", aptitudes: ["doubleFrappe", "percee", "frappeLourde"],
     nom: "Sun Wukong", titre: "l'Esprit Enchaîné",
@@ -38,7 +48,7 @@ var ESPECES = {
     trait: "Bond du Singe : frappe deux fois, mais subit un contrecoup."
   },
   palantir: {
-    image: "palantir.png", famille: "temple",
+    image: "palantir.png", famille: "temple", chapitre: 4,
     affinite: "recit", nature: "mecanique",
     rang: "D", aptitudes: ["sceau", "fissure", "percee"],
     nom: "Palantir", titre: "la Sphère de Vide",
@@ -48,7 +58,7 @@ var ESPECES = {
 
   /* --- METRO --- */
   mechadrill: {
-    image: "mechadrill.png", famille: "metro",
+    image: "mechadrill.png", famille: "metro", chapitre: 1,
     affinite: "matiere", nature: "mecanique",
     rang: "S", aptitudes: ["fissure", "rempart", "frappeLourde"],
     nom: "Mecha Drill", titre: "la Foreuse",
@@ -56,7 +66,7 @@ var ESPECES = {
     trait: "Percée : charge un tour, puis frappe au triple."
   },
   teketeke: {
-    image: "teketeke.png", famille: "metro",
+    image: "teketeke.png", famille: "metro", chapitre: 4,
     affinite: "oubli", nature: "mecanique",
     rang: "C", aptitudes: ["fissure", "doubleFrappe", "frappeLourde"],
     nom: "Teke Teke", titre: "l'Onryo",
@@ -64,7 +74,7 @@ var ESPECES = {
     trait: "Rampe : trois frappes qui ignorent la défense."
   },
   zhanxiyuan: {
-    image: "zhanxiyuan.png", famille: "metro",
+    image: "zhanxiyuan.png", famille: "metro", chapitre: 4,
     affinite: "oubli", nature: "hybride",
     rang: "C", aptitudes: ["sceau", "appel", "fissure"],
     nom: "Zhan Xiyuan", titre: "l'Inventeur",
@@ -72,7 +82,7 @@ var ESPECES = {
     trait: "Aiguillage : l'adversaire saute son prochain tour."
   },
   baku: {
-    image: "baku.png", famille: "metro",
+    image: "baku.png", famille: "metro", chapitre: 4,
     affinite: "oubli", nature: "organique",
     rang: "B", aptitudes: ["seve", "sceau", "appel"],
     nom: "Baku", titre: "le Mange-Rêve",
@@ -82,7 +92,7 @@ var ESPECES = {
 
   /* --- MONUMENTS --- */
   eiffel: {
-    image: "eiffel.png", famille: "monument",
+    image: "eiffel.png", famille: "monument", chapitre: 1,
     affinite: "matiere", nature: "mecanique",
     rang: "B", aptitudes: ["rempart", "sceau", "frappeLourde"],
     nom: "Eiffel", titre: "l'Architecte",
@@ -90,7 +100,7 @@ var ESPECES = {
     trait: "Charpente : la défense monte à chaque tour."
   },
   tortuedragon: {
-    image: "tortuedragon.png", famille: "monument",
+    image: "tortuedragon.png", famille: "monument", chapitre: 4,
     affinite: "matiere", nature: "organique",
     rang: "S", aptitudes: ["rempart", "frappeLourde", "seve"],
     nom: "Tortue Dragon", titre: "le Maître des Fondations",
@@ -98,7 +108,7 @@ var ESPECES = {
     trait: "Ancrage : renonce à fuir, mais double ses dégâts."
   },
   hephaistos: {
-    image: "hephaistos.png", famille: "monument",
+    image: "hephaistos.png", famille: "monument", chapitre: 4,
     affinite: "matiere", nature: "mecanique",
     rang: "A", aptitudes: ["rempart", "fissure", "frappeLourde"],
     nom: "Héphaïstos", titre: "le Marteau",
@@ -106,7 +116,7 @@ var ESPECES = {
     trait: "Enclume : rend d'un coup tout ce qu'il a encaissé."
   },
   vinci: {
-    image: "vinci.png", famille: "monument",
+    image: "vinci.png", famille: "monument", chapitre: 4,
     affinite: "recit", nature: "mecanique",
     rang: "C", aptitudes: ["fissure", "doubleFrappe", "percee"],
     nom: "Vinci", titre: "le Savoir",
@@ -116,7 +126,7 @@ var ESPECES = {
 
   /* --- PARCS --- */
   hinezumi: {
-    image: "hinezumi.png", famille: "parc",
+    image: "hinezumi.png", famille: "parc", chapitre: 4,
     affinite: "recit", nature: "organique",
     rang: "D", aptitudes: ["doubleFrappe", "fissure", "percee"],
     nom: "Hinezumi", titre: "le Rat de Feu",
@@ -124,7 +134,7 @@ var ESPECES = {
     trait: "Robe de Flammes : brûlure qui s'aggrave chaque tour."
   },
   penghou: {
-    image: "penghou.png", famille: "parc",
+    image: "penghou.png", famille: "parc", chapitre: 1,
     affinite: "oubli", nature: "organique",
     rang: "D", aptitudes: ["seve", "rempart", "appel"],
     nom: "Penghou", titre: "le Chien",
@@ -132,7 +142,7 @@ var ESPECES = {
     trait: "Sève : régénère des PV à chaque tour."
   },
   peng: {
-    image: "peng.png", famille: "parc",
+    image: "peng.png", famille: "parc", chapitre: 4,
     affinite: "recit", nature: "organique",
     rang: "B", aptitudes: ["percee", "sceau", "frappeLourde"],
     nom: "Peng", titre: "l'Oiseau Colossal",
@@ -140,7 +150,7 @@ var ESPECES = {
     trait: "Envol : esquive garantie, puis contre-attaque."
   },
   jinchan: {
-    image: "jinchan.png", famille: "parc",
+    image: "jinchan.png", famille: "parc", chapitre: 1,
     affinite: "recit", nature: "hybride",
     rang: "D", aptitudes: ["appel", "seve", "sceau"],
     nom: "Jin Chan", titre: "le Crapaud",
