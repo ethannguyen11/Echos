@@ -837,6 +837,125 @@ function lancerTests() {
      monterConscience("cequinexistepas")],
     [0, 0, null, null]);
 
+  /* --- Le butin de la victoire par KO --- */
+
+  /* Le fragment complet ne tombe JAMAIS au combat : c'est ce qui
+     empeche le dernier palier de conscience de s'acheter a la
+     sueur. Un bareme qui en contiendrait un ouvrirait la porte
+     sans que personne ne s'en apercoive. */
+  verifie("aucun fragment complet dans le butin de combat",
+    BUTIN_KO.filter(function (b) { return b.taille === "complet"; }), []);
+
+  verifie("chaque entree du bareme est utilisable",
+    BUTIN_KO.filter(function (b) {
+      return FRAGMENT_TAILLES.indexOf(b.taille) === -1 || !(b.nombre > 0) ||
+             !(b.niveauMin >= 0);
+    }), []);
+
+  // La liste doit rester triee du plus haut au plus bas : sinon
+  // butinDeKo prend la mauvaise entree, sans erreur.
+  verifie("le bareme reste trie du plus haut niveau au plus bas",
+    (function () {
+      for (var i = 1; i < BUTIN_KO.length; i++) {
+        if (BUTIN_KO[i].niveauMin >= BUTIN_KO[i - 1].niveauMin) return "desordre en " + i;
+      }
+      return "trie";
+    })(), "trie");
+
+  verifie("le dernier recours du bareme attrape le niveau 0",
+    BUTIN_KO[BUTIN_KO.length - 1].niveauMin, 0);
+
+  verifie("butinDeKo suit le niveau du vaincu",
+    [1, 5, 6, 11, 12, 24, 25, 60].map(function (n) {
+      var b = butinDeKo(n);
+      return b.nombre + " " + b.taille;
+    }),
+    [1, 5, 6, 11, 12, 24, 25, 60].map(function (n) {
+      for (var i = 0; i < BUTIN_KO.length; i++) {
+        if (n >= BUTIN_KO[i].niveauMin) return BUTIN_KO[i].nombre + " " + BUTIN_KO[i].taille;
+      }
+    }));
+
+  // Un niveau absurde ne doit pas rendre undefined.
+  verifie("un niveau absurde retombe sur la derniere entree",
+    [!!butinDeKo(-5), !!butinDeKo("trois"), !!butinDeKo(undefined)],
+    [true, true, true]);
+
+
+  /* --- Les libelles --- */
+
+  verifie("un fragment se dit au singulier, deux au pluriel",
+    [libelleFragments("mince", 1), libelleFragments("mince", 3),
+     libelleFragments("grand", 1), libelleFragments("grand", 2),
+     libelleFragments("complet", 1), libelleFragments("inconnue", 1)],
+    ["1 fragment mince", "3 fragments minces",
+     "1 grand fragment", "2 grands fragments",
+     "1 fragment complet", ""]);
+
+  verifie("un sac se dit d'une seule phrase, sans les tailles vides",
+    [libelleSac({ mince: 0, grand: 0, complet: 0 }),
+     libelleSac({ mince: 3, grand: 0, complet: 0 }),
+     libelleSac({ mince: 3, grand: 1, complet: 0 }),
+     libelleSac({ mince: 2, grand: 1, complet: 1 })],
+    ["",
+     "3 fragments minces",
+     "3 fragments minces et 1 grand fragment",
+     "2 fragments minces, 1 grand fragment et 1 fragment complet"]);
+
+
+  /* --- Ce que le journal dit du butin ---
+
+     lignesButin est la seule chose que le joueur verra de tout ce
+     systeme tant qu'il n'y a pas d'interface. On verifie donc le
+     TEXTE, pas seulement les nombres : une ligne qui ne dit pas ou
+     partent les fragments serait un bug a part entiere. */
+
+  var combatAvantB = combat;
+  collection = {};
+  equipe = [];
+  gourde = {};
+  savoir = savoirParDefaut();
+
+  // figement fixe : niveauAdversaire devient previsible.
+  var donjonKo = { id: "node/ko", espece: "peng", niveau: 4, figement: 0 };
+  var niveauKo = niveauAdversaire(donjonKo);
+  var butinKo = butinDeKo(niveauKo);
+
+  // Espece inconnue : le butin part en gourde, et le journal le dit.
+  var journalGourde = lignesButin(donjonKo);
+  verifie("KO d'une espece inconnue : le journal annonce la gourde",
+    [journalGourde.length >= 2,
+     journalGourde[0].indexOf(libelleFragments(butinKo.taille, butinKo.nombre)) !== -1,
+     journalGourde[0].indexOf(ESPECES.peng.nom) !== -1,
+     journalGourde[1].indexOf("gourde") !== -1,
+     totalFragments(gourde.peng)],
+    [true, true, true, true, butinKo.nombre]);
+
+  // Espece assimilee : le butin va droit a l'Echo, et le journal
+  // ne parle plus de gourde du tout.
+  gourde = {};
+  ajouterAlaCollection("peng", 4);
+  var journalEcho = lignesButin(donjonKo);
+  verifie("KO d'une espece assimilee : le journal annonce l'Echo",
+    [journalEcho[1].indexOf("Écho") !== -1,
+     journalEcho[1].indexOf("gourde") === -1,
+     collection.peng.fragments[butinKo.taille]],
+    [true, true, butinKo.nombre]);
+
+  /* Gourde pleine : le joueur perd quelque chose. C'est le seul
+     endroit du jeu ou ca arrive, et il faut que le journal le
+     dise. */
+  collection = {};
+  gourde = {};
+  donnerFragment("peng", "mince", GOURDE_CAPACITE_BASE);
+  var journalPerte = lignesButin(donjonKo);
+  verifie("gourde pleine : la perte est annoncee au joueur",
+    [journalPerte.length, journalPerte[journalPerte.length - 1].indexOf("se perd") !== -1,
+     totalFragments(gourde.peng)],
+    [1, true, GOURDE_CAPACITE_BASE]);
+
+  combat = combatAvantB;
+
   collection = collAvantF;
   equipe = equipeAvantF;
   gourde = gourdeAvantF;

@@ -1,7 +1,8 @@
 /* ============================================================
    LE COMBAT
    Une rencontre, son deroulement tour par tour, et les deux
-   facons d'en sortir : l'assimilation ou la dissipation.
+   facons d'en sortir : l'assimilation, la victoire par KO ou la
+   defaite.
    ============================================================ */
 
 var combat = null;
@@ -850,7 +851,7 @@ function tourEquipe(choix) {
   majAffichageCombat();
 
   raconter(lignes, function () {
-    if (combat.adversaire.pv <= 0) { dissipation(); return; }
+    if (combat.adversaire.pv <= 0) { victoireParKo(); return; }
     tourAdverse();
   });
 }
@@ -1018,7 +1019,8 @@ function finDeTour() {
    ISSUES DE LA RENCONTRE
    ------------------------------------------------------------ */
 
-// Recompense commune a la capture et a la dissipation
+// Recompense commune aux deux issues gagnantes :
+// l'assimilation et la victoire par KO
 function distribuerXp(bonusFortune) {
   var gain = 6 + combat.donjon.niveau * 5;
 
@@ -1053,6 +1055,17 @@ function capture() {
   var fortune = equipe.indexOf("jinchan") !== -1;
   var r = distribuerXp(fortune);
 
+  /* Ce que la gourde gardait pour cette espece, LU AVANT
+     l'assimilation : ajouterAlaCollection appelle viderGourdeVers,
+     qui efface l'entree. Apres, il n'y aurait plus rien a
+     annoncer.
+
+     Le joueur doit voir ce moment. Il a peut-etre ramasse ces
+     fragments il y a trois semaines, sans savoir a quoi ils
+     serviraient : c'est maintenant qu'ils prennent leur sens. */
+  var enAttente = fragmentsEnGourde(d.espece);
+  var libelleAttente = libelleSac(enAttente);
+
   var issue = ajouterAlaCollection(d.espece, d.niveau);
   var txt;
 
@@ -1064,7 +1077,16 @@ function capture() {
     txt = "<b>" + e.nom + "</b> se livre, mais tu en savais déjà davantage.";
   }
 
-  var lignes = [txt, "+" + r.gain + " points d'écho" + (fortune ? " (Fortune)" : "") + "."];
+  var lignes = [txt];
+
+  // La gourde ne se vide qu'a la PREMIERE assimilation : au-dela,
+  // l'espece etait deja au grimoire et rien n'y attendait.
+  if (issue === "nouveau" && libelleAttente) {
+    lignes.push("Ta gourde se vide : " + libelleAttente +
+                " de <b>" + e.nom + "</b> lui reviennent.");
+  }
+
+  lignes.push("+" + r.gain + " points d'écho" + (fortune ? " (Fortune)" : "") + ".");
   lignes = lignes.concat(r.lignes);
 
   d.capture = true;
@@ -1074,25 +1096,91 @@ function capture() {
   finDeCombat();
 }
 
-function dissipation() {
-  var e = ESPECES[combat.donjon.espece];
+/* LA VICTOIRE PAR KO
+
+   Elle s'appelait dissipation(), et elle detruisait l'echo : le
+   lieu passait a dissipe, la carte affichait "Savoir perdu", et
+   le joueur n'en tirait rien d'autre que de l'experience.
+
+   Elle ne detruit plus rien. L'echo cede et se retire, le lieu
+   reste ouvert, et le joueur repart avec des fragments de
+   l'espece qu'il vient d'affronter. C'est ce qui donne un sens a
+   un combat gagne sans assimilation : jusqu'ici, mettre un echo
+   a terre etait la moins bonne facon de finir une rencontre.
+
+   Le champ dissipe n'est donc plus JAMAIS mis a vrai. Il reste
+   dans les donnees et dans carte.js, parce que les lieux
+   dissipes avant ce changement le sont toujours dans le cache
+   des donjons : les rouvrir de force reviendrait a reecrire une
+   partie deja jouee.
+
+   ATTENTION : le lieu restant ouvert, rien n'empeche de
+   reprovoquer le meme echo dans la foulee. Le butin est donc
+   repetable sur place. C'est un choix assume, pas un oubli, et
+   c'est le premier reglage a reprendre si l'equilibrage derape. */
+function victoireParKo() {
+  var d = combat.donjon;
+  var e = ESPECES[d.espece];
   var fortune = equipe.indexOf("jinchan") !== -1;
   var r = distribuerXp(fortune);
 
   /* On nomme l'espece ici, alors que le reste du combat dit
-     seulement "l'echo du lieu" : un joueur qui perd un Echo rare
-     doit savoir lequel il vient de perdre. C'est ce qui donne
-     envie d'y retourner. */
-  var lignes = [NOM_ADVERSAIRE + " se disloque : <b>" + e.nom + "</b> disparaît.",
-                "<span style='color:#d4554a'>Son savoir est perdu à jamais.</span>",
-                "+" + r.gain + " points d'écho."];
+     seulement "l'echo du lieu" : le joueur doit savoir de qui
+     sont les fragments qu'il emporte. */
+  var lignes = [NOM_ADVERSAIRE + " cède : <b>" + e.nom + "</b> se retire."];
+  lignes = lignes.concat(lignesButin(d));
+
+  lignes.push("+" + r.gain + " points d'écho" + (fortune ? " (Fortune)" : "") + ".");
   lignes = lignes.concat(r.lignes);
 
-  combat.donjon.dissipe = true;
-  if (!estCombatFictif()) { rafraichirMarqueur(combat.donjon); sauvegarder(); }
+  /* Ni rafraichirMarqueur ni sauvegarder : le donjon n'a pas
+     change. La collection et la gourde, elles, ont bouge -- c'est
+     finDeCombat qui les ecrit, comme pour toutes les issues. */
 
   raconter(lignes);
   finDeCombat();
+}
+
+/* Ce que le vaincu laisse, et OU ca part.
+
+   Deux lignes plutot qu'une : la premiere dit ce qui a ete
+   ramasse, la seconde ou c'est alle. La destination n'est pas un
+   detail -- des fragments partis en gourde ne servent a rien tant
+   que l'espece n'est pas assimilee, et le joueur doit pouvoir
+   faire la difference d'un coup d'oeil.
+
+   Une troisieme ligne apparait quand la gourde deborde. C'est le
+   seul endroit du jeu ou le joueur perd quelque chose sans qu'on
+   le lui ait pris : il faut que ce soit dit, et en rouge. */
+function lignesButin(d) {
+  var e = ESPECES[d.espece];
+  var butin = butinDeKo(niveauAdversaire(d));
+  var res = donnerFragment(d.espece, butin.taille, butin.nombre);
+
+  if (res.recus === 0 && res.perdus === 0) return [];
+
+  var lignes = [];
+
+  if (res.recus > 0) {
+    lignes.push("Tu ramasses " + libelleFragments(res.taille, res.recus) +
+                " de <b>" + e.nom + "</b>.");
+    // Un seul fragment se dit au singulier. Le journal est lu vite,
+    // et une faute d'accord se voit plus qu'on ne le croit.
+    var pluriel = res.recus > 1;
+
+    lignes.push(res.ou === "echo"
+      ? (pluriel ? "Ils rejoignent ton Écho." : "Il rejoint ton Écho.")
+      : (pluriel ? "Ils attendent" : "Il attend") + " dans ta gourde (" +
+        totalFragments(fragmentsEnGourde(d.espece)) + "/" + res.capacite + ").");
+  }
+
+  if (res.perdus > 0) {
+    lignes.push("<span style='color:#d4554a'>Ta gourde est pleine : " +
+                libelleFragments(res.taille, res.perdus) +
+                (res.perdus > 1 ? " se perdent." : " se perd.") + "</span>");
+  }
+
+  return lignes;
 }
 
 function defaite() {

@@ -805,6 +805,29 @@ var SAVOIR_PAR_JOUR   = 5;    // par journee DISTINCTE de jeu
 var SAVOIR_PAR_LIEU   = 3;    // par lieu DISTINCT visite
 
 
+/* LE BUTIN DE LA VICTOIRE PAR KO
+
+   Un echo mis a terre laisse des fragments DE SON ESPECE. La
+   taille et le nombre suivent son propre niveau de combat, celui
+   que niveauAdversaire() calcule -- Figement compris, donc un
+   lieu tres fige rend davantage, comme pour l'experience.
+
+   La liste doit rester triee du plus haut niveauMin au plus bas :
+   butinDeKo() prend la premiere entree qui passe. Meme idiome que
+   ICO_PALIERS plus haut.
+
+   AUCUNE ENTREE NE DOIT VALOIR "complet". Le fragment complet ne
+   tombe jamais au combat, il se recoit : c'est ce qui empeche le
+   dernier palier de conscience de s'acheter a la sueur. Un
+   controle de verifier/tests.js le refuse. */
+var BUTIN_KO = [
+  { niveauMin: 25, taille: "grand", nombre: 2 },
+  { niveauMin: 12, taille: "grand", nombre: 1 },
+  { niveauMin:  6, taille: "mince", nombre: 3 },
+  { niveauMin:  0, taille: "mince", nombre: 2 }
+];
+
+
 /* ============================================================
    L'OUTIL D'EQUILIBRAGE
    Combien de combats Combat.rapportEquilibrage() rejoue par case.

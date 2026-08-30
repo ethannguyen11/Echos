@@ -16,7 +16,9 @@
    transfere entre especes -- et si un jour l'une d'elles le fait,
    c'est que la regle aura change, pas qu'on aura optimise.
 
-   Ce fichier n'affiche rien. Il ne connait pas le DOM.
+   Ce fichier ne connait pas le DOM. Il rend des nombres, des
+   sacs et des libelles ; c'est l'appelant qui decide d'en faire
+   une ligne de journal ou une carte de grimoire.
    ============================================================ */
 
 
@@ -196,7 +198,71 @@ function donnerFragmentComplet(especeId) {
 
 
 /* ------------------------------------------------------------
-   4. LA CONSCIENCE
+   4. LE BUTIN DE LA VICTOIRE PAR KO
+
+   Un echo mis a terre laisse des fragments de son espece. Le
+   bareme vit dans BUTIN_KO (js/config.js) ; ici on ne fait que
+   descendre la liste et prendre la premiere entree qui passe.
+
+   Le butin ne sait pas ou il ira : donnerFragment s'en charge, et
+   l'envoie a l'Echo si l'espece est assimilee, en gourde sinon.
+   ------------------------------------------------------------ */
+
+function butinDeKo(niveau) {
+  var n = Number(niveau);
+  if (!(n >= 0)) n = 0;
+
+  for (var i = 0; i < BUTIN_KO.length; i++) {
+    if (n >= BUTIN_KO[i].niveauMin) return BUTIN_KO[i];
+  }
+
+  // La liste finit par un niveauMin de 0 : on ne passe jamais ici.
+  return BUTIN_KO[BUTIN_KO.length - 1];
+}
+
+
+/* ------------------------------------------------------------
+   5. NOMMER LES FRAGMENTS
+
+   Le SEUL endroit du jeu qui met un fragment en mots. Le journal
+   de combat s'en sert aujourd'hui, le grimoire s'en servira
+   demain, et le jour ou le combat passera au bilingue il n'y aura
+   qu'ici a reprendre.
+   ------------------------------------------------------------ */
+
+var LIBELLES_FRAGMENT = {
+  mince:   { un: "fragment mince",   plusieurs: "fragments minces" },
+  grand:   { un: "grand fragment",   plusieurs: "grands fragments" },
+  complet: { un: "fragment complet", plusieurs: "fragments complets" }
+};
+
+function libelleFragments(taille, nombre) {
+  var l = LIBELLES_FRAGMENT[taille];
+  if (!l) return "";
+  return nombre + " " + (nombre > 1 ? l.plusieurs : l.un);
+}
+
+/* Un sac entier en une phrase : "3 fragments minces et 1 grand
+   fragment". Les tailles vides sont passees sous silence, et un
+   sac vide rend une chaine vide -- a l'appelant de ne pas ecrire
+   la ligne dans ce cas. */
+function libelleSac(sac) {
+  var bouts = [];
+
+  FRAGMENT_TAILLES.forEach(function (t) {
+    var n = (sac && sac[t]) || 0;
+    if (n > 0) bouts.push(libelleFragments(t, n));
+  });
+
+  if (bouts.length === 0) return "";
+  if (bouts.length === 1) return bouts[0];
+
+  return bouts.slice(0, -1).join(", ") + " et " + bouts[bouts.length - 1];
+}
+
+
+/* ------------------------------------------------------------
+   6. LA CONSCIENCE
 
    Quatre paliers. Un Echo assimile demarre a 1, et chaque montee
    consomme des fragments qui lui appartiennent en propre.
