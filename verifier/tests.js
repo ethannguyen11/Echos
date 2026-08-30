@@ -1285,7 +1285,7 @@ function lancerTests() {
   /* Chaque cle du script existe-t-elle dans TEXTES.fr ?
 
      Sans ce controle, une faute de frappe dans un cleTexte ne se
-     verrait nulle part de facon lisible : t() rendrait la cle
+     verrait nulle part de facon lisible : txt() rendrait la cle
      elle-meme, et l'intro afficherait "intro.eveil.pasDormi" au
      joueur, sans la moindre erreur. Meme raisonnement que le
      croisement des cles du didacticiel, dans verifier.js. */
@@ -1306,7 +1306,7 @@ function lancerTests() {
   /* Toutes les lignes du script doivent se formater completement,
      quel que soit le genre : aucun {...} ni [...] ne doit survivre.
 
-     On repasse par t() plutot que de lire la table, et dans CHAQUE
+     On repasse par txt() plutot que de lire la table, et dans CHAQUE
      langue : c'est le seul moyen de voir un accord [m|f|n] mal
      ecrit dans une traduction. Une cle absente de l'anglais
      retombe sur le francais et se trouve donc verifiee deux fois,
@@ -1324,7 +1324,7 @@ function lancerTests() {
         if (e.options) e.options.forEach(function (o) { cles.push(o.cleTexte); });
 
         cles.forEach(function (cle) {
-          var sortie = f(t(cle), { genre: g, nom: "Ethan", voie: "archiviste" });
+          var sortie = f(txt(cle), { genre: g, nom: "Ethan", voie: "archiviste" });
           if (/[[]]/.test(sortie) || /{[a-z]+}/.test(sortie)) {
             restes.push(lg + " " + g + " #" + i + " : " + sortie);
           }

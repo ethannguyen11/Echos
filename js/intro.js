@@ -31,7 +31,7 @@ var ATTENTE_MAX_LIEU = 2500;    // hold maximum quand la scene 1 arrive trop tot
    IL N'Y A PLUS UNE SEULE PHRASE ICI. Chaque etape porte une
    CLE (cleTexte), et la phrase vit dans TEXTES, js/langues.js,
    une fois par langue. Le moteur fait donc, dans cet ordre :
-   t(cle) va chercher la phrase, puis formater() resout les
+   txt(cle) va chercher la phrase, puis formater() resout les
    accords et les {jetons}.
 
    Attention : le champ s'appelle cleTexte et NON cle. "cle" est
@@ -167,7 +167,7 @@ var SCRIPT = [
 
 /* ------------------------------------------------------------
    3. INTERPOLATION DU TEXTE
-   ELLE PASSE APRES t(), JAMAIS AVANT. t() rend la phrase brute
+   ELLE PASSE APRES txt(), JAMAIS AVANT. txt() rend la phrase brute
    de la langue courante, avec ses marqueurs intacts ; formater()
    les resout ensuite. L'ordre compte deux fois :
 
@@ -518,11 +518,11 @@ function jouerEtape() {
       break;
 
     case "recit":
-      afficherLigne(formater(t(e.cleTexte), reponses), "recit");
+      afficherLigne(formater(txt(e.cleTexte), reponses), "recit");
       break;
 
     case "ico":
-      afficherLigne(formater(t(e.cleTexte), reponses), "ico");
+      afficherLigne(formater(txt(e.cleTexte), reponses), "ico");
       break;
 
     case "lieu":
@@ -633,7 +633,7 @@ function poserOptions(libelles, surChoix) {
 
 function demanderChoix(etape) {
   poserOptions(
-    etape.options.map(function (o) { return formater(t(o.cleTexte), reponses); }),
+    etape.options.map(function (o) { return formater(txt(o.cleTexte), reponses); }),
     function (rang) {
       reponses[etape.cle] = etape.options[rang].valeur;
       suivant();
@@ -661,7 +661,7 @@ function demanderLangue(apres) {
   zoneTexte.textContent = "";
 
   poserOptions(
-    LANGUES.map(function (code) { return t("intro.langue." + code); }),
+    LANGUES.map(function (code) { return txt("intro.langue." + code); }),
     function (rang) {
       definirLangue(LANGUES[rang]);
       apres();
@@ -720,7 +720,7 @@ function carteEchoDepart() {
          '<div class="echo-nom">' + echapper(e.nom) + '</div>' +
          '<div class="echo-titre">' + echapper(e.titre) + '</div>' +
          '<div class="echo-niveau">' +
-         echapper(t("intro.echoDepart.niveau", { niveau: echo.niveau })) +
+         echapper(txt("intro.echoDepart.niveau", { niveau: echo.niveau })) +
          '</div>' +
          '</div>';
 }

@@ -7,14 +7,22 @@
    table TEXTES ci-dessous, une fois par langue.
 
    Ce fichier est charge juste apres js/config.js et avant tous
-   les autres : n'importe quel fichier du jeu peut appeler t()
+   les autres : n'importe quel fichier du jeu peut appeler txt()
    des son chargement.
 
    Il expose quatre choses, en global comme js/joueur.js :
-     TEXTES            la table, lue par verifier.js
-     t(cle, remplacements)   la phrase, dans la langue courante
-     langueCourante()  "fr" ou "en"
-     definirLangue(c)  change la langue et l'enregistre
+     TEXTES                    la table, lue par verifier.js
+     txt(cle, remplacements)   la phrase, dans la langue courante
+     langueCourante()          "fr" ou "en"
+     definirLangue(c)          change la langue et l'enregistre
+
+   Elle s'appelle txt() et non t(), qui serait plus court.
+   Trois fichiers declarent deja une variable locale nommee t :
+   js/intro.js (echapper), js/lieux.js et js/combat.js. Une
+   fonction globale t() y serait MASQUEE, silencieusement : le
+   jour ou l'on voudrait traduire une ligne de combat.js, l'appel
+   tomberait sur un entier et non sur cette fonction. Une lettre
+   de plus coute moins cher qu'un bug invisible.
    ============================================================ */
 
 
@@ -36,10 +44,10 @@
    seul·e). En anglais il n'y a pas d'accord : la meme fente
    sert aux PRONOMS (he / she / they). La syntaxe ne change pas,
    sa resolution non plus -- c'est toujours Intro.formater qui
-   s'en charge, APRES t(), jamais avant.
+   s'en charge, APRES txt(), jamais avant.
 
    ---- CE QUI MANQUE EN ANGLAIS ----
-   Une cle absente de "en" n'est pas un bug : t() retombe sur le
+   Une cle absente de "en" n'est pas un bug : txt() retombe sur le
    francais. C'est voulu. Le recit et les repliques d'Ico ne sont
    pas encore traduits parce que les traduire demande une
    decision d'ecriture, pas une traduction. La liste des cles a
@@ -186,7 +194,7 @@ function definirLangue(code) {
 
 
 /* ------------------------------------------------------------
-   3. t()
+   3. txt()
 
    Trois etages, dans cet ordre :
 
@@ -206,12 +214,12 @@ function definirLangue(code) {
    chaque langue placer la valeur ou sa grammaire l'exige.
 
    Un jeton pour lequel on ne fournit rien est laisse INTACT.
-   C'est ce qui permet a {nom} et {voie} de traverser t() sans
+   C'est ce qui permet a {nom} et {voie} de traverser txt() sans
    etre touches et d'arriver jusqu'a Intro.formater, qui les
    resout apres avoir resolu les accords.
    ------------------------------------------------------------ */
 
-function t(cle, remplacements) {
+function txt(cle, remplacements) {
   var table = TEXTES[langue];
   var s = table ? table[cle] : undefined;
 
