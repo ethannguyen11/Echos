@@ -90,9 +90,21 @@ function rangsAuPalier(palier) {
    Le chapitre atteint decide de ce qui peut habiter un lieu,
    AVANT que le Figement decide des rangs.
 
-   Rien ne le fait encore progresser : il vaut CHAPITRE_DEPART,
-   sauf quand le panneau du mode test le force. C'est le seul
-   endroit a reprendre le jour ou la progression existera.
+   ON L'OUVRE EN ASSIMILANT. Le chapitre suivant s'ouvre quand
+   TOUTES les especes du chapitre courant sont au grimoire. C'est
+   la lecture litterale de "debloquer au fur et a mesure" : le
+   monde ne s'elargit pas parce qu'on a joue longtemps, mais parce
+   qu'on a compris ce qu'il montrait deja.
+
+   IL N'EST RANGE NULLE PART. Il se deduit de la collection a
+   chaque lecture, donc il ne peut pas se desynchroniser d'elle,
+   il n'a demande ni v6 ni migration, et il ne peut que monter --
+   la collection ne perd jamais d'espece.
+
+   CE QUE CA COUTE : il faut un temple, un metro, un monument ET
+   un parc accessibles pour finir un chapitre. Un joueur qui n'a
+   pas de station de metro autour de chez lui reste au chapitre 1.
+   C'est assume ; le panneau du mode test permet de passer outre.
    ------------------------------------------------------------ */
 
 function chapitreAtteint() {
@@ -103,7 +115,32 @@ function chapitreAtteint() {
     if (force >= 1) return Math.min(force, CHAPITRE_MAX);
   }
 
-  return CHAPITRE_DEPART;
+  var atteint = CHAPITRE_DEPART;
+
+  // On monte tant que le chapitre courant est acheve. La boucle
+  // s'arrete au premier chapitre incomplet, ou au dernier.
+  while (atteint < CHAPITRE_MAX && chapitreAcheve(atteint)) atteint++;
+
+  return atteint;
+}
+
+/* Toutes les especes de ce chapitre sont-elles au grimoire ?
+
+   Un chapitre VIDE compte comme acheve. Sans ca, retirer la
+   derniere espece d'un chapitre bloquerait la progression pour
+   toujours, en silence : mieux vaut traverser un chapitre sans
+   contenu que de river le joueur devant une porte sans serrure. */
+function chapitreAcheve(chapitre) {
+  var ids = ESPECES_PAR_CHAPITRE[chapitre] || [];
+  if (!ids.length) return true;
+
+  /* lieux.js est lu avant joueur.js : au CHARGEMENT, collection
+     n'existe pas encore. A l'execution elle est toujours la, mais
+     le garde coute une comparaison et evite un plantage si
+     quelqu'un reordonne les <script> un jour. */
+  if (typeof collection === "undefined") return false;
+
+  return ids.every(function (id) { return !!collection[id]; });
 }
 
 /* Les especes de cette categorie qu'un joueur au chapitre donne

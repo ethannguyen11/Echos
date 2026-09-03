@@ -70,16 +70,20 @@ var DOSSIER_MONSTRES = "monstres/";
    INFERIEURS : le monde s'ouvre par paliers au lieu de tout
    montrer au premier pas.
 
-   ATTENTION, RIEN NE FAIT ENCORE PROGRESSER LE CHAPITRE.
-   chapitreAtteint() rend CHAPITRE_DEPART et rien d'autre. Tant
-   qu'aucune regle de progression n'existe, les onze especes de
-   chapitre 4 n'apparaissent nulle part -- sauf en forcant le
-   chapitre depuis le panneau du mode test. C'est voulu pour
-   l'instant : le chapitre est pose, la progression viendra.
+   ON OUVRE UN CHAPITRE EN ASSIMILANT. Le suivant s'ouvre quand
+   TOUTES les especes du chapitre courant sont au grimoire : le
+   monde ne s'elargit pas parce qu'on a joue longtemps, mais parce
+   qu'on a compris ce qu'il montrait deja. La regle est dans
+   chapitreAtteint(), js/lieux.js.
 
-   Le chapitre n'est PAS dans la sauvegarde. Le jour ou il le
-   sera, ce sera une v6 et une migration, et chapitreAtteint()
-   sera le seul endroit a reprendre. */
+   Le chapitre n'est PAS dans la sauvegarde et n'a pas a y etre :
+   il se deduit de la collection a chaque lecture. Il ne peut donc
+   pas se desynchroniser d'elle, et il ne peut que monter.
+
+   CE QUE CA COUTE : il faut un temple, un metro, un monument ET
+   un parc accessibles pour finir un chapitre. Sans metro autour
+   de chez soi, on reste au chapitre 1. Le panneau du mode test
+   permet de passer outre. */
 var CHAPITRE_MAX    = 4;
 var CHAPITRE_DEPART = 1;
 

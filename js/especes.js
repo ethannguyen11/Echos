@@ -32,7 +32,7 @@ var ESPECES = {
     trait: "Garde du Seuil : annule les dégâts d'un tour et en renvoie la moitié."
   },
   chiguo: {
-    image: "chiguo.png", famille: "temple", chapitre: 4,
+    image: "chiguo.png", famille: "temple", chapitre: 2,
     affinite: "matiere", nature: "hybride",
     rang: "C", aptitudes: ["sceau", "appel", "rempart"],
     nom: "Chi Guo", titre: "Gardien des Terres",
@@ -48,7 +48,7 @@ var ESPECES = {
     trait: "Bond du Singe : frappe deux fois, mais subit un contrecoup."
   },
   palantir: {
-    image: "palantir.png", famille: "temple", chapitre: 4,
+    image: "palantir.png", famille: "temple", chapitre: 3,
     affinite: "recit", nature: "mecanique",
     rang: "D", aptitudes: ["sceau", "fissure", "percee"],
     nom: "Palantir", titre: "la Sphère de Vide",
@@ -66,7 +66,7 @@ var ESPECES = {
     trait: "Percée : charge un tour, puis frappe au triple."
   },
   teketeke: {
-    image: "teketeke.png", famille: "metro", chapitre: 4,
+    image: "teketeke.png", famille: "metro", chapitre: 2,
     affinite: "oubli", nature: "mecanique",
     rang: "C", aptitudes: ["fissure", "doubleFrappe", "frappeLourde"],
     nom: "Teke Teke", titre: "l'Onryo",
@@ -74,7 +74,7 @@ var ESPECES = {
     trait: "Rampe : trois frappes qui ignorent la défense."
   },
   zhanxiyuan: {
-    image: "zhanxiyuan.png", famille: "metro", chapitre: 4,
+    image: "zhanxiyuan.png", famille: "metro", chapitre: 3,
     affinite: "oubli", nature: "hybride",
     rang: "C", aptitudes: ["sceau", "appel", "fissure"],
     nom: "Zhan Xiyuan", titre: "l'Inventeur",
@@ -100,7 +100,7 @@ var ESPECES = {
     trait: "Charpente : la défense monte à chaque tour."
   },
   tortuedragon: {
-    image: "tortuedragon.png", famille: "monument", chapitre: 4,
+    image: "tortuedragon.png", famille: "monument", chapitre: 2,
     affinite: "matiere", nature: "organique",
     rang: "S", aptitudes: ["rempart", "frappeLourde", "seve"],
     nom: "Tortue Dragon", titre: "le Maître des Fondations",
@@ -108,7 +108,7 @@ var ESPECES = {
     trait: "Ancrage : renonce à fuir, mais double ses dégâts."
   },
   hephaistos: {
-    image: "hephaistos.png", famille: "monument", chapitre: 4,
+    image: "hephaistos.png", famille: "monument", chapitre: 3,
     affinite: "matiere", nature: "mecanique",
     rang: "A", aptitudes: ["rempart", "fissure", "frappeLourde"],
     nom: "Héphaïstos", titre: "le Marteau",
@@ -126,7 +126,7 @@ var ESPECES = {
 
   /* --- PARCS --- */
   hinezumi: {
-    image: "hinezumi.png", famille: "parc", chapitre: 4,
+    image: "hinezumi.png", famille: "parc", chapitre: 2,
     affinite: "recit", nature: "organique",
     rang: "D", aptitudes: ["doubleFrappe", "fissure", "percee"],
     nom: "Hinezumi", titre: "le Rat de Feu",
@@ -142,7 +142,7 @@ var ESPECES = {
     trait: "Sève : régénère des PV à chaque tour."
   },
   peng: {
-    image: "peng.png", famille: "parc", chapitre: 4,
+    image: "peng.png", famille: "parc", chapitre: 3,
     affinite: "recit", nature: "organique",
     rang: "B", aptitudes: ["percee", "sceau", "frappeLourde"],
     nom: "Peng", titre: "l'Oiseau Colossal",
@@ -160,6 +160,26 @@ var ESPECES = {
 };
 
 // Les quatre especes possibles par type de lieu
+/* Les especes de chaque chapitre, DEDUITES du champ chapitre.
+
+   C'est une liste construite et non ecrite a la main : le champ
+   sur l'espece reste la seule verite, et il n'y a jamais deux
+   endroits a tenir d'accord. Changer un chapitre dans le
+   bestiaire ci-dessus suffit.
+
+   { 1: ["komainu", "mechadrill", ...], 2: [...] } */
+var ESPECES_PAR_CHAPITRE = (function () {
+  var par = {};
+
+  for (var id in ESPECES) {
+    var c = ESPECES[id].chapitre;
+    if (!par[c]) par[c] = [];
+    par[c].push(id);
+  }
+
+  return par;
+})();
+
 var ESPECES_PAR_LIEU = {
   temple:   ["komainu", "chiguo", "sunwukong", "palantir"],
   metro:    ["mechadrill", "teketeke", "zhanxiyuan", "baku"],

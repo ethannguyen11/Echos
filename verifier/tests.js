@@ -150,11 +150,21 @@ function lancerTests() {
 
      Ce test reste avant tout celui du DETERMINISME : meme lieu,
      meme Echo, meme niveau. */
+  /* La collection est vidée le temps de ce controle : depuis que le
+     chapitre se deduit d'elle, l'espece d'un lieu depend de ce que
+     le joueur a deja assimile. Sans ce garde-fou, le resultat
+     changerait selon l'ordre des blocs de ce fichier. */
   verifie("donjonDepuisLieu (meme lieu, meme Echo, meme niveau)",
-    echantillons.map(function (el) {
-      var d = donjonDepuisLieu(el);
-      return d.id + " | " + d.nom + " | " + d.categorie + " | " + d.espece + " | niv " + d.niveau;
-    }), [
+    (function () {
+      var avant = collection;
+      collection = {};
+      var vus = echantillons.map(function (el) {
+        var d = donjonDepuisLieu(el);
+        return d.id + " | " + d.nom + " | " + d.categorie + " | " + d.espece + " | niv " + d.niveau;
+      });
+      collection = avant;
+      return vus;
+    })(), [
       // Le chapitre passe AVANT le Figement : au chapitre 1, chaque
       // famille n'a qu'une espece ouverte, deux pour le parc. Deux
       // monuments differents rendent donc le meme Eiffel -- ce n'est
@@ -434,6 +444,30 @@ function lancerTests() {
     ["temple : komainu", "metro : mechadrill",
      "monument : eiffel", "parc : penghou,jinchan"]);
 
+  /* Chaque chapitre doit apporter quelque chose de neuf, sinon il
+     n'est qu'une etape a franchir sans recompense. */
+  verifie("chaque chapitre ouvre au moins une espece",
+    [1, 2, 3, CHAPITRE_MAX].filter(function (c) {
+      return !(ESPECES_PAR_CHAPITRE[c] || []).length;
+    }), []);
+
+  verifie("ESPECES_PAR_CHAPITRE couvre tout le bestiaire, une fois chacune",
+    [1, 2, 3, CHAPITRE_MAX].reduce(function (n, c) {
+      return n + ESPECES_PAR_CHAPITRE[c].length;
+    }, 0), Object.keys(ESPECES).length);
+
+  /* Le decoupage vu de face : ce que chaque chapitre ajoute, par
+     famille. C'est la table que tu relis quand tu equilibres. */
+  verifie("le decoupage par chapitre et par famille",
+    [1, 2, 3, CHAPITRE_MAX].map(function (c) {
+      return "ch" + c + " " + Object.keys(ESPECES_PAR_LIEU).map(function (cat) {
+        return ESPECES_PAR_LIEU[cat].filter(function (id) {
+          return ESPECES[id].chapitre === c;
+        }).length;
+      }).join("");
+    }),
+    ["ch1 1112", "ch2 1111", "ch3 1111", "ch4 1110"]);
+
   verifie("le dernier chapitre ouvre tout le bestiaire",
     Object.keys(ESPECES_PAR_LIEU).reduce(function (n, cat) {
       return n + especesDuChapitre(cat, CHAPITRE_MAX).length;
@@ -460,15 +494,85 @@ function lancerTests() {
   });
   verifie("aucun tirage ne sort d'un chapitre non atteint", fuites, []);
 
-  // Sans progression ni mode test, le chapitre courant est celui du depart.
-  verifie("le chapitre courant vaut celui du depart",
+  /* --- La progression des chapitres ---
+
+     Le chapitre suivant s'ouvre quand TOUTES les especes du
+     chapitre courant sont au grimoire. Rien n'est range : il se
+     deduit de la collection a chaque lecture.
+
+     Tous les controles qui suivent posent eux-memes la collection
+     ET neutralisent le mode test, parce que les deux pesent sur la
+     reponse. */
+
+  function auChapitre(especes) {
+    var avantColl = collection, avantMT = ModeTest.reglages.chapitre;
+    collection = {};
+    ModeTest.reglages.chapitre = 0;
+    especes.forEach(function (id) { collection[id] = { espece: id, niveau: 1 }; });
+    var c = chapitreAtteint();
+    collection = avantColl;
+    ModeTest.reglages.chapitre = avantMT;
+    return c;
+  }
+
+  function especesJusqua(chapitre) {
+    var ids = [];
+    for (var c = 1; c <= chapitre; c++) {
+      ids = ids.concat(ESPECES_PAR_CHAPITRE[c] || []);
+    }
+    return ids;
+  }
+
+  verifie("une collection vide reste au chapitre de depart",
+    auChapitre([]), CHAPITRE_DEPART);
+
+  verifie("le chapitre monte quand il est entierement assimile",
+    [auChapitre(especesJusqua(1)), auChapitre(especesJusqua(2)),
+     auChapitre(especesJusqua(3)), auChapitre(especesJusqua(4))],
+    [2, 3, 4, CHAPITRE_MAX]);
+
+  /* Il en manque UNE, et le chapitre ne bouge pas. C'est toute la
+     regle : "toutes" veut dire toutes. */
+  verifie("une seule espece manquante suffit a retenir le chapitre",
+    ESPECES_PAR_CHAPITRE[1].map(function (absente) {
+      return auChapitre(ESPECES_PAR_CHAPITRE[1].filter(function (id) { return id !== absente; }));
+    }),
+    ESPECES_PAR_CHAPITRE[1].map(function () { return CHAPITRE_DEPART; }));
+
+  // Assimiler du chapitre 3 sans finir le 1 n'ouvre rien : on ne
+  // saute pas un chapitre en tombant sur une espece avancee.
+  verifie("on ne saute pas un chapitre",
+    auChapitre(["komainu"].concat(ESPECES_PAR_CHAPITRE[3])), CHAPITRE_DEPART);
+
+  verifie("le chapitre ne depasse jamais le dernier",
+    auChapitre(Object.keys(ESPECES)) <= CHAPITRE_MAX, true);
+
+  /* Un chapitre sans espece compte comme acheve : river le joueur
+     devant une porte sans serrure serait pire que de la traverser. */
+  verifie("un chapitre vide ne bloque pas la progression",
+    chapitreAcheve(CHAPITRE_MAX + 7), true);
+
+  /* Le bout qui compte vraiment : un lieu neuf montre autre chose
+     une fois le chapitre 1 acheve. C'est la progression vue depuis
+     le joueur, et pas depuis un compteur. */
+  verifie("un lieu neuf change d'espece quand le chapitre s'ouvre",
     (function () {
-      var avant = ModeTest.reglages.chapitre;
+      var lieu = { type: "node", id: 4242, lat: 25.03, lon: 121.56,
+                   tags: { name: "Station d'essai", station: "subway" } };
+      var avantColl = collection, avantMT = ModeTest.reglages.chapitre;
       ModeTest.reglages.chapitre = 0;
-      var c = chapitreAtteint();
-      ModeTest.reglages.chapitre = avant;
-      return c;
-    })(), CHAPITRE_DEPART);
+
+      collection = {};
+      var auDebut = donjonDepuisLieu(lieu).espece;
+
+      collection = {};
+      especesJusqua(1).forEach(function (id) { collection[id] = { espece: id, niveau: 1 }; });
+      var apres = donjonDepuisLieu(lieu).espece;
+
+      collection = avantColl;
+      ModeTest.reglages.chapitre = avantMT;
+      return [auDebut, apres, ESPECES[apres].chapitre];
+    })(), ["mechadrill", "teketeke", 2]);
 
   /* Le panneau force le chapitre sans rien ecrire : on le regle, on
      lit, on le remet, et la sauvegarde n'a jamais ete touchee --

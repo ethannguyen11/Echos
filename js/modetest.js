@@ -137,7 +137,8 @@ function preparerPanneau() {
 
   /* Le chapitre. "Progression" est la valeur 0 : elle ne force
      rien et laisse le jeu decider, ce qui doit rester le defaut
-     evident quand on ouvre le panneau. */
+     evident quand on ouvre le panneau. rafraichir() lui ajoutera
+     le chapitre effectivement deduit, entre parentheses. */
   var chapitres = '<option value="0">Progression</option>';
   for (var c = 1; c <= CHAPITRE_MAX; c++) {
     chapitres += '<option value="' + c + '"' +
@@ -177,6 +178,20 @@ function rafraichir() {
 
   elem("mt-palier-val").textContent = reglages.palier;
   elem("mt-niveau-val").textContent = reglages.niveau;
+
+  /* Le chapitre que la progression donnerait, affiche sur l'option
+     "Progression". Sans lui, on regle un chapitre a l'aveugle sans
+     savoir de quoi on s'ecarte -- et c'est justement l'ecart qu'on
+     veut mesurer en testant.
+
+     On lit la progression VRAIE, pas chapitreAtteint(), qui rendrait
+     le chapitre force et afficherait donc sa propre valeur. */
+  var option = elem("mt-chapitre") && elem("mt-chapitre").options[0];
+  if (option) {
+    var vrai = CHAPITRE_DEPART;
+    while (vrai < CHAPITRE_MAX && chapitreAcheve(vrai)) vrai++;
+    option.textContent = "Progression (ch. " + vrai + ")";
+  }
 
   // Le bandeau du bas doit suivre immediatement : c'est lui qui
   // annonce la difficulte et le niveau de l'adversaire.
