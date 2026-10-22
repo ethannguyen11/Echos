@@ -886,6 +886,73 @@ var BUTIN_KO = [
 
 
 /* ============================================================
+   LES POCHES D'OUBLI
+
+   Une poche d'Oubli s'ouvre quelque part sur la carte, pour un
+   temps, et se referme si on ne la remplit pas de fragments.
+   Ce n'est PAS une arene : les arenes (parcs, temples, musees,
+   metro) s'appellent "donjons" dans le code (js/lieux.js,
+   CLE_DONJONS), et une poche n'en est pas une -- d'ou un autre
+   nom. Elle peut seulement se poser sur une arene existante.
+
+   DEROGATION VOULUE A LA REGLE DE js/fragments.js. La-bas, un
+   fragment n'est pas une monnaie : il ne sert qu'a son espece et
+   rien ne le convertit. Ici, des fragments d'especes differentes
+   s'additionnent en points pour remplir une meme poche. C'est un
+   changement de regle assume : une poche CONSOMME des fragments,
+   elle ne les convertit en rien d'autre. Aucun point n'en ressort,
+   rien ne se rachete avec. Chaque depot garde d'ailleurs son
+   espece, pour savoir quel sac debiter.
+
+   Les poches ne sont pas encore enregistrees : aucune cle de
+   sauvegarde ne leur correspond pour l'instant.
+   ============================================================ */
+
+/* Ce que vaut chaque taille de fragment deposee dans une poche.
+   Le complet garde sa valeur pour reference, mais il ne se
+   depose JAMAIS : il se recoit, et ne doit pas pouvoir se
+   sacrifier a une poche. Seules les tailles de
+   FRAGMENTS_DEPOSABLES sont acceptees. */
+var FRAGMENT_VALEURS     = { mince: 1, grand: 3, complet: 10 };
+var FRAGMENTS_DEPOSABLES = ["mince", "grand"];
+
+/* Trois niveaux de poche, du plus courant au plus rare.
+
+   timer_minutes            duree de vie de la poche
+   timer_formation_minutes  (critique) le temps qu'elle met a se
+                            former ; elle expire au bout
+   fermeture_immediate      (critique) se referme des qu'elle est
+                            remplie
+   cout_fragments           points a deposer pour la remplir
+
+   Les couts sont un point de depart, calibre sur l'existant : un
+   KO de bas niveau rapporte 2 a 3 points (BUTIN_KO), un palier
+   de conscience en coute 8 a 11, une gourde neuve tient au plus
+   18 points d'une meme espece (6 grands).
+     leger     12  environ un palier, faisable seul en 2 h 30
+     profond   30  plus qu'une gourde d'une seule espece
+     critique  60  hors de portee seul en 15 min : collectif */
+var POCHES_NIVEAUX = {
+  leger: {
+    timer_minutes: 150,
+    rarete: "frequente",
+    cout_fragments: 12
+  },
+  profond: {
+    timer_minutes: 60,
+    rarete: "rare",
+    cout_fragments: 30
+  },
+  critique: {
+    timer_formation_minutes: 15,
+    rarete: "tres_rare",
+    fermeture_immediate: true,
+    cout_fragments: 60
+  }
+};
+
+
+/* ============================================================
    L'OUTIL D'EQUILIBRAGE
    Combien de combats Combat.rapportEquilibrage() rejoue par case.
    Plus haut = plus stable mais plus lent.

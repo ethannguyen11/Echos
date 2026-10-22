@@ -27,6 +27,7 @@ var FICHIERS = [
   "js/carte.js",
   "js/joueur.js",
   "js/fragments.js",
+  "js/poche.js",
   "js/combat.js",
   "js/grimoire.js",
   "js/intro.js",

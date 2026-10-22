@@ -20,7 +20,7 @@ var RACINE = path.join(__dirname, "..");
 // Tout sauf jeu.js : on ne veut pas brancher les boutons du jeu,
 // seulement disposer de ses fonctions.
 var FICHIERS = ["js/config.js", "js/langues.js", "js/especes.js", "js/lieux.js", "js/carte.js",
-                "js/joueur.js", "js/fragments.js", "js/combat.js", "js/grimoire.js", "js/intro.js",
+                "js/joueur.js", "js/fragments.js", "js/poche.js", "js/combat.js", "js/grimoire.js", "js/intro.js",
                 "js/modetest.js"];
 
 
@@ -685,6 +685,62 @@ function lancerParcours() {
   verifie("une sauvegarde existante garde sa voie et ne relance rien",
           mExist.ctx.profil.introVue === true && mExist.ctx.profil.voie === "archiviste",
           JSON.stringify(mExist.ctx.profil));
+
+
+  /* --- G. Les poches d'Oubli ---
+     Le modele seul : on fabrique une poche et on compte ce qu'on
+     y depose. Rien n'est encore enregistre ni affiche. */
+
+  bloc("Poches d'Oubli");
+
+  var mp = creerMonde();
+  var t0 = 1700000000000;
+  var lieuP = { lat: 48.8566, lon: 2.3522, arene_id: "way/123" };
+
+  var leger = mp.ctx.creerPoche("leger", lieuP, t0);
+  verifie("une poche legere est creee ouverte, vide, au bon seuil",
+          !!leger && leger.statut === "ouvert" && leger.niveau === "leger" &&
+          leger.fragments_deposes.length === 0 && leger.seuil_total === 12,
+          JSON.stringify(leger));
+  verifie("elle expire 150 minutes apres sa creation",
+          !!leger && leger.timestamp_creation === t0 &&
+          leger.timestamp_expiration === t0 + 150 * 60000);
+  verifie("elle garde son lieu et l'arene liee",
+          !!leger && leger.lieu.lat === 48.8566 && leger.lieu.lon === 2.3522 &&
+          leger.lieu.arene_id === "way/123",
+          leger && JSON.stringify(leger.lieu));
+
+  var profond = mp.ctx.creerPoche("profond", { lat: 1, lon: 2 }, t0);
+  var critique = mp.ctx.creerPoche("critique", { lat: 1, lon: 2 }, t0);
+  verifie("profond : seuil 30, 60 minutes, sans arene",
+          !!profond && profond.seuil_total === 30 &&
+          profond.timestamp_expiration === t0 + 60 * 60000 && profond.lieu.arene_id === null);
+  verifie("critique : seuil 60, expire au bout de ses 15 minutes de formation",
+          !!critique && critique.seuil_total === 60 &&
+          critique.timestamp_expiration === t0 + 15 * 60000);
+  verifie("un niveau inconnu ou un lieu sans coordonnees ne fabrique rien",
+          mp.ctx.creerPoche("abyssal", lieuP, t0) === null &&
+          mp.ctx.creerPoche("toString", lieuP, t0) === null &&
+          mp.ctx.creerPoche("leger", { lat: "ici" }, t0) === null);
+  verifie("le complet n'est pas deposable",
+          mp.ctx.FRAGMENTS_DEPOSABLES.indexOf("complet") === -1 &&
+          mp.ctx.FRAGMENT_VALEURS.complet === 10);
+
+  leger.fragments_deposes.push(
+    { joueur_id: "j1", espece: "peng",    valeur: mp.ctx.FRAGMENT_VALEURS.mince, type: "mince", timestamp: t0 + 1 },
+    { joueur_id: "j1", espece: "komainu", valeur: mp.ctx.FRAGMENT_VALEURS.grand, type: "grand", timestamp: t0 + 2 },
+    { joueur_id: "j2", espece: "peng",    valeur: mp.ctx.FRAGMENT_VALEURS.grand, type: "grand", timestamp: t0 + 3 },
+    { joueur_id: "j2", espece: "peng",    valeur: "trois", type: "grand", timestamp: t0 + 4 },
+    null
+  );
+  verifie("la somme additionne les depots et ignore les entrees abimees",
+          mp.ctx.calculerSommeFragments(leger) === 7,
+          mp.ctx.calculerSommeFragments(leger));
+  verifie("une poche vide ou absente vaut zero",
+          mp.ctx.calculerSommeFragments(profond) === 0 &&
+          mp.ctx.calculerSommeFragments(null) === 0);
+  verifie("creer une poche n'ecrit rien dans la sauvegarde",
+          Object.keys(mp.stockage).length === 0, JSON.stringify(Object.keys(mp.stockage)));
 
   return resultats;
 }
