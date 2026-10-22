@@ -951,6 +951,40 @@ var POCHES_NIVEAUX = {
   }
 };
 
+/* LE GATE BREAK
+
+   Une poche qui expire sans etre remplie "casse" : l'Oubli se
+   repand, et les arenes voisines deviennent plus dures pendant
+   un temps. Voir malusGateBreak() dans js/poche.js.
+
+   rayon_metres   les arenes a cette distance ou moins sont touchees
+   duree_minutes  combien de temps l'effet dure apres l'expiration
+   malus          niveaux d'adversaire en plus, comme le bonus du
+                  Figement (+0 a +5) auquel il s'ajoute
+
+     leger     300 m,  1 h, +1  quelques rues, genant sans plus
+     profond   600 m,  2 h, +3  presque tout RAYON_RECHERCHE (700 m)
+     critique 1000 m,  4 h, +5  plus loin que ce que le joueur voit ;
+                                +5 = le bonus d'un lieu au Figement
+                                maximal : le quartier devient un
+                                lieu mort pendant quatre heures
+
+   Plusieurs poches cassees au meme endroit ne s'additionnent PAS :
+   c'est la plus forte qui compte. Comme pour les affinites, c'est
+   punir qui rend un combat impossible ; au pire, une arene prend
+   +5 (Figement) +5 (Oubli), jamais plus.
+
+   CHOIX DE CONCEPTION ASSUME : le malus releve le niveau de
+   l'adversaire, et le butin d'un KO suit ce niveau (BUTIN_KO,
+   butinDeKo). Une arene touchee par l'Oubli rapporte donc aussi
+   plus de fragments. C'est la compensation du risque, pas un
+   oubli. Le niveau de capture, lui, ne bouge pas. */
+var GATE_BREAK = {
+  leger:    { rayon_metres: 300,  duree_minutes: 60,  malus: 1 },
+  profond:  { rayon_metres: 600,  duree_minutes: 120, malus: 3 },
+  critique: { rayon_metres: 1000, duree_minutes: 240, malus: 5 }
+};
+
 
 /* ============================================================
    L'OUTIL D'EQUILIBRAGE

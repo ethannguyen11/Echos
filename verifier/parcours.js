@@ -742,6 +742,95 @@ function lancerParcours() {
   verifie("creer une poche n'ecrit rien dans la sauvegarde",
           Object.keys(mp.stockage).length === 0, JSON.stringify(Object.keys(mp.stockage)));
 
+
+  /* --- H. Expiration et gate break ---
+     Tout est fonction de "maintenant", passe en parametre : on
+     se place a l'instant voulu, a la milliseconde pres. */
+
+  bloc("Expiration et gate break");
+
+  var ctxP = mp.ctx;
+  var MIN = 60000;
+  var origine = { lat: 48.8566, lon: 2.3522 };
+
+  // Un depot de "points" points, pour remplir une poche a la main
+  function deposer(poche, points) {
+    for (var n = 0; n < points; n++) {
+      poche.fragments_deposes.push({ joueur_id: "j1", espece: "peng", valeur: 1,
+                                     type: "mince", timestamp: t0 + n });
+    }
+    return poche;
+  }
+
+  var pe = ctxP.creerPoche("leger", origine, t0);
+  var echeance = pe.timestamp_expiration;
+  verifie("1 ms avant l'echeance, la poche est encore ouverte",
+          ctxP.verifierExpirationPoche(pe, echeance - 1) === "ouvert");
+  verifie("a l'instant exact de l'echeance, elle expire",
+          ctxP.verifierExpirationPoche(pe, echeance) === "expire");
+  verifie("verifier ne modifie pas la poche",
+          pe.statut === "ouvert" && pe.fragments_deposes.length === 0, pe.statut);
+
+  var pr = deposer(ctxP.creerPoche("leger", origine, t0), 12);
+  verifie("remplie avant l'echeance : rempli",
+          ctxP.verifierExpirationPoche(pr, echeance - 1) === "rempli");
+  verifie("remplie mais controlee apres l'echeance : toujours rempli",
+          ctxP.verifierExpirationPoche(pr, echeance + 10 * MIN) === "rempli");
+  verifie("un point de moins que le seuil, a l'echeance : expire",
+          ctxP.verifierExpirationPoche(deposer(ctxP.creerPoche("leger", origine, t0), 11), echeance) === "expire");
+
+  var finale = deposer(ctxP.creerPoche("leger", origine, t0), 12);
+  finale.statut = "expire";
+  var finaleRemplie = ctxP.creerPoche("leger", origine, t0);
+  finaleRemplie.statut = "rempli";
+  verifie("un statut final ne change plus",
+          ctxP.verifierExpirationPoche(finale, t0) === "expire" &&
+          ctxP.verifierExpirationPoche(finaleRemplie, echeance + 999 * MIN) === "rempli");
+
+  var pc = deposer(ctxP.creerPoche("critique", origine, t0), 59);
+  verifie("critique a 59 sur 60 : encore ouverte",
+          ctxP.verifierExpirationPoche(pc, t0 + 1) === "ouvert");
+  deposer(pc, 1);
+  verifie("critique au seuil : fermee, pas remplie",
+          ctxP.verifierExpirationPoche(pc, t0 + 1) === "ferme");
+
+  // Arenes a ~222 m (dans le rayon leger), ~445 m (hors leger,
+  // dans profond) et ~945 m (dans critique seulement) au nord.
+  var areneProche  = { id: "way/1", lat: origine.lat + 0.002,  lon: origine.lon };
+  var areneMoyenne = { id: "way/2", lat: origine.lat + 0.004,  lon: origine.lon };
+  var areneLoin    = { id: "way/3", lat: origine.lat + 0.0085, lon: origine.lon };
+  var finLeger = echeance + 60 * MIN;
+
+  verifie("malus actif : arene dans le rayon d'une poche legere cassee",
+          ctxP.malusGateBreak(areneProche, [pe], echeance) === 1 &&
+          ctxP.malusGateBreak(areneProche, [pe], finLeger - 1) === 1);
+  verifie("malus eteint a la fin exacte de la duree",
+          ctxP.malusGateBreak(areneProche, [pe], finLeger) === 0);
+  verifie("aucun malus avant l'echeance",
+          ctxP.malusGateBreak(areneProche, [pe], echeance - 1) === 0);
+  verifie("aucun malus hors rayon",
+          ctxP.malusGateBreak(areneMoyenne, [pe], echeance) === 0);
+  verifie("une poche remplie ne casse pas",
+          ctxP.malusGateBreak(areneProche, [pr], echeance + 1) === 0);
+
+  var pcCassee = ctxP.creerPoche("critique", origine, t0);
+  var ppCassee = ctxP.creerPoche("profond", origine, t0);
+  var tard = t0 + 150 * MIN;   // les trois sont expirees et encore actives
+  verifie("chevauchement : la plus forte compte, pas la somme",
+          ctxP.malusGateBreak(areneProche, [pe, ppCassee, pcCassee], tard) === 5,
+          ctxP.malusGateBreak(areneProche, [pe, ppCassee, pcCassee], tard));
+  verifie("chevauchement : chaque poche garde son propre rayon",
+          ctxP.malusGateBreak(areneMoyenne, [pe, ppCassee], tard) === 3 &&
+          ctxP.malusGateBreak(areneLoin, [pe, ppCassee, pcCassee], tard) === 5 &&
+          ctxP.malusGateBreak(areneLoin, [pe, ppCassee], tard) === 0);
+  verifie("arene, liste ou poche abimee : malus nul, aucun crash",
+          ctxP.malusGateBreak(null, [pe], echeance) === 0 &&
+          ctxP.malusGateBreak({ lat: "?" }, [pe], echeance) === 0 &&
+          ctxP.malusGateBreak(areneProche, null, echeance) === 0 &&
+          ctxP.malusGateBreak(areneProche, [null, { niveau: "abyssal", lieu: origine }], echeance) === 0);
+  verifie("le malus ne modifie aucune poche",
+          pe.statut === "ouvert" && pcCassee.statut === "ouvert");
+
   return resultats;
 }
 

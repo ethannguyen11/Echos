@@ -16,8 +16,31 @@
    ressort. Le detail est dans la section LES POCHES D'OUBLI de
    js/config.js.
 
-   Ne depend que de js/config.js. Ne connait ni le DOM ni
-   localStorage : les poches ne sont pas encore enregistrees.
+   Ne depend que de js/config.js (dont distanceMetres). Ne connait
+   ni le DOM, ni localStorage, ni l'horloge : les poches ne sont
+   pas encore enregistrees, et "maintenant" est TOUJOURS un
+   parametre.
+
+   BRANCHEMENT FUTUR DU GATE BREAK (rien n'est branche aujourd'hui)
+   malusGateBreak() est exposee, mais aucun combat ne l'appelle.
+   Le jour ou on la branche :
+     1. js/combat.js, niveauAdversaire(donjon) (ligne 83 au moment
+        d'ecrire ces lignes) : y ajouter
+          + malusGateBreak(donjon, poches, maintenant)
+        C'est l'entonnoir unique : l'infobulle et le bandeau de la
+        carte (js/carte.js), l'adversaire du combat (adversaireDe)
+        et le butin (butinDeKo) suivront d'eux-memes.
+     2. LE BUTIN : finDeCombat recalcule niveauAdversaire() A LA
+        FIN du combat (butinDeKo(niveauAdversaire(d))). Si l'effet
+        s'eteint pendant la rencontre, le butin ne correspondrait
+        plus a l'adversaire affronte. Il faut figer le malus au
+        debut du combat, dans l'objet combat (demarrerCombat), ou
+        lire combat.adversaire.niveau a la place.
+     3. Il faudra une liste GLOBALE des poches (elle n'existe pas
+        encore), et c'est l'APPELANT qui lit Date.now() et le passe
+        en "maintenant" -- jamais ce fichier.
+     4. En option, ligneDifficulte() dans js/carte.js pourra dire
+        que l'Oubli deborde sur ce lieu.
 
    Une poche :
      {
@@ -89,4 +112,75 @@ function calculerSommeFragments(poche) {
     somme += d.valeur;
   }
   return somme;
+}
+
+/* Le statut qu'a la poche a l'instant "maintenant". Rend une
+   simple chaine et NE MODIFIE PAS la poche : c'est l'appelant qui
+   decide de l'ecrire, comme pour palierFigement() ou butinDeKo().
+   Une copie obligerait a recopier fragments_deposes a chaque
+   controle, pour rien.
+
+   Dans cet ordre :
+     - un statut final (rempli, ferme, expire) ne change plus ;
+     - seuil atteint : "rempli", ou "ferme" si le niveau a
+       fermeture_immediate (plus aucun depot accepte) ;
+     - echeance atteinte (maintenant >= timestamp_expiration) :
+       "expire" ;
+     - sinon : "ouvert".
+
+   Une poche remplie mais controlee APRES son echeance compte
+   comme remplie : le seuil passe avant l'heure. Refuser un depot
+   fait apres l'echeance est le travail du depot, pas de cette
+   fonction. */
+function verifierExpirationPoche(poche, maintenant) {
+  if (!poche) return "";
+  if (poche.statut === "rempli" || poche.statut === "ferme" || poche.statut === "expire") {
+    return poche.statut;
+  }
+
+  if (calculerSommeFragments(poche) >= poche.seuil_total) {
+    var reglage = POCHES_NIVEAUX[poche.niveau];
+    return reglage && reglage.fermeture_immediate ? "ferme" : "rempli";
+  }
+
+  if (maintenant >= poche.timestamp_expiration) return "expire";
+  return "ouvert";
+}
+
+/* Le malus de difficulte, en niveaux d'adversaire, que l'Oubli
+   impose a une arene (un element de donjons) a l'instant
+   "maintenant".
+
+   Une poche compte si, a cet instant :
+     - elle est expiree (statut RECALCULE par verifierExpirationPoche :
+       une poche dont le champ n'a pas encore ete mis a jour compte
+       quand meme) ;
+     - son effet dure encore : maintenant < expiration + duree ;
+     - l'arene est dans son rayon (distanceMetres, bord compris).
+
+   Plusieurs poches : on garde la PLUS FORTE, on n'additionne pas.
+   Voir GATE_BREAK dans js/config.js. Rend 0 si rien ne s'applique,
+   et ne plante jamais sur une arene ou une poche abimee. */
+function malusGateBreak(arene, poches, maintenant) {
+  if (!arene || !isFinite(arene.lat) || !isFinite(arene.lon)) return 0;
+  if (!poches || typeof poches.length !== "number") return 0;
+
+  var malus = 0;
+
+  for (var i = 0; i < poches.length; i++) {
+    var p = poches[i];
+    if (!p || !p.lieu) continue;
+
+    var effet = Object.prototype.hasOwnProperty.call(GATE_BREAK, p.niveau) ? GATE_BREAK[p.niveau] : null;
+    if (!effet) continue;
+    if (verifierExpirationPoche(p, maintenant) !== "expire") continue;
+    if (!(maintenant < p.timestamp_expiration + effet.duree_minutes * 60 * 1000)) continue;
+
+    var dist = distanceMetres(arene.lat, arene.lon, p.lieu.lat, p.lieu.lon);
+    if (!(dist <= effet.rayon_metres)) continue;
+
+    malus = Math.max(malus, effet.malus);
+  }
+
+  return malus;
 }
