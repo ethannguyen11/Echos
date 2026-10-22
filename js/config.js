@@ -1046,6 +1046,134 @@ var JOURNAL_OPACITES = [1, 0.62, 0.38, 0.22];
 
 
 /* ============================================================
+   LE RENDU 3D (EN PREPARATION)
+   Le combat affiche aujourd'hui des images 2D. Cette section
+   prepare la RECEPTION des modeles 3D : ou ils se trouvent, a
+   quelle echelle, quels clips d'animation ils doivent contenir.
+   Le combat ne s'en sert PAS encore (voir l'en-tete de
+   js/rendu3d.js pour le futur point d'accroche).
+
+   Three.js (r147, version classique, licence MIT) est copie dans
+   lib/three/. Il n'est JAMAIS charge au demarrage : js/rendu3d.js
+   l'ajoute a la page la premiere fois qu'on demande de la 3D.
+   Environ 175 Ko telecharges (compresses), une seule fois.
+
+   La convention des fichiers est decrite dans assets/LISEZMOI.md.
+   ============================================================ */
+
+var DOSSIER_LIB_3D  = "lib/three/";
+var FICHIERS_LIB_3D = ["three.min.js", "GLTFLoader.js"];   // dans cet ordre
+
+/* La resolution INTERNE du rendu, en pixels. L'image est ensuite
+   agrandie a la taille de l'ecran sans lissage (image-rendering:
+   pixelated) : c'est ce qui donne l'aspect DS / PS1. Monter ces
+   valeurs adoucit l'image et coute plus cher au telephone. */
+var RENDU3D_LARGEUR = 320;
+var RENDU3D_HAUTEUR = 240;
+
+/* Les clips d'animation qu'un monstre doit contenir, sous ces
+   noms exacts. Un clip manquant ne casse rien : jouerClip()
+   repond false et le modele garde sa pose. */
+var CLIPS_3D = ["idle", "attaque", "degat", "ko", "victoire"];
+
+/* LE BUDGET D'UN FICHIER 3D
+
+   Pense pour GitHub Pages (aucun serveur, rien ne se recompresse
+   a la volee pour les .glb) et pour la 5G dehors, en marchant.
+   Un combat 3 contre 3 = 6 monstres + 1 decor a l'ecran :
+     triangles : 6 x 800 + 3000 = 7 800, l'ordre de grandeur d'une
+                 scene PS1 / DS, tres confortable pour un iPhone ;
+     poids     : 6 x 300 + 500 = 2,3 Mo au pire, une seule fois
+                 (le navigateur garde ensuite les fichiers).
+
+   monstre  : 800 triangles max, textures 128 x 128 max, 300 Ko max
+   decor    : 3000 triangles max, textures 256 x 256 max, 500 Ko max
+   attaque  : fichier .json de 10 Ko max
+
+   Des textures plus grandes ne se verraient pas : l'image entiere
+   ne fait que RENDU3D_LARGEUR x RENDU3D_HAUTEUR pixels. */
+var BUDGET_3D = {
+  monstre: { triangles: 800,  texture_px: 128, ko: 300 },
+  decor:   { triangles: 3000, texture_px: 256, ko: 500 },
+  attaque: { ko: 10 }
+};
+
+/* LE MANIFESTE DES MONSTRES
+
+   Une ligne par espece de js/especes.js, ni plus ni moins (le
+   verificateur le controle).
+     modele : chemin du .glb, ou null tant que le fichier n'existe
+              pas. null = visuel 2D actuel, sans rien telecharger.
+              Le jour ou tu ajoutes assets/monstres/komainu.glb,
+              remplace null par "assets/monstres/komainu.glb".
+     echelle: multiplie la taille du modele (1 = taille du fichier).
+     clips  : vide en general. Seulement si ton fichier nomme un clip
+              autrement, par exemple { attaque: "Morsure" }. */
+var MONSTRES_3D = {
+  komainu:      { modele: null, echelle: 1, clips: {} },
+  chiguo:       { modele: null, echelle: 1, clips: {} },
+  sunwukong:    { modele: null, echelle: 1, clips: {} },
+  palantir:     { modele: null, echelle: 1, clips: {} },
+  mechadrill:   { modele: null, echelle: 1, clips: {} },
+  teketeke:     { modele: null, echelle: 1, clips: {} },
+  zhanxiyuan:   { modele: null, echelle: 1, clips: {} },
+  baku:         { modele: null, echelle: 1, clips: {} },
+  eiffel:       { modele: null, echelle: 1, clips: {} },
+  tortuedragon: { modele: null, echelle: 1, clips: {} },
+  hephaistos:   { modele: null, echelle: 1, clips: {} },
+  vinci:        { modele: null, echelle: 1, clips: {} },
+  hinezumi:     { modele: null, echelle: 1, clips: {} },
+  penghou:      { modele: null, echelle: 1, clips: {} },
+  peng:         { modele: null, echelle: 1, clips: {} },
+  jinchan:      { modele: null, echelle: 1, clips: {} }
+};
+
+/* LES DECORS DE COMBAT, par type de lieu (les cles de js/lieux.js :
+   les musees tombent dans "monument"). modele = un .glb, image =
+   une image de fond ; null = le fond actuel du combat. */
+var DECORS_3D = {
+  parc:     { modele: null, image: null },
+  temple:   { modele: null, image: null },
+  monument: { modele: null, image: null },
+  metro:    { modele: null, image: null }
+};
+
+/* LES CINEMATIQUES D'ATTAQUE : LE FORMAT
+
+   Une cinematique est une DESCRIPTION en donnees, rangee dans
+   assets/attaques/<id>.json. Aucune n'est encore jouee par le jeu.
+   assets/attaques/test.json sert d'exemple.
+
+   {
+     "id": "test",                      meme nom que le fichier
+     "attaquant": { "clip": "attaque" },  un nom de CLIPS_3D
+     "duree": 1.6,                      en secondes, > 0
+     "camera": [                        au moins un point, t croissant
+       { "t": 0, "position": [x, y, z], "cible": [x, y, z] },
+       ...                              t entre 0 et duree
+     ],
+     "effet": {
+       "type": "flash",                 un nom de EFFETS_3D
+       "debut": 0.25, "duree": 0.3,     en secondes, dans la cinematique
+       "couleur": "#d4a02a"             #rrggbb
+     }
+   }
+
+   validerCinematique3D() (js/rendu3d.js) applique ces regles. */
+var EFFETS_3D = ["aucun", "flash", "onde", "particules"];
+
+/* Les fichiers du banc 3D (mode test seulement). Le cube porte les
+   cinq clips de CLIPS_3D ; le decor est un sol et quatre piliers. */
+var MODELE_3D_TEST = { modele: "assets/monstres/test.glb", echelle: 1, clips: {} };
+var DECOR_3D_TEST  = "assets/decors/test.glb";
+
+/* L'espece montree par le bouton "Espece sans modele" du banc :
+   elle doit avoir modele: null ET une image 2D, pour que le repli
+   se voie au premier coup d'oeil. */
+var ESPECE_3D_REPLI_TEST = "komainu";
+
+
+/* ============================================================
    OUTILS COMMUNS
    Trois raccourcis dont tous les fichiers se servent.
    ============================================================ */

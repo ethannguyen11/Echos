@@ -21,7 +21,7 @@ var RACINE = path.join(__dirname, "..");
 // seulement disposer de ses fonctions.
 var FICHIERS = ["js/config.js", "js/langues.js", "js/especes.js", "js/lieux.js", "js/carte.js",
                 "js/joueur.js", "js/fragments.js", "js/poche.js", "js/combat.js", "js/grimoire.js", "js/intro.js",
-                "js/modetest.js"];
+                "js/rendu3d.js", "js/modetest.js"];
 
 
 /* ------------------------------------------------------------
@@ -1117,6 +1117,309 @@ function lancerParcours() {
   verifie("apres un depot, la poche enregistree porte le depot",
           pochesRelues.length === 1 && pochesRelues[0].fragments_deposes.length === 1 &&
           pochesRelues[0].fragments_deposes[0].joueur_id === "j1");
+
+
+  /* ----------------------------------------------------------
+     RENDU 3D : MANIFESTE ET REPLI
+     La partie WebGL se verifie a la main (banc 3D du mode test).
+     Ici : le manifeste, les noms de clips, le repli 2D, et la
+     promesse que lib/three/ n'est jamais chargee au demarrage.
+     ---------------------------------------------------------- */
+
+  bloc("Rendu 3D : manifeste et repli");
+
+  var mr = creerMonde();
+  var R = mr.ctx;
+
+  // Aucun <script> ajoute au demarrage : Three.js ne pese rien tant
+  // qu'on ne demande pas de 3D.
+  function scriptsAjoutes(m) {
+    return m.corps.enfants.filter(function (e) { return e.tag === "script"; });
+  }
+  verifie("au demarrage, lib/three/ n'est pas chargee",
+          scriptsAjoutes(mr).length === 0 && typeof R.THREE === "undefined" &&
+          R.Rendu3D.etat().lib === "absente");
+
+  var cleEspeces = Object.keys(R.ESPECES).sort().join(",");
+  var cleManifeste = Object.keys(R.MONSTRES_3D).sort().join(",");
+  verifie("le manifeste couvre exactement les especes de js/especes.js",
+          cleEspeces === cleManifeste, cleManifeste);
+
+  var fautesManifeste = [];
+  Object.keys(R.MONSTRES_3D).forEach(function (id) {
+    var e = R.MONSTRES_3D[id];
+    if (!(typeof e.echelle === "number" && e.echelle > 0)) fautesManifeste.push(id + " : echelle");
+    if (!e.clips || typeof e.clips !== "object") fautesManifeste.push(id + " : clips");
+    Object.keys(e.clips || {}).forEach(function (role) {
+      if (R.CLIPS_3D.indexOf(role) === -1) fautesManifeste.push(id + " : role inconnu " + role);
+    });
+    if (e.modele !== null) {
+      if (e.modele !== "assets/monstres/" + id + ".glb") fautesManifeste.push(id + " : chemin hors convention");
+      else if (!fs.existsSync(path.join(RACINE, e.modele))) fautesManifeste.push(id + " : fichier absent");
+    }
+  });
+  Object.keys(R.DECORS_3D).forEach(function (type) {
+    var d = R.DECORS_3D[type];
+    if (d.modele !== null &&
+        (d.modele !== "assets/decors/" + type + ".glb" || !fs.existsSync(path.join(RACINE, d.modele)))) {
+      fautesManifeste.push("decor " + type + " : chemin ou fichier");
+    }
+  });
+  verifie("manifeste : echelles > 0, roles connus, chaque modele suit la convention et existe",
+          fautesManifeste.length === 0, fautesManifeste.join(" | "));
+
+  verifie("decors : exactement les types de lieu de js/lieux.js (monument pour les musees)",
+          Object.keys(R.DECORS_3D).sort().join(",") === "metro,monument,parc,temple",
+          Object.keys(R.DECORS_3D).join(","));
+
+  verifie("les cinq clips attendus, dans l'ordre",
+          R.CLIPS_3D.join(",") === "idle,attaque,degat,ko,victoire", R.CLIPS_3D.join(","));
+
+  var renomme = { modele: "x.glb", echelle: 1, clips: { attaque: "Morsure" } };
+  verifie("nomClip3D : le role par defaut, le nom propre au fichier sinon, rien pour un role inconnu",
+          R.nomClip3D(renomme, "idle") === "idle" && R.nomClip3D(renomme, "attaque") === "Morsure" &&
+          R.nomClip3D(renomme, "danse") === "" && R.nomClip3D(null, "ko") === "ko" &&
+          R.nomClip3D({ clips: { ko: "" } }, "ko") === "ko");
+
+  // Le repli, cas par cas
+  var tout = { webgl: true, lib: "prete", contextePerdu: false, echecs: {} };
+  function avec(modif) {
+    var e = { webgl: tout.webgl, lib: tout.lib, contextePerdu: tout.contextePerdu, echecs: {} };
+    for (var k in modif) e[k] = modif[k];
+    return e;
+  }
+  var entreeOk = { modele: "assets/monstres/test.glb", echelle: 1, clips: {} };
+  verifie("raisonRepli3D : chaque cas de repli a sa raison, et rien quand tout va bien",
+          R.raisonRepli3D(null, tout) === "pas_au_manifeste" &&
+          R.raisonRepli3D({ modele: null, echelle: 1, clips: {} }, tout) === "pas_de_modele" &&
+          R.raisonRepli3D(entreeOk, avec({ webgl: false })) === "webgl_indisponible" &&
+          R.raisonRepli3D(entreeOk, null) === "webgl_indisponible" &&
+          R.raisonRepli3D(entreeOk, avec({ lib: "echec" })) === "lib_absente" &&
+          R.raisonRepli3D(entreeOk, avec({ contextePerdu: true })) === "contexte_perdu" &&
+          R.raisonRepli3D(entreeOk, avec({ echecs: { "assets/monstres/test.glb": true } })) === "chargement_echoue" &&
+          R.raisonRepli3D(entreeOk, tout) === "");
+
+  verifie("choisirVisuel3D : 2d pour une espece sans modele ou inconnue, meme avec WebGL",
+          R.choisirVisuel3D("komainu", tout) === "2d" && R.choisirVisuel3D("inconnue", tout) === "2d" &&
+          Object.keys(R.ESPECES).every(function (id) { return R.choisirVisuel3D(id, tout) === "2d"; }));
+
+  R.MONSTRES_3D.komainu.modele = "assets/monstres/komainu.glb";   // le temps d'un test
+  var visuels = [R.choisirVisuel3D("komainu", tout),
+                 R.choisirVisuel3D("komainu", avec({ webgl: false })),
+                 R.choisirVisuel3D("komainu", avec({ echecs: { "assets/monstres/komainu.glb": true } }))];
+  R.MONSTRES_3D.komainu.modele = null;
+  verifie("choisirVisuel3D : 3d avec un modele, 2d des que WebGL manque ou que le fichier a echoue",
+          visuels.join(",") === "3d,2d,2d", visuels.join(","));
+
+  // Sans WebGL (le faux navigateur n'en a pas) : repli immediat,
+  // aucune exception, rien de telecharge.
+  var raisons = [];
+  var vue = R.document.createElement("div");
+  R.Rendu3D.essayerEspece(vue, "komainu", { repli: function (r) { raisons.push(r); } });
+  R.Rendu3D.essayerModele(vue, entreeOk, { repli: function (r) { raisons.push(r); } });
+  verifie("essayer sans modele puis sans WebGL : repli 2D, aucun canvas, aucun script ajoute",
+          raisons.join(",") === "pas_de_modele,webgl_indisponible" &&
+          vue.enfants.length === 0 && scriptsAjoutes(mr).length === 0, raisons.join(","));
+
+  /* Avec un WebGL et un Three.js de theatre : juste assez pour
+     suivre le chemin du code sans vrai rendu. */
+  function monde3D(fichiers) {
+    var m = creerMonde();
+    var journal = { chargements: [], liberes: 0, perdus: 0, rendus: 0 };
+    var creer = m.ctx.document.createElement;
+    m.ctx.document.createElement = function (tag) {
+      var el = creer(tag);
+      if (tag === "canvas") {
+        el.getContext = function () { return { getExtension: function () { return { loseContext: function () {} }; } }; };
+      }
+      return el;
+    };
+    m.ctx.document.removeEventListener = function () {};
+    m.ctx.requestAnimationFrame = function () { journal.rendus++; return 7; };
+    m.ctx.cancelAnimationFrame = function () {};
+
+    function vec() { return { set: function () {}, setScalar: function (v) { this.valeur = v; } }; }
+    function Mixer() {
+      var actions = [];
+      this.addEventListener = function () {};
+      this.clipAction = function (clip) {
+        var a = { clip: clip, joue: false, reset: function () {}, setLoop: function () {},
+                  play: function () { this.joue = true; }, stop: function () { this.joue = false; } };
+        actions.push(a);
+        return a;
+      };
+      this.update = function () {};
+      this.stopAllAction = function () {};
+      this.uncacheRoot = function () {};
+      this.actions = actions;
+    }
+    m.ctx.THREE = {
+      LoopRepeat: 1, LoopOnce: 2,
+      WebGLRenderer: function () {
+        this.domElement = creer("canvas");
+        this.domElement.removeEventListener = function () {};
+        this.setPixelRatio = this.setSize = this.render = function () {};
+        this.dispose = function () { journal.liberes++; };
+        this.forceContextLoss = function () { journal.perdus++; };
+      },
+      Scene: function () { this.add = function () {}; this.traverse = function () {}; },
+      PerspectiveCamera: function () { this.position = vec(); this.lookAt = function () {}; },
+      HemisphereLight: function () {},
+      DirectionalLight: function () { this.position = vec(); },
+      Clock: function () { this.getDelta = function () { return 0; }; },
+      AnimationMixer: Mixer,
+      GLTFLoader: function () {
+        this.load = function (url, ok, progres, echec) {
+          journal.chargements.push(url);
+          if (fichiers[url]) {
+            ok({ scene: { scale: vec(), traverse: function () {} },
+                 animations: fichiers[url].map(function (n) { return { name: n }; }) });
+          } else {
+            echec(new Error("404"));
+          }
+        };
+      }
+    };
+    return { m: m, journal: journal };
+  }
+
+  var w3 = monde3D({ "assets/monstres/test.glb": ["idle", "attaque", "degat", "ko", "victoire"] });
+  var vueAbsent = w3.m.ctx.document.createElement("div");
+  var replis = [];
+  var absent = { modele: "assets/monstres/absent.glb", echelle: 1, clips: {} };
+  w3.m.ctx.Rendu3D.essayerModele(vueAbsent, absent, { repli: function (r) { replis.push(r); } });
+  w3.m.ctx.Rendu3D.essayerModele(vueAbsent, absent, { repli: function (r) { replis.push(r); } });
+  verifie("fichier absent : repli 2D, scene rendue (dispose + perte forcee), canvas retire",
+          replis[0] === "chargement_echoue" && w3.journal.liberes === 1 && w3.journal.perdus === 1 &&
+          vueAbsent.enfants.length === 0 && !w3.m.ctx.Rendu3D.actif(), JSON.stringify([replis, w3.journal]));
+  verifie("fichier absent : l'echec est memorise, le fichier n'est pas redemande",
+          replis[1] === "chargement_echoue" && w3.journal.chargements.length === 1,
+          JSON.stringify(w3.journal.chargements));
+
+  var vueOk = w3.m.ctx.document.createElement("div");
+  var pret = null, replisOk = [];
+  w3.m.ctx.Rendu3D.essayerModele(vueOk, { modele: "assets/monstres/test.glb", echelle: 2, clips: {} },
+    { pret: function (p) { pret = p; }, repli: function (r) { replisOk.push(r); } });
+  verifie("fichier present : le modele s'affiche en idle, a son echelle, sans repli",
+          pret !== null && replisOk.length === 0 && vueOk.enfants.length === 1 &&
+          vueOk.enfants[0].className === "rendu3d" && pret.racine.scale.valeur === 2 &&
+          pret.action.clip.name === "idle" && w3.journal.rendus > 0);
+
+  var clipsJoues = R.CLIPS_3D.map(function (role) {
+    return w3.m.ctx.Rendu3D.jouerClip(pret, role) && pret.action.clip.name === role;
+  });
+  verifie("les cinq clips du fichier se jouent par leur nom",
+          clipsJoues.every(Boolean), JSON.stringify(clipsJoues));
+
+  var w4 = monde3D({ "assets/monstres/x.glb": ["Repos", "Morsure"] });
+  var pRen = null;
+  w4.m.ctx.Rendu3D.essayerModele(w4.m.ctx.document.createElement("div"),
+    { modele: "assets/monstres/x.glb", echelle: 1, clips: { idle: "Repos", attaque: "Morsure" } },
+    { pret: function (p) { pRen = p; } });
+  verifie("clips renommes : idle -> Repos au depart, attaque -> Morsure ; ko absent -> false sans erreur",
+          pRen && pRen.action.clip.name === "Repos" &&
+          w4.m.ctx.Rendu3D.jouerClip(pRen, "attaque") === true && pRen.action.clip.name === "Morsure" &&
+          w4.m.ctx.Rendu3D.jouerClip(pRen, "ko") === false && pRen.action.clip.name === "Morsure");
+
+  w3.m.ctx.Rendu3D.detruire();
+  verifie("detruire : tout est rendu, le canvas quitte la page, un second appel ne fait rien",
+          vueOk.enfants.length === 0 && w3.journal.liberes === 2 && w3.journal.perdus === 2 &&
+          (w3.m.ctx.Rendu3D.detruire(), w3.journal.liberes === 2));
+
+  // La perte de contexte : repli, puis tout est rendu.
+  var w5 = monde3D({ "assets/monstres/test.glb": ["idle"] });
+  var vuePerte = w5.m.ctx.document.createElement("div"), replisPerte = [];
+  w5.m.ctx.Rendu3D.essayerModele(vuePerte, entreeOk, { repli: function (r) { replisPerte.push(r); } });
+  var canvas = vuePerte.enfants[0];
+  var empeche = false;
+  canvas.declencher("webglcontextlost", { preventDefault: function () { empeche = true; } });
+  verifie("contexte WebGL perdu (iOS en arriere-plan) : preventDefault, repli 2D, scene rendue",
+          empeche && replisPerte.join(",") === "contexte_perdu" && vuePerte.enfants.length === 0 &&
+          w5.journal.liberes === 1 && !w5.m.ctx.Rendu3D.actif(), JSON.stringify(replisPerte));
+  w5.m.ctx.Rendu3D.essayerModele(vuePerte, entreeOk, { repli: function (r) { replisPerte.push(r); } });
+  verifie("apres une perte, on peut relancer : la 3D revient",
+          replisPerte.length === 1 && vuePerte.enfants.length === 1 && w5.m.ctx.Rendu3D.actif());
+
+  // Sans Three.js : il est ajoute a la page, et son echec donne le repli
+  var w6 = monde3D({});
+  delete w6.m.ctx.THREE;
+  var replisLib = [];
+  w6.m.ctx.Rendu3D.essayerModele(w6.m.ctx.document.createElement("div"), entreeOk,
+    { repli: function (r) { replisLib.push(r); } });
+  var ajoutes = scriptsAjoutes(w6.m);
+  verifie("a la premiere demande, lib/three/three.min.js est ajoute a la page",
+          ajoutes.length === 1 && ajoutes[0].src === "lib/three/three.min.js" && replisLib.length === 0,
+          JSON.stringify(ajoutes.map(function (s) { return s.src; })));
+  ajoutes[0].onerror();
+  w6.m.ctx.Rendu3D.essayerModele(w6.m.ctx.document.createElement("div"), entreeOk,
+    { repli: function (r) { replisLib.push(r); } });
+  verifie("lib/three/ introuvable : repli, et pas de second telechargement",
+          replisLib.join(",") === "lib_absente,lib_absente" && scriptsAjoutes(w6.m).length === 1,
+          replisLib.join(","));
+
+  // Les cinematiques
+  var cine = JSON.parse(fs.readFileSync(path.join(RACINE, "assets/attaques/test.json"), "utf8"));
+  verifie("assets/attaques/test.json est une cinematique valide",
+          R.validerCinematique3D(cine) === "", R.validerCinematique3D(cine));
+  function abimee(f) { var c = JSON.parse(JSON.stringify(cine)); f(c); return R.validerCinematique3D(c); }
+  var fautes = [
+    abimee(function (c) { c.attaquant.clip = "danse"; }),
+    abimee(function (c) { c.duree = 0; }),
+    abimee(function (c) { c.camera = []; }),
+    abimee(function (c) { c.camera[1].t = 0; }),
+    abimee(function (c) { c.camera[2].t = 9; }),
+    abimee(function (c) { c.camera[0].position = [0, 1]; }),
+    abimee(function (c) { c.effet.type = "laser"; }),
+    abimee(function (c) { c.effet.duree = 5; }),
+    abimee(function (c) { c.effet.couleur = "or"; }),
+    R.validerCinematique3D(null)
+  ];
+  verifie("une cinematique abimee est refusee, avec la faute",
+          fautes.join(",") === "attaquant.clip,duree,camera,camera[1].t,camera[2].t," +
+                               "camera[0].position,effet.type,effet.duree,effet.couleur,pas_un_objet",
+          fautes.join(","));
+
+  // Les fichiers de test eux-memes : de vrais GLB, dans le budget
+  function lireGlb(f) {
+    var b = fs.readFileSync(path.join(RACINE, f));
+    if (b.readUInt32LE(0) !== 0x46546C67 || b.readUInt32LE(4) !== 2 || b.readUInt32LE(8) !== b.length) return null;
+    var longueur = b.readUInt32LE(12);
+    if (b.readUInt32LE(16) !== 0x4E4F534A) return null;
+    var json = JSON.parse(b.slice(20, 20 + longueur).toString("utf8"));
+    var triangles = 0;
+    json.meshes.forEach(function (me) {
+      me.primitives.forEach(function (p) { triangles += json.accessors[p.indices].count / 3; });
+    });
+    return { json: json, triangles: triangles, ko: b.length / 1024 };
+  }
+  var glbM = lireGlb(R.MODELE_3D_TEST.modele), glbD = lireGlb(R.DECOR_3D_TEST);
+  verifie("monstres/test.glb : GLB 2.0, les cinq clips, dans le budget",
+          glbM && (glbM.json.animations || []).map(function (a) { return a.name; }).join(",") === R.CLIPS_3D.join(",") &&
+          glbM.triangles <= R.BUDGET_3D.monstre.triangles && glbM.ko <= R.BUDGET_3D.monstre.ko,
+          glbM ? glbM.triangles + " triangles, " + glbM.ko.toFixed(1) + " Ko" : "pas un GLB");
+  verifie("decors/test.glb : GLB 2.0, dans le budget",
+          glbD && glbD.triangles <= R.BUDGET_3D.decor.triangles && glbD.ko <= R.BUDGET_3D.decor.ko,
+          glbD ? glbD.triangles + " triangles" : "pas un GLB");
+  verifie("test.json dans le budget des cinematiques",
+          fs.statSync(path.join(RACINE, "assets/attaques/test.json")).size / 1024 <= R.BUDGET_3D.attaque.ko);
+
+  // lib/three/ : des scripts classiques, licence en tete
+  var libFautes = [];
+  R.FICHIERS_LIB_3D.forEach(function (f) {
+    var t = fs.readFileSync(path.join(RACINE, R.DOSSIER_LIB_3D + f), "utf8");
+    if (/^\s*(import|export)\s/m.test(t)) libFautes.push(f + " : module ES6");
+    if (t.slice(0, 300).indexOf("SPDX-License-Identifier: MIT") === -1) libFautes.push(f + " : en-tete de licence");
+  });
+  if (!fs.existsSync(path.join(RACINE, "lib/three/LICENSE"))) libFautes.push("LICENSE absent");
+  verifie("lib/three/ : scripts classiques (aucun import/export), licence MIT en tete",
+          libFautes.length === 0, libFautes.join(" | "));
+
+  var html3d = fs.readFileSync(path.join(RACINE, "index.html"), "utf8");
+  verifie("index.html n'appelle jamais lib/three/ directement",
+          html3d.indexOf("lib/three") === -1);
+
+  verifie("rien du rendu 3D n'a ecrit dans localStorage",
+          [mr, w3.m, w4.m, w5.m, w6.m].every(function (m) { return Object.keys(m.stockage).length === 0; }));
 
   return resultats;
 }

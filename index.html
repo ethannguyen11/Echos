@@ -48,6 +48,26 @@
   <label class="mt-ligne">Chapitre
     <select id="mt-chapitre"></select>
   </label>
+  <button id="btn-banc-3d" class="mt-bouton">Banc 3D</button>
+</div>
+
+<!-- Le banc 3D, ouvert depuis le panneau du mode test, et seulement
+     de la. Remplie par js/modetest.js ; le canvas (ou le repli 2D)
+     se pose dans #banc-3d-vue. -->
+<div id="banc-3d">
+  <div class="mt-titre">Banc 3D</div>
+  <div id="banc-3d-vue"></div>
+  <div id="banc-3d-etat"></div>
+  <div id="banc-3d-clips" class="banc-3d-ligne"></div>
+  <div class="banc-3d-ligne">
+    <button id="btn-banc-cube">Cube de test</button>
+    <button id="btn-banc-sans-modele">Espèce sans modèle</button>
+    <button id="btn-banc-fichier-absent">Fichier absent</button>
+  </div>
+  <div class="banc-3d-ligne">
+    <button id="btn-banc-perte">Simuler perte WebGL</button>
+    <button id="btn-banc-fermer">Fermer</button>
+  </div>
 </div>
 
 <div id="hud">
@@ -190,6 +210,7 @@
 <script src="js/grimoire.js"></script>
 <script src="js/intro.js"></script>
 <script src="js/ico.js"></script>
+<script src="js/rendu3d.js"></script>
 <script src="js/modetest.js"></script>
 <script src="js/jeu.js"></script>
 

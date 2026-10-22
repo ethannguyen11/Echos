@@ -9,6 +9,9 @@
    ce que les VRAIS lieux peuvent contenir. C'est le seul reglage
    du panneau qui agit en dehors du terrain d'essai.
 
+   Le panneau ouvre aussi le BANC 3D (bouton "Banc 3D") : le
+   modele de test de js/rendu3d.js, sans combat. Voir plus bas.
+
    Ce fichier expose un seul global : window.ModeTest.
 
    IL NE FAIT RIEN quand MODE_TEST vaut false dans config.js :
@@ -167,6 +170,8 @@ function preparerPanneau() {
     rafraichir();
   });
 
+  preparerBanc();
+
   boite.classList.add("actif");
   panneauPret = true;
   rafraichir();
@@ -198,6 +203,154 @@ function rafraichir() {
   if (!combat && dernierePosition) {
     mettreAJourHud(dernierePosition[0], dernierePosition[1]);
   }
+}
+
+
+/* ------------------------------------------------------------
+   LE BANC 3D
+
+   Un ecran pour verifier le rendu 3D sur le telephone, sans lancer
+   de combat : le cube de test (cinq clips) sur le decor de test.
+   Trois essais, et le visuel montre doit etre evident a chaque fois :
+     - "Cube de test"        -> la 3D, si tout va bien ;
+     - "Espece sans modele"  -> le REPLI 2D (modele: null) ;
+     - "Fichier absent"      -> le REPLI 2D (404 sur un .glb).
+   "Simuler perte WebGL" coupe le contexte comme iOS le fait quand
+   Safari passe en arriere-plan, et le rend 2 s plus tard.
+
+   N'ecrit rien dans localStorage, ne touche ni au combat ni a la
+   carte. Fermer detruit la scene et rend la memoire.
+   ------------------------------------------------------------ */
+
+// Un chemin qui n'existe pas, expres : le repli sur 404.
+var MODELE_3D_ABSENT = { modele: "assets/monstres/absent.glb", echelle: 1, clips: {} };
+
+var banc = { pret: false, essai: "", poignee: null, pertes: 0, attenteRetour: null };
+
+function bancEtat(texte) { elem("banc-3d-etat").textContent = texte; }
+
+/* Le visuel 2D, comme dans afficherAdversaire() (js/combat.js) :
+   le secours d'abord, l'image par-dessus si elle arrive. */
+function bancRepli(especeId, raison) {
+  banc.poignee = null;
+  bancClips();
+
+  var vue = elem("banc-3d-vue");
+  vue.innerHTML = "";
+
+  var cadre = document.createElement("div");
+  cadre.className = "banc-repli";
+
+  var vide = document.createElement("div");
+  vide.className = "banc-repli-vide";
+  poserSecours(vide, especeId);
+  cadre.appendChild(vide);
+
+  var e = ESPECES[especeId];
+  if (e && e.image) {
+    var img = document.createElement("img");
+    img.alt = "";
+    img.style.display = "none";
+    img.onload = function () { img.style.display = "block"; vide.style.display = "none"; };
+    img.onerror = function () { img.style.display = "none"; vide.style.display = "flex"; };
+    img.src = DOSSIER_MONSTRES + e.image;
+    cadre.appendChild(img);
+  }
+  vue.appendChild(cadre);
+
+  bancEtat("REPLI 2D -- " + raison + (banc.pertes ? " -- pertes WebGL : " + banc.pertes : ""));
+}
+
+// Un bouton par clip, actifs seulement quand un modele est la.
+function bancClips() {
+  var zone = elem("banc-3d-clips");
+  zone.innerHTML = "";
+  CLIPS_3D.forEach(function (role) {
+    var b = document.createElement("button");
+    b.textContent = role;
+    b.disabled = !banc.poignee;
+    b.addEventListener("click", function () {
+      if (!banc.poignee) return;
+      var ok = Rendu3D.jouerClip(banc.poignee, role);
+      bancEtat("3D -- clip : " + role + (ok ? "" : " (absent du fichier)") +
+               (banc.pertes ? " -- pertes WebGL : " + banc.pertes : ""));
+    });
+    zone.appendChild(b);
+  });
+}
+
+function bancEssayer(essai) {
+  banc.essai = essai;
+  banc.poignee = null;
+  Rendu3D.detruire();
+  elem("banc-3d-vue").innerHTML = "";
+  bancClips();
+  bancEtat("chargement...");
+
+  var especeRepli = essai === "sans" ? ESPECE_3D_REPLI_TEST : "jinchan";
+  var rappels = {
+    repli: function (raison) {
+      if (raison === "contexte_perdu") banc.pertes++;
+      bancRepli(especeRepli, raison);
+      if (raison === "contexte_perdu") bancAttendreRetour();
+    },
+    pret: function (poignee) {
+      banc.poignee = poignee;
+      bancClips();
+      bancEtat("3D -- clip : idle" + (banc.pertes ? " -- pertes WebGL : " + banc.pertes : ""));
+    }
+  };
+
+  if (essai === "sans") {
+    Rendu3D.essayerEspece(elem("banc-3d-vue"), ESPECE_3D_REPLI_TEST, rappels);
+  } else {
+    rappels.decor = DECOR_3D_TEST;
+    Rendu3D.essayerModele(elem("banc-3d-vue"), essai === "absent" ? MODELE_3D_ABSENT : MODELE_3D_TEST, rappels);
+  }
+}
+
+/* Apres une perte de contexte : le 2D tient l'ecran, et on relance
+   la 3D quand l'app est de nouveau visible (tout de suite si elle
+   l'est deja, apres une courte pause). */
+function bancAttendreRetour() {
+  if (banc.attenteRetour !== null) return;   // deja en attente
+  function relancer() {
+    if (document.hidden || !elem("banc-3d").classList.contains("actif")) return;
+    document.removeEventListener("visibilitychange", relancer);
+    clearTimeout(banc.attenteRetour);
+    banc.attenteRetour = null;
+    bancEssayer(banc.essai);
+  }
+  document.addEventListener("visibilitychange", relancer);
+  banc.attenteRetour = setTimeout(relancer, 2500);
+}
+
+function ouvrirBanc() {
+  if (!actif()) return;
+  elem("banc-3d").classList.add("actif");
+  bancEssayer("cube");
+}
+
+function fermerBanc() {
+  clearTimeout(banc.attenteRetour);
+  banc.attenteRetour = null;
+  banc.poignee = null;
+  Rendu3D.detruire();
+  elem("banc-3d-vue").innerHTML = "";
+  elem("banc-3d").classList.remove("actif");
+}
+
+function preparerBanc() {
+  if (banc.pret || !actif()) return;
+  elem("btn-banc-3d").addEventListener("click", ouvrirBanc);
+  elem("btn-banc-cube").addEventListener("click", function () { bancEssayer("cube"); });
+  elem("btn-banc-sans-modele").addEventListener("click", function () { bancEssayer("sans"); });
+  elem("btn-banc-fichier-absent").addEventListener("click", function () { bancEssayer("absent"); });
+  elem("btn-banc-perte").addEventListener("click", function () {
+    if (!Rendu3D.simulerPerte(2000)) bancEtat("simulation impossible ici (pas de scene 3D active)");
+  });
+  elem("btn-banc-fermer").addEventListener("click", fermerBanc);
+  banc.pret = true;
 }
 
 

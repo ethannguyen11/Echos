@@ -32,6 +32,7 @@ var FICHIERS = [
   "js/grimoire.js",
   "js/intro.js",
   "js/ico.js",
+  "js/rendu3d.js",
   "js/modetest.js",
   "js/jeu.js"
 ];
@@ -226,7 +227,8 @@ var classesManquantes = [];
  "echo-niveau",
  "conscience", "paliers", "acquis", "fragments", "manque",
  "prete", "acheve", "gourde",
- "montee", "monter", "confirmer", "annuler"].forEach(function (c) {
+ "montee", "monter", "confirmer", "annuler",
+ "rendu3d", "banc-repli", "banc-repli-vide"].forEach(function (c) {
   if (css.indexOf("." + c) === -1) classesManquantes.push(c);
 });
 ligne(classesManquantes.length === 0,

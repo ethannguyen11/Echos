@@ -1,0 +1,11 @@
+{
+  "id": "test",
+  "attaquant": { "clip": "attaque" },
+  "duree": 1.6,
+  "camera": [
+    { "t": 0,   "position": [0, 1.6, 4],   "cible": [0, 0.6, 0] },
+    { "t": 0.6, "position": [1.8, 1.2, 2.4], "cible": [0, 0.6, 0.6] },
+    { "t": 1.6, "position": [0, 1.6, 4],   "cible": [0, 0.6, 0] }
+  ],
+  "effet": { "type": "flash", "debut": 0.25, "duree": 0.3, "couleur": "#d4a02a" }
+}

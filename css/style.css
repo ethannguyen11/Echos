@@ -104,6 +104,66 @@ button { font-family: inherit; }
 .mt-ligne select { flex: 1; min-width: 0; font-size: 11px; }
 .mt-ligne span { width: 18px; text-align: right; color: #eee; }
 
+.mt-bouton {
+  width: 100%; margin-top: 4px; padding: 6px;
+  font-size: 11px; border-radius: 8px;
+}
+
+/* ---------- Le banc 3D (mode test) ----------
+   Par-dessus tout, combat compris. Invisible tant que
+   js/modetest.js ne lui pose pas la classe "actif". */
+
+#banc-3d { display: none; }
+
+#banc-3d.actif {
+  display: flex; flex-direction: column; gap: 8px;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 3000;
+  padding: 50px 16px 24px;
+  background: #0d0812;
+  color: #9a90a8; font-size: 12px;
+  overflow-y: auto;
+}
+
+/* La vue garde le rapport 4:3 du rendu (320 x 240). */
+#banc-3d-vue {
+  width: 100%; aspect-ratio: 4 / 3;
+  box-sizing: border-box;
+  background: #1a1024;
+  border: 1px dashed #555;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+/* Le canvas WebGL : 320 x 240 pixels reels, agrandis SANS lissage.
+   C'est image-rendering qui donne les gros pixels nets. */
+.rendu3d {
+  width: 100%; height: auto; display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Le repli 2D : impossible a confondre avec la 3D (bord pointille
+   dore, sprite lisse, et l'etat ecrit en dessous). */
+.banc-repli {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  outline: 2px dashed #d4a02a; outline-offset: -6px;
+}
+.banc-repli img { max-height: 90%; max-width: 70%; object-fit: contain; }
+.banc-repli-vide {
+  width: 110px; height: 110px;
+  border-radius: 50% 50% 42% 42%; border: 2px solid #6b4a85;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 46px;
+}
+
+#banc-3d-etat { min-height: 1.4em; color: #eee; }
+
+.banc-3d-ligne { display: flex; flex-wrap: wrap; gap: 6px; }
+.banc-3d-ligne button { flex: 1; min-width: 30%; padding: 10px 6px; font-size: 12px; }
+
 
 /* ---------- Combat ---------- */
 
