@@ -831,6 +831,101 @@ function lancerParcours() {
   verifie("le malus ne modifie aucune poche",
           pe.statut === "ouvert" && pcCassee.statut === "ouvert");
 
+
+  /* --- I. Le depot de fragments ---
+     La gourde est passee en parametre : on en fabrique une a la
+     main, sans toucher a celle du jeu ni a la sauvegarde. */
+
+  bloc("Depot de fragments");
+
+  // L'etat complet de la poche et de la gourde, pour prouver
+  // qu'un refus n'a rien touche.
+  function photo(poche, gourde) { return JSON.stringify([poche, gourde]); }
+
+  var pd = ctxP.creerPoche("leger", origine, t0);
+  var gd = { peng: { mince: 2, grand: 1, complet: 1 } };
+
+  var r1 = ctxP.deposerFragment(pd, gd, "j1", "peng", "grand", t0 + 5);
+  verifie("depot valide : accepte, gourde debitee d'un seul fragment",
+          r1.ok === true && r1.raison === "" &&
+          gd.peng.grand === 0 && gd.peng.mince === 2 && gd.peng.complet === 1,
+          JSON.stringify(r1) + " " + JSON.stringify(gd));
+  verifie("depot valide : enregistre dans la poche, somme mise a jour",
+          pd.fragments_deposes.length === 1 && ctxP.calculerSommeFragments(pd) === 3 && r1.somme === 3 &&
+          JSON.stringify(pd.fragments_deposes[0]) ===
+          JSON.stringify({ joueur_id: "j1", espece: "peng", valeur: 3, type: "grand", timestamp: t0 + 5 }),
+          JSON.stringify(pd.fragments_deposes));
+  verifie("depot valide : la poche reste ouverte sous le seuil",
+          r1.statut === "ouvert" && pd.statut === "ouvert" && r1.franchi === false);
+
+  // Chaque refus : la bonne raison, et RIEN de touche.
+  function refuse(quoi, poche, gourde, args, raison) {
+    var avant = photo(poche, gourde);
+    var r = ctxP.deposerFragment.apply(null, [poche, gourde].concat(args));
+    verifie(quoi + " (" + raison + ") et rien n'est touche",
+            r.ok === false && r.raison === raison && photo(poche, gourde) === avant,
+            JSON.stringify(r) + (photo(poche, gourde) === avant ? "" : " -- poche ou gourde modifiee"));
+  }
+
+  refuse("le fragment complet est refuse", pd, gd, ["j1", "peng", "complet", t0 + 6], "fragment_complet");
+  refuse("une taille inconnue est refusee", pd, gd, ["j1", "peng", "geant", t0 + 6], "taille_non_deposable");
+  refuse("une espece inconnue est refusee", pd, gd, ["j1", "dragon", "mince", t0 + 6], "espece_inconnue");
+  refuse("une gourde vide pour cette taille est refusee", pd, gd, ["j1", "peng", "grand", t0 + 6], "aucun_fragment");
+  refuse("une espece absente de la gourde est refusee", pd, gd, ["j1", "baku", "mince", t0 + 6], "aucun_fragment");
+  refuse("un joueur absent est refuse", pd, gd, ["", "peng", "mince", t0 + 6], "joueur_absent");
+  refuse("une poche expiree est refusee", pd, gd,
+         ["j1", "peng", "mince", pd.timestamp_expiration], "poche_expiree");
+  refuse("l'expiration passe avant la taille", pd, gd,
+         ["j1", "peng", "complet", pd.timestamp_expiration], "poche_expiree");
+
+  // Franchir le seuil (12) : onze minces font 11, puis un grand
+  // (+3) porte la poche a 14. Il est accepte en entier.
+  var ps = ctxP.creerPoche("leger", origine, t0);
+  var gs = { komainu: { mince: 20, grand: 5, complet: 0 } };
+  for (var q = 0; q < 11; q++) ctxP.deposerFragment(ps, gs, "j1", "komainu", "mince", t0 + q);
+  var rSeuil = ctxP.deposerFragment(ps, gs, "j1", "komainu", "grand", t0 + 20);
+  verifie("le depot qui franchit le seuil est accepte en entier, sans rien rendre",
+          rSeuil.ok === true && rSeuil.somme === 14 && rSeuil.franchi === true &&
+          rSeuil.statut === "rempli" && ps.statut === "rempli" &&
+          gs.komainu.grand === 4 && gs.komainu.mince === 9,
+          JSON.stringify(rSeuil) + " " + JSON.stringify(gs));
+  refuse("apres le seuil, plus aucun depot", ps, gs, ["j2", "komainu", "mince", t0 + 21], "poche_remplie");
+
+  var pk = ctxP.creerPoche("critique", origine, t0);
+  var gk = { peng: { mince: 0, grand: 25, complet: 0 } };
+  var rk = null;
+  for (var k2 = 0; k2 < 20; k2++) rk = ctxP.deposerFragment(pk, gk, "j1", "peng", "grand", t0 + k2);
+  verifie("critique : fermee des que le seuil est atteint",
+          rk.ok === true && rk.somme === 60 && rk.statut === "ferme" && pk.statut === "ferme" && rk.franchi === true,
+          JSON.stringify(rk));
+  refuse("critique fermee : depot suivant refuse", pk, gk, ["j2", "peng", "grand", t0 + 30], "poche_fermee");
+
+  var pj = ctxP.creerPoche("profond", origine, t0);
+  var gj1 = { peng: { mince: 3, grand: 1, complet: 0 }, komainu: { mince: 0, grand: 1, complet: 0 } };
+  var gj2 = { peng: { mince: 0, grand: 2, complet: 0 } };
+  ctxP.deposerFragment(pj, gj1, "j1", "peng", "mince", t0 + 1);
+  ctxP.deposerFragment(pj, gj2, "j2", "peng", "grand", t0 + 2);
+  ctxP.deposerFragment(pj, gj1, "j1", "peng", "grand", t0 + 3);
+  ctxP.deposerFragment(pj, gj1, "j1", "komainu", "grand", t0 + 4);
+  ctxP.deposerFragment(pj, gj2, "j2", "peng", "grand", t0 + 5);
+  var avantContrib = photo(pj, null);
+  var contrib = ctxP.contributionsParJoueur(pj);
+  verifie("contributions de deux joueurs : points, fragments et detail par espece",
+          JSON.stringify(contrib) === JSON.stringify({
+            j1: { points: 7, fragments: 3, especes: { peng: { points: 4, fragments: 2 },
+                                                       komainu: { points: 3, fragments: 1 } } },
+            j2: { points: 6, fragments: 2, especes: { peng: { points: 6, fragments: 2 } } }
+          }),
+          JSON.stringify(contrib));
+  verifie("contributions : la somme des joueurs egale celle de la poche",
+          contrib.j1.points + contrib.j2.points === ctxP.calculerSommeFragments(pj));
+  verifie("contributionsParJoueur ne touche pas la poche", photo(pj, null) === avantContrib);
+  verifie("contributions d'une poche vide ou absente : objet vide",
+          JSON.stringify(ctxP.contributionsParJoueur(ctxP.creerPoche("leger", origine, t0))) === "{}" &&
+          JSON.stringify(ctxP.contributionsParJoueur(null)) === "{}");
+  verifie("deposer n'ecrit rien dans la sauvegarde",
+          Object.keys(mp.stockage).length === 0, JSON.stringify(Object.keys(mp.stockage)));
+
   return resultats;
 }
 

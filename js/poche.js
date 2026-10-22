@@ -21,6 +21,25 @@
    pas encore enregistrees, et "maintenant" est TOUJOURS un
    parametre.
 
+   LE DEPOT (deposerFragment)
+     - Il MUTE la poche et la gourde, en tout ou rien, comme
+       monterConscience() dans js/fragments.js : tout est verifie
+       d'abord, et un refus ne touche a rien.
+     - Il n'enregistre RIEN. Apres un depot reussi, c'est
+       l'APPELANT qui doit sauvegarder la gourde (sauverJoueur()).
+     - La source des fragments est VOLONTAIREMENT LIMITEE, pour
+       l'instant, a la gourde : les especes pas encore assimilees.
+       Les fragments d'un Echo assimile (collection[espece].fragments)
+       ne se deposent pas. C'est une decision PROVISOIRE, a revoir
+       (par exemple pour le surplus des Echos a conscience maximale).
+       Elle tient tout entiere dans retirerFragmentSource() : c'est
+       le seul endroit a changer.
+     - joueur_id est LOCAL pour l'instant : il n'y a qu'un joueur
+       par appareil. Le co-op reel (etat de la poche partage cote
+       serveur) viendra plus tard ; le format d'un depot
+       { joueur_id, espece, valeur, type, timestamp } ne devra PAS
+       changer a ce moment-la.
+
    BRANCHEMENT FUTUR DU GATE BREAK (rien n'est branche aujourd'hui)
    malusGateBreak() est exposee, mais aucun combat ne l'appelle.
    Le jour ou on la branche :
@@ -183,4 +202,144 @@ function malusGateBreak(arene, poches, maintenant) {
   }
 
   return malus;
+}
+
+
+/* ------------------------------------------------------------
+   LE DEPOT DE FRAGMENTS
+   ------------------------------------------------------------ */
+
+/* Les raisons de refus, du plus general au plus precis : c'est
+   l'ordre dans lequel deposerFragment les teste. Des codes
+   stables, pas des phrases : le futur message au joueur les
+   traduira, dans la langue courante. */
+var POCHE_REFUS = [
+  "poche_invalide",        // poche ou gourde absente
+  "joueur_absent",         // joueur_id vide ou pas une chaine
+  "poche_expiree",
+  "poche_remplie",
+  "poche_fermee",
+  "fragment_complet",      // le complet ne se depose JAMAIS
+  "taille_non_deposable",  // toute autre taille hors FRAGMENTS_DEPOSABLES
+  "espece_inconnue",
+  "aucun_fragment"         // rien de cette taille pour cette espece
+];
+
+/* LA SOURCE des fragments deposables : le seul endroit qui sait
+   d'ou ils viennent. Aujourd'hui la gourde seule (decision
+   provisoire, voir l'en-tete). Elargir la source, c'est changer
+   cette fonction et rien d'autre.
+
+   Retire UN fragment et rend true, ou ne touche a rien et rend
+   false s'il n'y en a pas. Comme c'est la seule etape du depot
+   qui puisse encore echouer apres les controles, deposerFragment
+   l'appelle en dernier : le tout ou rien en decoule. */
+function retirerFragmentSource(gourde, espece, taille) {
+  if (!Object.prototype.hasOwnProperty.call(gourde, espece)) return false;
+
+  var sac = gourde[espece];
+  if (!sac || !(sac[taille] >= 1)) return false;
+
+  sac[taille] -= 1;
+  return true;
+}
+
+/* Depose UN fragment de la source dans la poche.
+
+   MUTE la poche et la gourde, en tout ou rien (voir l'en-tete).
+   L'appelant sauvegarde la gourde apres un succes.
+
+   Rend :
+     succes  { ok: true, raison: "", depot, somme, seuil_total, statut, franchi }
+     refus   { ok: false, raison, statut }
+
+   franchi vaut true si c'est CE depot qui a atteint le seuil.
+
+   Depasser le seuil : le depot qui le franchit est accepte en
+   entier, sans rien rendre. Juste apres, verifierExpirationPoche
+   rend "rempli" (ou "ferme" pour une critique, fermeture_immediate)
+   et tout depot suivant est refuse. Aucun calcul de monnaie. */
+function deposerFragment(poche, gourde, joueur_id, espece, taille, maintenant) {
+  if (!poche || !gourde || typeof gourde !== "object" ||
+      !poche.fragments_deposes || typeof poche.fragments_deposes.push !== "function") {
+    return refusDepot("poche_invalide", poche ? poche.statut : "");
+  }
+  var statut = verifierExpirationPoche(poche, maintenant);
+
+  if (typeof joueur_id !== "string" || joueur_id === "") return refusDepot("joueur_absent", statut);
+
+  if (statut === "expire") return refusDepot("poche_expiree", statut);
+  if (statut === "rempli") return refusDepot("poche_remplie", statut);
+  if (statut === "ferme")  return refusDepot("poche_fermee", statut);
+  if (statut !== "ouvert") return refusDepot("poche_invalide", statut);
+
+  if (taille === "complet") return refusDepot("fragment_complet", statut);
+  if (FRAGMENTS_DEPOSABLES.indexOf(taille) === -1) return refusDepot("taille_non_deposable", statut);
+
+  if (typeof espece !== "string" || !Object.prototype.hasOwnProperty.call(ESPECES, espece)) {
+    return refusDepot("espece_inconnue", statut);
+  }
+
+  // Derniere etape qui peut echouer : rien n'a ete touche avant.
+  if (!retirerFragmentSource(gourde, espece, taille)) return refusDepot("aucun_fragment", statut);
+
+  var depot = {
+    joueur_id: joueur_id,
+    espece: espece,
+    valeur: FRAGMENT_VALEURS[taille],
+    type: taille,
+    timestamp: maintenant
+  };
+  poche.fragments_deposes.push(depot);
+  poche.statut = verifierExpirationPoche(poche, maintenant);
+
+  return {
+    ok: true,
+    raison: "",
+    depot: depot,
+    somme: calculerSommeFragments(poche),
+    seuil_total: poche.seuil_total,
+    statut: poche.statut,
+    franchi: poche.statut !== "ouvert"
+  };
+}
+
+function refusDepot(raison, statut) {
+  return { ok: false, raison: raison, statut: statut || "" };
+}
+
+/* Qui a mis quoi dans la poche, pour le futur "Souvenir de X" du
+   Grimoire. Pure : rend un objet neuf et ne touche pas la poche.
+   Ignore les depots abimes, avec la meme regle que
+   calculerSommeFragments.
+
+     { j1: { points: 7, fragments: 3,
+             especes: { peng: { points: 4, fragments: 2 }, ... } } } */
+function contributionsParJoueur(poche) {
+  var parJoueur = {};
+  if (!poche || !poche.fragments_deposes || typeof poche.fragments_deposes.length !== "number") {
+    return parJoueur;
+  }
+
+  for (var i = 0; i < poche.fragments_deposes.length; i++) {
+    var d = poche.fragments_deposes[i];
+    if (!d || typeof d.valeur !== "number" || !isFinite(d.valeur) || d.valeur < 0) continue;
+    if (typeof d.joueur_id !== "string" || typeof d.espece !== "string") continue;
+
+    if (!Object.prototype.hasOwnProperty.call(parJoueur, d.joueur_id)) {
+      parJoueur[d.joueur_id] = { points: 0, fragments: 0, especes: {} };
+    }
+    var j = parJoueur[d.joueur_id];
+
+    if (!Object.prototype.hasOwnProperty.call(j.especes, d.espece)) {
+      j.especes[d.espece] = { points: 0, fragments: 0 };
+    }
+
+    j.points += d.valeur;
+    j.fragments += 1;
+    j.especes[d.espece].points += d.valeur;
+    j.especes[d.espece].fragments += 1;
+  }
+
+  return parJoueur;
 }
