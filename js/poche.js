@@ -1,9 +1,10 @@
 /* ============================================================
    LES POCHES D'OUBLI
 
-   Le modele de donnees, et rien d'autre : pas de carte, pas
-   d'ecran, pas d'expiration ni de depot pour l'instant. Ce
-   fichier sait fabriquer une poche et compter ce qu'on y a mis.
+   La logique des poches, sans carte ni ecran : les fabriquer,
+   les faire expirer, en tirer le malus des arenes voisines (gate
+   break), y deposer des fragments, et garder la liste des poches
+   d'une session a l'autre.
 
    Une poche n'est pas une arene. Les arenes s'appellent
    "donjons" dans le code (js/lieux.js) ; une poche peut se poser
@@ -16,17 +17,26 @@
    ressort. Le detail est dans la section LES POCHES D'OUBLI de
    js/config.js.
 
-   Ne depend que de js/config.js (dont distanceMetres). Ne connait
-   ni le DOM, ni localStorage, ni l'horloge : les poches ne sont
-   pas encore enregistrees, et "maintenant" est TOUJOURS un
-   parametre.
+   Depend de js/config.js (dont distanceMetres) et de ESPECES
+   (js/especes.js). deposerEtSauver se sert en plus, a l'execution
+   seulement, de gourde et de sauverJoueur (js/joueur.js).
+
+   Ne connait ni le DOM ni l'horloge : "maintenant" est TOUJOURS
+   un parametre, et c'est l'appelant qui lit Date.now(). Seule la
+   derniere section (LA LISTE ET SA SAUVEGARDE) touche a
+   localStorage, sous sa propre cle CLE_POCHES : jamais sous
+   echos_joueur_v5.
 
    LE DEPOT (deposerFragment)
      - Il MUTE la poche et la gourde, en tout ou rien, comme
        monterConscience() dans js/fragments.js : tout est verifie
        d'abord, et un refus ne touche a rien.
-     - Il n'enregistre RIEN. Apres un depot reussi, c'est
-       l'APPELANT qui doit sauvegarder la gourde (sauverJoueur()).
+     - deposerFragment n'enregistre RIEN. Le depot touche DEUX
+       sauvegardes : la poche (CLE_POCHES) et la gourde
+       (echos_joueur_v5). Apres un succes, l'appelant doit donc
+       sauver les deux, dans cet ordre : sauverPoches() puis
+       sauverJoueur(). deposerEtSauver() le fait pour lui : c'est
+       le point d'entree prevu pour l'interface.
      - La source des fragments est VOLONTAIREMENT LIMITEE, pour
        l'instant, a la gourde : les especes pas encore assimilees.
        Les fragments d'un Echo assimile (collection[espece].fragments)
@@ -222,7 +232,8 @@ var POCHE_REFUS = [
   "fragment_complet",      // le complet ne se depose JAMAIS
   "taille_non_deposable",  // toute autre taille hors FRAGMENTS_DEPOSABLES
   "espece_inconnue",
-  "aucun_fragment"         // rien de cette taille pour cette espece
+  "aucun_fragment",        // rien de cette taille pour cette espece
+  "poche_inconnue"         // deposerEtSauver : la poche n'est pas dans la liste
 ];
 
 /* LA SOURCE des fragments deposables : le seul endroit qui sait
@@ -342,4 +353,215 @@ function contributionsParJoueur(poche) {
   }
 
   return parJoueur;
+}
+
+/* ------------------------------------------------------------
+   LA LISTE ET SA SAUVEGARDE
+
+   La seule section du fichier qui touche a localStorage, et
+   seulement sous CLE_POCHES : jamais sous echos_joueur_v5. Une
+   sauvegarde sans cle de poches (toutes celles d'avant ce
+   commit) demarre avec une liste vide, sans rien dire.
+
+   Meme partage des roles que pour le joueur : ajouterPoche et
+   nettoyerPoches changent la liste, l'APPELANT decide quand
+   l'ecrire (sauverPoches).
+   ------------------------------------------------------------ */
+
+// Les poches connues. Une liste, et non un objet par id : l'ordre
+// d'arrivee compte (le premier doublon gagne au chargement).
+var poches = [];
+
+function nombreFini(v) { return typeof v === "number" && isFinite(v); }
+
+/* ATTENTION EN RELISANT : comme normaliserCollection
+   (js/joueur.js), cette fonction RECONSTRUIT la poche a neuf, elle
+   ne la recopie pas. Tout champ absent d'ici est PERDU au prochain
+   chargement. Ajouter un champ a une poche veut dire l'ajouter ici.
+
+   Rend null quand la poche est irrecuperable : sans id, niveau
+   inconnu, lieu sans coordonnees, ou timestamps illisibles (on ne
+   saurait plus quand elle expire). Le reste se rattrape :
+     - statut inconnu        -> "ouvert" : verifierExpirationPoche
+                                recalcule de toute facon le vrai
+                                statut a partir de l'heure et de la
+                                somme ;
+     - seuil_total abime     -> celui de POCHES_NIVEAUX. Un seuil
+                                valide est garde tel quel : une
+                                poche garde le seuil de sa creation
+                                si les couts changent en config ;
+     - depot abime           -> ecarte, les autres restent. */
+function normaliserPoche(brut) {
+  if (!brut || typeof brut !== "object") return null;
+
+  if (typeof brut.id !== "string" || brut.id === "") return null;
+  if (typeof brut.niveau !== "string" ||
+      !Object.prototype.hasOwnProperty.call(POCHES_NIVEAUX, brut.niveau)) return null;
+
+  var l = brut.lieu;
+  if (!l || typeof l !== "object" || !nombreFini(l.lat) || !nombreFini(l.lon)) return null;
+
+  if (!nombreFini(brut.timestamp_creation) || !nombreFini(brut.timestamp_expiration)) return null;
+
+  var depots = [];
+  var brutDepots = brut.fragments_deposes;
+  if (brutDepots && typeof brutDepots.length === "number") {
+    for (var i = 0; i < brutDepots.length; i++) {
+      var d = brutDepots[i];
+      if (!d || typeof d !== "object") continue;
+      if (typeof d.joueur_id !== "string" || d.joueur_id === "") continue;
+      if (typeof d.espece !== "string" || d.espece === "") continue;
+      if (FRAGMENT_TAILLES.indexOf(d.type) === -1) continue;
+      if (!nombreFini(d.valeur) || d.valeur < 0) continue;
+      if (!nombreFini(d.timestamp)) continue;
+
+      depots.push({ joueur_id: d.joueur_id, espece: d.espece, valeur: d.valeur,
+                    type: d.type, timestamp: d.timestamp });
+    }
+  }
+
+  return {
+    id: brut.id,
+    niveau: brut.niveau,
+    lieu: {
+      lat: l.lat,
+      lon: l.lon,
+      arene_id: typeof l.arene_id === "string" ? l.arene_id : null
+    },
+    fragments_deposes: depots,
+    seuil_total: nombreFini(brut.seuil_total) && brut.seuil_total > 0
+      ? brut.seuil_total
+      : POCHES_NIVEAUX[brut.niveau].cout_fragments,
+    statut: POCHE_STATUTS.indexOf(brut.statut) !== -1 ? brut.statut : "ouvert",
+    timestamp_creation: brut.timestamp_creation,
+    timestamp_expiration: brut.timestamp_expiration
+  };
+}
+
+/* Relit la liste. Ne leve JAMAIS d'exception et ne bloque jamais
+   le demarrage : rien sur le disque, JSON casse, format inattendu
+   -> liste vide. Une poche abimee est ecartee, un id deja vu
+   aussi (le premier gagne). Au-dela de POCHES_MAX, on garde les
+   plus recentes. Ne reecrit rien : relire n'est pas sauver. */
+function chargerPoches() {
+  var liste = [];
+
+  try {
+    var brut = localStorage.getItem(CLE_POCHES);
+    var d = brut ? JSON.parse(brut) : null;
+    var source = d && typeof d === "object" && d.poches && typeof d.poches.length === "number"
+      ? d.poches : [];
+
+    var vus = {};
+    for (var i = 0; i < source.length; i++) {
+      var p = normaliserPoche(source[i]);
+      if (!p) continue;
+      if (Object.prototype.hasOwnProperty.call(vus, p.id)) continue;
+      vus[p.id] = true;
+      liste.push(p);
+    }
+  } catch (e) { liste = []; }
+
+  if (liste.length > POCHES_MAX) {
+    var recentes = liste.slice().sort(function (a, b) {
+      return b.timestamp_creation - a.timestamp_creation;
+    }).slice(0, POCHES_MAX);
+    liste = liste.filter(function (p) { return recentes.indexOf(p) !== -1; });
+  }
+
+  poches = liste;
+  return poches;
+}
+
+function sauverPoches() {
+  try {
+    localStorage.setItem(CLE_POCHES, JSON.stringify({
+      version: VERSION_POCHES,
+      poches: poches
+    }));
+  } catch (e) {}
+}
+
+/* Range la poche ELLE-MEME dans la liste, pas une copie : les
+   depots suivants doivent modifier la poche de la liste. Ne
+   sauvegarde pas : l'appelant le fait.
+   Rend { ok, raison } : "poche_invalide", "id_deja_present" ou
+   "liste_pleine". */
+function ajouterPoche(poche) {
+  if (normaliserPoche(poche) === null) return { ok: false, raison: "poche_invalide" };
+
+  for (var i = 0; i < poches.length; i++) {
+    if (poches[i].id === poche.id) return { ok: false, raison: "id_deja_present" };
+  }
+  if (poches.length >= POCHES_MAX) return { ok: false, raison: "liste_pleine" };
+
+  poches.push(poche);
+  return { ok: true, raison: "" };
+}
+
+/* Une poche est terminee quand son statut (recalcule) est final ET
+   que son effet est passe depuis plus que la marge :
+     maintenant > expiration + duree GATE_BREAK + marge
+   Une poche encore ouverte n'est jamais terminee. */
+function pocheTerminee(poche, maintenant) {
+  var statut = verifierExpirationPoche(poche, maintenant);
+  if (statut === "ouvert" || statut === "") return false;
+
+  var effet = GATE_BREAK[poche.niveau];
+  var minutes = (effet ? effet.duree_minutes : 0) + POCHES_MARGE_NETTOYAGE_MINUTES;
+  return maintenant > poche.timestamp_expiration + minutes * 60 * 1000;
+}
+
+/* Retire les poches terminees. Si la liste depasse encore
+   POCHES_MAX, retire les plus anciennes, les poches finies avant
+   les ouvertes. Modifie la liste EN PLACE (une reference gardee
+   ailleurs reste juste) et rend le nombre de poches retirees.
+   Ne sauvegarde pas : l'appelant le fait si le nombre est > 0. */
+function nettoyerPoches(maintenant) {
+  if (!nombreFini(maintenant)) return 0;
+  var avant = poches.length;
+
+  var gardees = poches.filter(function (p) { return !pocheTerminee(p, maintenant); });
+
+  if (gardees.length > POCHES_MAX) {
+    var aRetirer = gardees.slice().sort(function (a, b) {
+      var ouverteA = verifierExpirationPoche(a, maintenant) === "ouvert" ? 1 : 0;
+      var ouverteB = verifierExpirationPoche(b, maintenant) === "ouvert" ? 1 : 0;
+      if (ouverteA !== ouverteB) return ouverteA - ouverteB;  // les finies d'abord
+      return a.timestamp_creation - b.timestamp_creation;     // puis les plus anciennes
+    }).slice(0, gardees.length - POCHES_MAX);
+    gardees = gardees.filter(function (p) { return aRetirer.indexOf(p) === -1; });
+  }
+
+  poches.length = 0;
+  for (var i = 0; i < gardees.length; i++) poches.push(gardees[i]);
+
+  return avant - poches.length;
+}
+
+/* Le point d'entree du depot pour l'interface : deposer, puis
+   sauver ce qui a change. La poche doit etre DANS la liste, sinon
+   sauverPoches() ne l'ecrirait pas et le fragment serait consomme
+   pour rien : refus "poche_inconnue", sans rien toucher.
+
+   En cas de succes : sauverPoches() PUIS sauverJoueur(), dans cet
+   ordre. Si la seconde ecriture echoue (stockage plein, onglet
+   ferme au mauvais moment), le joueur retrouve son fragment dans
+   la gourde au rechargement, ET la poche l'a compte : au pire un
+   fragment en double, a son avantage. Dans l'ordre inverse, il
+   l'aurait perdu sans que la poche le compte. Comme pour les
+   affinites : recompenser ne casse rien, punir si.
+
+   En cas de refus : aucune sauvegarde. */
+function deposerEtSauver(poche, joueur_id, espece, taille, maintenant) {
+  if (!poche || poches.indexOf(poche) === -1) {
+    return refusDepot("poche_inconnue", poche ? verifierExpirationPoche(poche, maintenant) : "");
+  }
+
+  var r = deposerFragment(poche, gourde, joueur_id, espece, taille, maintenant);
+  if (r.ok) {
+    sauverPoches();
+    sauverJoueur();
+  }
+  return r;
 }

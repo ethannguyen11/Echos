@@ -985,6 +985,26 @@ var GATE_BREAK = {
   critique: { rayon_metres: 1000, duree_minutes: 240, malus: 5 }
 };
 
+/* LA SAUVEGARDE DES POCHES
+
+   Une cle a part, JAMAIS dans echos_joueur_v5 : une poche
+   abimee ne doit pas pouvoir toucher a la partie du joueur.
+   Format : { version: 1, poches: [...] }. Le suffixe _v1 est la
+   version du format de CETTE cle, comme pour CLES_JOUEUR_ANCIENNES.
+
+   POCHES_MARGE_NETTOYAGE_MINUTES  une poche finie reste encore
+     ce temps-la apres la fin de son effet (GATE_BREAK), le temps
+     qu'un futur ecran puisse montrer ce qui s'est passe ici.
+   POCHES_MAX  plafond de la liste. La plus longue vie d'une poche
+     est d'environ 5 h 15 (critique : 15 min + 4 h + 1 h de marge) :
+     50 poches a la fois autour d'un joueur, c'est deja beaucoup.
+     Au pire (50 critiques pleines), environ 300 Ko, loin des
+     ~5 Mo de localStorage. */
+var CLE_POCHES                     = "echos_poches_v1";
+var VERSION_POCHES                 = 1;
+var POCHES_MARGE_NETTOYAGE_MINUTES = 60;
+var POCHES_MAX                     = 50;
+
 
 /* ============================================================
    L'OUTIL D'EQUILIBRAGE

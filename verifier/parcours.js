@@ -926,6 +926,198 @@ function lancerParcours() {
   verifie("deposer n'ecrit rien dans la sauvegarde",
           Object.keys(mp.stockage).length === 0, JSON.stringify(Object.keys(mp.stockage)));
 
+
+  /* --- J. La liste des poches et sa sauvegarde ---
+     Une cle a part, echos_poches_v1. La sauvegarde du joueur ne
+     doit jamais en souffrir : on la photographie avant, et on la
+     compare apres. */
+
+  bloc("Liste des poches et sauvegarde");
+
+  // Une vraie sauvegarde de joueur, avec de quoi deposer : Peng
+  // n'est pas assimile, ses fragments sont donc en gourde.
+  var mj = creerMonde();
+  mj.ctx.chargerJoueur();
+  mj.ctx.gourde.peng = { mince: 2, grand: 1, complet: 0 };
+  mj.ctx.sauverJoueur();
+  var joueurS = mj.stockage.echos_joueur_v5;
+
+  function mondeAvec(cles) {
+    var st = { echos_joueur_v5: joueurS };
+    for (var c in cles) st[c] = cles[c];
+    var w = creerMonde({ stockage: st });
+    w.ctx.chargerJoueur();
+    return w;
+  }
+
+  var w0 = mondeAvec({});
+  var err0 = null;
+  try { w0.ctx.chargerPoches(); } catch (e) { err0 = e; }
+  verifie("sauvegarde existante sans cle de poches : demarrage normal, liste vide",
+          err0 === null && w0.ctx.poches.length === 0 && w0.ctx.profil.introVue === mj.ctx.profil.introVue &&
+          !!w0.ctx.collection.jinchan,
+          err0 && err0.message);
+  verifie("charger sans donnees n'ecrit aucune cle de poches",
+          !Object.prototype.hasOwnProperty.call(w0.stockage, "echos_poches_v1"));
+
+  var corrompus = ["{pas du json", "null", "42", '"texte"', '{"poches":"texte"}', '{"version":1}', "[]"];
+  var corrompuOk = corrompus.every(function (brut) {
+    var w = mondeAvec({ echos_poches_v1: brut });
+    try { w.ctx.chargerPoches(); } catch (e) { return false; }
+    return w.ctx.poches.length === 0;
+  });
+  verifie("JSON corrompu ou format inattendu : liste vide, aucune exception", corrompuOk);
+
+  var valide = ctxP.creerPoche("leger", origine, t0);
+  var abimees = [
+    valide,
+    null, 42, "poche",
+    { niveau: "leger", lieu: origine, timestamp_creation: t0, timestamp_expiration: t0 + 1 },          // sans id
+    { id: "x1", niveau: "abyssal", lieu: origine, timestamp_creation: t0, timestamp_expiration: t0 + 1 },
+    { id: "x2", niveau: "leger", lieu: { lat: "?" }, timestamp_creation: t0, timestamp_expiration: t0 + 1 },
+    { id: "x3", niveau: "leger", lieu: origine, timestamp_creation: "hier", timestamp_expiration: t0 + 1 },
+    { id: valide.id, niveau: "profond", lieu: origine, timestamp_creation: t0, timestamp_expiration: t0 + 9 },  // doublon
+    { id: "rattrapee", niveau: "profond", lieu: origine, statut: "zarbi", seuil_total: -4, intrus: true,
+      timestamp_creation: t0 + 1, timestamp_expiration: t0 + 2,
+      fragments_deposes: [
+        { joueur_id: "j1", espece: "peng", valeur: 3, type: "grand", timestamp: t0 },
+        { joueur_id: "", espece: "peng", valeur: 3, type: "grand", timestamp: t0 },
+        { joueur_id: "j1", espece: "peng", valeur: 3, type: "geant", timestamp: t0 },
+        null
+      ] }
+  ];
+  var wa = mondeAvec({ echos_poches_v1: JSON.stringify({ version: 1, poches: abimees }) });
+  wa.ctx.chargerPoches();
+  var rattrapee = wa.ctx.poches[1];
+  verifie("poches abimees ecartees, doublon ecarte (le premier gagne)",
+          wa.ctx.poches.length === 2 && wa.ctx.poches[0].id === valide.id &&
+          wa.ctx.poches[0].niveau === "leger" && rattrapee && rattrapee.id === "rattrapee",
+          JSON.stringify(wa.ctx.poches.map(function (p) { return p.id + ":" + p.niveau; })));
+  verifie("poche rattrapee : statut, seuil et depots remis d'aplomb, champ intrus perdu",
+          !!rattrapee && rattrapee.statut === "ouvert" && rattrapee.seuil_total === 30 &&
+          rattrapee.fragments_deposes.length === 1 && rattrapee.intrus === undefined,
+          JSON.stringify(rattrapee));
+
+  // Aller-retour : ajouter, deposer, sauver, relire ailleurs.
+  var wr = mondeAvec({});
+  wr.ctx.chargerPoches();
+  var pa = wr.ctx.creerPoche("leger", origine, t0);
+  var pb = wr.ctx.creerPoche("critique", { lat: 1, lon: 2, arene_id: "node/7" }, t0 + 1000);
+  var ajoutA = wr.ctx.ajouterPoche(pa), ajoutB = wr.ctx.ajouterPoche(pb);
+  wr.ctx.deposerFragment(pa, { peng: { mince: 1, grand: 0, complet: 0 } }, "j1", "peng", "mince", t0 + 5);
+  wr.ctx.sauverPoches();
+  var ecrit = JSON.parse(wr.stockage.echos_poches_v1);
+  verifie("la sauvegarde a le format { version: 1, poches: [...] }",
+          ecrit.version === 1 && Object.keys(ecrit).join(",") === "version,poches" && ecrit.poches.length === 2,
+          wr.stockage.echos_poches_v1);
+  var wr2 = mondeAvec({ echos_poches_v1: wr.stockage.echos_poches_v1 });
+  wr2.ctx.chargerPoches();
+  verifie("aller-retour sauvegarde / chargement : les poches reviennent a l'identique",
+          ajoutA.ok && ajoutB.ok &&
+          JSON.stringify(wr2.ctx.poches) === JSON.stringify(wr.ctx.poches),
+          JSON.stringify(wr2.ctx.poches));
+
+  verifie("ajouterPoche refuse une poche invalide",
+          wr.ctx.ajouterPoche({ id: "rien" }).raison === "poche_invalide" &&
+          wr.ctx.ajouterPoche(null).raison === "poche_invalide");
+  verifie("ajouterPoche refuse un id deja present",
+          wr.ctx.ajouterPoche(wr.ctx.creerPoche("leger", origine, t0)).raison === "id_deja_present" &&
+          wr.ctx.poches.length === 2);
+  verifie("ajouterPoche range la poche elle-meme, pas une copie", wr.ctx.poches[0] === pa);
+
+  // Nettoyage. Une legere jamais remplie expire a echeance ; son
+  // effet dure 60 min, la marge 60 min de plus.
+  var wn = mondeAvec({});
+  wn.ctx.chargerPoches();
+  var casse = wn.ctx.creerPoche("leger", origine, t0);
+  var remplie = deposer(wn.ctx.creerPoche("leger", { lat: 3, lon: 3 }, t0), 12);
+  var ouverte = wn.ctx.creerPoche("critique", { lat: 4, lon: 4 }, t0 + 999 * MIN);
+  [casse, remplie, ouverte].forEach(function (p) { wn.ctx.ajouterPoche(p); });
+  var finNettoyage = casse.timestamp_expiration + 120 * MIN;
+
+  var retireesTot = wn.ctx.nettoyerPoches(finNettoyage);
+  verifie("a la fin exacte de l'effet + marge, la poche est encore gardee",
+          retireesTot === 0 && wn.ctx.poches.length === 3, retireesTot);
+  var listeAvant = wn.ctx.poches;
+  var retirees = wn.ctx.nettoyerPoches(finNettoyage + 1);
+  verifie("1 ms plus tard : les poches terminees partent, l'ouverte reste",
+          retirees === 2 && wn.ctx.poches.length === 1 && wn.ctx.poches[0] === ouverte,
+          retirees + " " + JSON.stringify(wn.ctx.poches.map(function (p) { return p.id; })));
+  verifie("le nettoyage modifie la liste en place", wn.ctx.poches === listeAvant);
+  verifie("une poche ouverte n'est jamais nettoyee",
+          wn.ctx.nettoyerPoches(t0 + 999 * MIN + 1) === 0 && wn.ctx.poches.length === 1);
+
+  // Plafond : a l'ajout, au chargement, et au nettoyage.
+  var wp = mondeAvec({});
+  wp.ctx.chargerPoches();
+  for (var n1 = 0; n1 < 50; n1++) wp.ctx.ajouterPoche(wp.ctx.creerPoche("leger", origine, t0 + n1));
+  verifie("plafond : la 51e poche est refusee",
+          wp.ctx.poches.length === 50 &&
+          wp.ctx.ajouterPoche(wp.ctx.creerPoche("leger", origine, t0 + 50)).raison === "liste_pleine");
+
+  var cinquanteCinq = [];
+  for (var n2 = 0; n2 < 55; n2++) cinquanteCinq.push(ctxP.creerPoche("leger", origine, t0 + n2));
+  var wl = mondeAvec({ echos_poches_v1: JSON.stringify({ version: 1, poches: cinquanteCinq }) });
+  wl.ctx.chargerPoches();
+  var plusAncienne = Math.min.apply(null, wl.ctx.poches.map(function (p) { return p.timestamp_creation; }));
+  verifie("plafond au chargement : les 50 plus recentes sont gardees",
+          wl.ctx.poches.length === 50 && plusAncienne === t0 + 5, wl.ctx.poches.length + " " + plusAncienne);
+
+  // 55 poches poussees de force : 10 cassees (effet encore actif),
+  // 45 ouvertes. Le nettoyage retire les 5 cassees les plus anciennes.
+  var wf = mondeAvec({});
+  wf.ctx.chargerPoches();
+  for (var n3 = 0; n3 < 10; n3++) wf.ctx.poches.push(wf.ctx.creerPoche("leger", origine, t0 + n3));
+  for (var n4 = 0; n4 < 45; n4++) wf.ctx.poches.push(wf.ctx.creerPoche("leger", origine, t0 + 200 * MIN + n4));
+  var tPlafond = t0 + 160 * MIN;   // les 10 premieres ont casse, aucune n'est terminee
+  var retireesPlafond = wf.ctx.nettoyerPoches(tPlafond);
+  var restantes = wf.ctx.poches.map(function (p) { return p.timestamp_creation; });
+  verifie("plafond au nettoyage : les finies les plus anciennes partent d'abord",
+          retireesPlafond === 5 && wf.ctx.poches.length === 50 &&
+          restantes.indexOf(t0 + 4) === -1 && restantes.indexOf(t0 + 5) !== -1 &&
+          restantes.indexOf(t0 + 200 * MIN) !== -1,
+          retireesPlafond + " " + wf.ctx.poches.length);
+
+  verifie("echos_joueur_v5 inchangee apres chargement, ajout, sauvegarde et nettoyage",
+          [w0, wa, wr, wr2, wn, wp, wl, wf].every(function (w) { return w.stockage.echos_joueur_v5 === joueurS; }));
+
+  // deposerEtSauver : l'ordre des ecritures est enregistre au passage.
+  var ordre = [];
+  var stockageEspion = new Proxy({ echos_joueur_v5: joueurS }, {
+    set: function (cible, cle, valeur) { ordre.push(cle); cible[cle] = valeur; return true; }
+  });
+  var wd = creerMonde({ stockage: stockageEspion });
+  wd.ctx.chargerJoueur();
+  wd.ctx.chargerPoches();
+  var pd2 = wd.ctx.creerPoche("leger", origine, t0);
+  wd.ctx.ajouterPoche(pd2);
+
+  var horsListe = wd.ctx.creerPoche("leger", { lat: 9, lon: 9 }, t0);
+  var rHors = wd.ctx.deposerEtSauver(horsListe, "j1", "peng", "mince", t0 + 1);
+  var rRefus = wd.ctx.deposerEtSauver(pd2, "j1", "peng", "complet", t0 + 1);
+  verifie("deposerEtSauver : poche hors liste ou refus -> aucune ecriture, gourde intacte",
+          rHors.raison === "poche_inconnue" && rRefus.raison === "fragment_complet" &&
+          ordre.length === 0 && horsListe.fragments_deposes.length === 0 &&
+          wd.ctx.gourde.peng.mince === 2,
+          JSON.stringify([rHors, rRefus, ordre]));
+
+  var rOk = wd.ctx.deposerEtSauver(pd2, "j1", "peng", "mince", t0 + 2);
+  verifie("deposerEtSauver : sauverPoches puis sauverJoueur, dans cet ordre",
+          rOk.ok === true && JSON.stringify(ordre) === '["echos_poches_v1","echos_joueur_v5"]',
+          JSON.stringify(ordre));
+  var avantJ = JSON.parse(joueurS), apresJ = JSON.parse(stockageEspion.echos_joueur_v5);
+  var autresBlocs = Object.keys(avantJ).filter(function (b) { return b !== "gourde"; });
+  verifie("apres un depot, seule la gourde change dans echos_joueur_v5 (meme version, memes blocs)",
+          apresJ.version === avantJ.version &&
+          Object.keys(apresJ).join(",") === Object.keys(avantJ).join(",") &&
+          autresBlocs.every(function (b) { return JSON.stringify(apresJ[b]) === JSON.stringify(avantJ[b]); }) &&
+          apresJ.gourde.peng.mince === 1 && avantJ.gourde.peng.mince === 2,
+          JSON.stringify(apresJ.gourde));
+  var pochesRelues = JSON.parse(stockageEspion.echos_poches_v1).poches;
+  verifie("apres un depot, la poche enregistree porte le depot",
+          pochesRelues.length === 1 && pochesRelues[0].fragments_deposes.length === 1 &&
+          pochesRelues[0].fragments_deposes[0].joueur_id === "j1");
+
   return resultats;
 }
 

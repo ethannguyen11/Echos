@@ -37,6 +37,11 @@ elem("btn-depart").addEventListener("click", function () {
   chargerJoueur();
   charger();
 
+  // Les poches d'Oubli, sous leur propre cle (jamais echos_joueur_v5).
+  // L'heure est lue ICI : js/poche.js ne lit jamais l'horloge.
+  chargerPoches();
+  if (nettoyerPoches(Date.now()) > 0) sauverPoches();
+
   // La permission de geolocalisation exige un geste utilisateur sur
   // iOS : cet appel doit rester dans le clic, avant toute autre chose.
   navigator.geolocation.watchPosition(positionMiseAJour, erreurPosition, {
