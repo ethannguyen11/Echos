@@ -386,6 +386,24 @@ var ICO_RELANCE = 400;
 
 
 /* ============================================================
+   LA CINEMATIQUE D'OUVERTURE
+   A false, un nouveau joueur ne voit PAS la cinematique : seuls
+   restent le choix de la langue, le nom et le genre (le SCRIPT
+   court de js/intro.js), puis la carte. Pratique pendant le
+   developpement.
+
+   Rien n'est supprime : la cinematique entiere est toujours dans
+   js/intro.js, et repasser cette constante a true suffit a la
+   rejouer. Une sauvegarde qui a deja introVue a vrai ne voit
+   ni l'une ni l'autre ; pour revoir l'intro sur un telephone
+   deja passe par le flux court : Intro.reinitialiser() dans la
+   console.
+   ============================================================ */
+
+var INTRO_ACTIVE = false;
+
+
+/* ============================================================
    LE MODE TEST
    Un donjon fictif a ta position, et un panneau pour regler le
    palier de Figement, le niveau et l'espece de l'adversaire.

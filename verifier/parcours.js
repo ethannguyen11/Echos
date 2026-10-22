@@ -223,7 +223,8 @@ function jouerIntro(m, reponses, options) {
   var vues = [], fini = false, tours = 0;
   var dernierTexte = "";      // la derniere replique lue, pour ne pas la compter deux fois
 
-  m.ctx.Intro.demarrer(function () { fini = true; });
+  var lancer = options.court ? m.ctx.Intro.demarrerCourt : m.ctx.Intro.demarrer;
+  lancer(function () { fini = true; });
 
   while (!fini && tours++ < 400) {
     // Assez long pour que pause, fondu et frappe se terminent :
@@ -607,6 +608,83 @@ function lancerParcours() {
   verifie("reinitialiser remet introVue a faux", m6.ctx.profil.introVue === false);
   verifie("reinitialiser recharge la page", m6.ctx.pageRechargee === true);
   verifie("reinitialiser conserve la collection", !!m6.ctx.collection.jinchan);
+
+
+  /* --- F. Le flux court (INTRO_ACTIVE a false) ---
+     Ce que voit un nouveau joueur tant que la cinematique est
+     coupee : la langue, le nom, le genre, puis la carte. Il doit
+     laisser derriere lui exactement la meme sauvegarde que l'intro
+     entiere, aux deux champs pres qu'il ne demande pas. */
+
+  bloc("Flux court, sans cinematique");
+
+  verifie("INTRO_ACTIVE existe dans config.js", typeof m.ctx.INTRO_ACTIVE === "boolean",
+          typeof m.ctx.INTRO_ACTIVE);
+
+  var mc = creerMonde();
+  mc.ctx.chargerJoueur();
+  verifie("un nouveau joueur n'a pas encore vu l'intro", mc.ctx.profil.introVue === false);
+
+  var vuesCourt = jouerIntro(mc, { nom: "Ethan", choix: ["Français", "Elle est venue."] },
+                             { court: true });
+
+  verifie("le flux court va droit a la langue, au nom et au genre",
+          JSON.stringify(vuesCourt) === JSON.stringify([
+            "[choix] Français",
+            "Alors autant que je sache à qui je parle.",
+            "[saisie] Ethan",
+            "Il faudra bien que je le note quelque part.",
+            "[choix] Elle est venue."
+          ]),
+          JSON.stringify(vuesCourt));
+  verifie("le nom et le genre sont enregistres, introVue est vrai",
+          mc.ctx.profil.nom === "Ethan" && mc.ctx.profil.genre === "f" &&
+          mc.ctx.profil.introVue === true,
+          JSON.stringify(mc.ctx.profil));
+  verifie("voie vide et lieuZero null, comme une intro sans reponse",
+          mc.ctx.profil.voie === "" && mc.ctx.profil.lieuZero === null,
+          JSON.stringify(mc.ctx.profil));
+  verifie("les accords suivent le genre choisi",
+          mc.ctx.Intro.formater("Tu n'iras pas seul[|e|·e], {nom}.", mc.ctx.profil) ===
+          "Tu n'iras pas seule, Ethan.");
+
+  var sauveCourt = mc.stockage.echos_joueur_v5 ? JSON.parse(mc.stockage.echos_joueur_v5) : null;
+  verifie("la sauvegarde v5 a les memes cles qu'apres l'intro entiere",
+          !!sauveCourt &&
+          JSON.stringify(Object.keys(sauveCourt)) ===
+          JSON.stringify(Object.keys(JSON.parse(m.stockage.echos_joueur_v5))) &&
+          JSON.stringify(Object.keys(sauveCourt.joueur)) ===
+          '["nom","genre","voie","lieuZero","introVue"]',
+          sauveCourt && JSON.stringify(sauveCourt.joueur));
+  verifie("Jin Chan est la, comme apres l'intro", !!mc.ctx.collection.jinchan);
+  verifie("l'overlay est retire a la fin",
+          mc.corps.enfants.filter(function (e) { return e.id === "intro"; }).length === 0 &&
+          mc.corps.classList.contains("intro-ouverte") === false);
+
+  var mcRelu = creerMonde({ stockage: { echos_joueur_v5: mc.stockage.echos_joueur_v5 } });
+  mcRelu.ctx.chargerJoueur();
+  verifie("au lancement suivant, ni intro ni flux court",
+          mcRelu.ctx.profil.introVue === true && mcRelu.ctx.profil.nom === "Ethan");
+
+  // Deux evenements par contact du doigt : le verrou doit tenir.
+  var mcDouble = creerMonde();
+  mcDouble.ctx.chargerJoueur();
+  jouerIntro(mcDouble, { nom: "Ethan", choix: ["Français", "Quelqu'un est venu."] },
+             { court: true, taps: 2 });
+  verifie("flux court : un double tap ne saute aucune question",
+          mcDouble.ctx.profil.nom === "Ethan" && mcDouble.ctx.profil.genre === "n",
+          JSON.stringify(mcDouble.ctx.profil));
+
+  // Une sauvegarde existante (celle de l'intro entiere, plus haut)
+  // ne doit pas bouger d'un octet au chargement.
+  var existante = m.stockage.echos_joueur_v5;
+  var mExist = creerMonde({ stockage: { echos_joueur_v5: existante } });
+  mExist.ctx.chargerJoueur();
+  verifie("une sauvegarde existante est relue sans etre reecrite",
+          mExist.stockage.echos_joueur_v5 === existante);
+  verifie("une sauvegarde existante garde sa voie et ne relance rien",
+          mExist.ctx.profil.introVue === true && mExist.ctx.profil.voie === "archiviste",
+          JSON.stringify(mExist.ctx.profil));
 
   return resultats;
 }

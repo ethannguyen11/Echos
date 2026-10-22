@@ -45,8 +45,12 @@ elem("btn-depart").addEventListener("click", function () {
 
   // Premier lancement : la cinematique, puis la carte.
   // Ensuite : la carte directement.
+  // INTRO DESACTIVEE -- conservee pour reactivation : tant que
+  // INTRO_ACTIVE (js/config.js) vaut false, Intro.demarrer n'est
+  // plus appele, et le flux court (langue, nom, genre) le remplace.
   if (!profil.introVue) {
-    Intro.demarrer(function () {
+    var lancerIntro = INTRO_ACTIVE ? Intro.demarrer : Intro.demarrerCourt;
+    lancerIntro(function () {
       majFiche();
       if (dernierePosition) mettreAJourHud(dernierePosition[0], dernierePosition[1]);
     });

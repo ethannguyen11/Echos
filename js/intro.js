@@ -165,6 +165,29 @@ var SCRIPT = [
 ];
 
 
+/* Le flux court, joue a la place de SCRIPT quand INTRO_ACTIVE
+   (js/config.js) vaut false. Il ne garde que ce dont le reste du
+   jeu a besoin : le nom ({nom}) et le genre (les accords [m|f|n]).
+   La voie reste vide et le lieu zero a null, deux valeurs que la
+   sauvegarde accepte deja.
+
+   Memes cles de texte que SCRIPT, aucune phrase neuve : verifier.js
+   ne compare que SCRIPT au .md, et ce script-ci n'en est qu'un
+   extrait. */
+var SCRIPT_COURT = [
+  { type: "apparition" },
+  { type: "ico", cleTexte: "intro.nom.aQuiJeParle" },
+  { type: "saisie", cle: "nom", max: 16 },
+  { type: "ico", cleTexte: "intro.genre.noterQuelquePart" },
+  { type: "choix", cle: "genre", options: [
+      { cleTexte: "intro.genre.masculin", valeur: "m" },
+      { cleTexte: "intro.genre.feminin",  valeur: "f" },
+      { cleTexte: "intro.genre.neutre",   valeur: "n" }
+  ]},
+  { type: "fin" }
+];
+
+
 /* ------------------------------------------------------------
    3. INTERPOLATION DU TEXTE
    ELLE PASSE APRES txt(), JAMAIS AVANT. txt() rend la phrase brute
@@ -486,6 +509,7 @@ var blocActif = null;   // "lieu" ou "repli", decide une seule fois
 var minuteurPause = null;
 var reponses = {};      // ce que le joueur a repondu, avant sauvegarde
 var surTermine = null;
+var scriptActif = SCRIPT;  // SCRIPT, ou SCRIPT_COURT (voir demarrerCourt)
 
 function suivant() {
   index++;
@@ -493,9 +517,9 @@ function suivant() {
 }
 
 function jouerEtape() {
-  if (index >= SCRIPT.length) return terminer();
+  if (index >= scriptActif.length) return terminer();
 
-  var e = SCRIPT[index];
+  var e = scriptActif[index];
 
   // Bifurcation lieu / repli : on tranche a la premiere etape concernee
   if (e.bloc && !blocActif) {
@@ -588,7 +612,7 @@ function validerSaisie() {
   var valeur = champ.value.replace(/\s+/g, " ").trim();
   if (valeur.length === 0) return;      // refus silencieux, aucun message
 
-  reponses[SCRIPT[index].cle] = valeur;
+  reponses[scriptActif[index].cle] = valeur;
   zoneSaisie.classList.remove("visible");
   champ.blur();
   suivant();
@@ -764,8 +788,19 @@ function surTap(ev) {
    ------------------------------------------------------------ */
 
 function demarrer(surFin) {
+  ouvrir(SCRIPT, surFin);
+}
+
+// La version courte : langue, nom, genre, et c'est tout. Meme
+// moteur, meme verrou, meme sauvegarde a la fin.
+function demarrerCourt(surFin) {
+  ouvrir(SCRIPT_COURT, surFin);
+}
+
+function ouvrir(script, surFin) {
   if (couche) return;             // deja en cours
 
+  scriptActif = script;
   surTermine = typeof surFin === "function" ? surFin : function () {};
   index = 0;
   etat = "";
@@ -782,7 +817,8 @@ function demarrer(surFin) {
      boutons les ferait expirer avant meme le debut du recit, et
      le nom du lieu reel n'apparaitrait plus jamais. */
   demanderLangue(function () {
-    lancerRechercheLieuZero();    // en arriere-plan, des la premiere ligne
+    // Le flux court n'a aucune etape de lieu : pas de recherche.
+    if (script === SCRIPT) lancerRechercheLieuZero();   // en arriere-plan, des la premiere ligne
     jouerEtape();
   });
 }
@@ -825,6 +861,7 @@ function reinitialiser() {
 
 return {
   demarrer: demarrer,
+  demarrerCourt: demarrerCourt,
   reinitialiser: reinitialiser,
 
   // La machine a ecrire, partagee avec js/ico.js : il n'y a
@@ -833,6 +870,7 @@ return {
 
   // Exposes pour verifier.js et verifier/tests.js uniquement
   SCRIPT: SCRIPT,
+  SCRIPT_COURT: SCRIPT_COURT,
   formater: formater,
   calculerVoie: calculerVoie
 };
