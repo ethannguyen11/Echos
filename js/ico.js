@@ -211,6 +211,8 @@ function basculerSection(cle) {
 }
 
 function ouvrir() {
+  if (!ICO_PANNEAU_ACTIVE) return;      // en pause (js/config.js)
+
   // Le portrait suit la progression du joueur (voir css/ico.css)
   elem("ico-portrait").setAttribute("data-defigement", palier());
 
@@ -359,6 +361,7 @@ function journalOccupe() {
 /* Demande a Ico de dire quelque chose. Sans effet si
    l'intervention a deja ete jouee, ou si elle attend deja. */
 function dire(cle) {
+  if (!ICO_BULLES_ACTIVES) return;      // coupees (js/config.js)
   if (!texteDidacticiel(cle)) return;
   if (dejaVu(cle)) return;
   if (file.indexOf(cle) !== -1) return;

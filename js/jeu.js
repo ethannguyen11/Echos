@@ -83,6 +83,11 @@ elem("btn-fermer-grimoire").addEventListener("click", function () {
 elem("btn-ico").addEventListener("click", Ico.ouvrir);
 elem("btn-fermer-ico").addEventListener("click", Ico.fermer);
 
+// Le bouton "?" ; et "Ico" cache tant que son panneau est en pause.
+elem("btn-aide").addEventListener("click", Aide.ouvrir);
+elem("btn-fermer-aide").addEventListener("click", Aide.fermer);
+Aide.appliquerPanneauIco();
+
 /* Un appui n'importe ou efface l'intervention d'Ico en cours.
    Branche sur le document entier, et volontairement en DERNIER :
    quand il s'execute, le bouton ou la carte ont deja recu le meme

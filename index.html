@@ -24,6 +24,9 @@
   <!-- La pastille signale qu'Ico s'est rappelé quelque chose.
        Cachee tant que js/ico.js ne lui pose pas la classe "visible". -->
   <button id="btn-ico">Ico<span id="ico-pastille"></span></button>
+  <!-- L'aide : quatre lignes pour jouer (js/aide.js). Le bouton "Ico"
+       juste avant est cache tant que ICO_PANNEAU_ACTIVE vaut false. -->
+  <button id="btn-aide" aria-label="Aide">?</button>
 </div>
 
 <!-- Le panneau du mode test. Invisible tant que js/modetest.js ne lui
@@ -150,6 +153,17 @@
   <div id="ico-bulle-l2" class="ico-bulle-ligne"></div>
 </div>
 
+<!-- ------------------ L'AIDE ------------------
+     Une carte au milieu de l'ecran, remplie a chaque ouverture par
+     js/aide.js dans la langue courante. -->
+<div id="aide">
+  <div id="aide-carte">
+    <h2 id="aide-titre"></h2>
+    <div id="aide-lignes"></div>
+    <button id="btn-fermer-aide"></button>
+  </div>
+</div>
+
 <!-- ------------------ ICO ------------------ -->
 <div id="ico">
   <div id="ico-entete">
@@ -210,6 +224,7 @@
 <script src="js/grimoire.js"></script>
 <script src="js/intro.js"></script>
 <script src="js/ico.js"></script>
+<script src="js/aide.js"></script>
 <script src="js/rendu3d.js"></script>
 <script src="js/modetest.js"></script>
 <script src="js/jeu.js"></script>

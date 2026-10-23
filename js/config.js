@@ -384,6 +384,47 @@ var ICO_BULLE_VERROU = 400;
    revient voir si la main est revenue au joueur. */
 var ICO_RELANCE = 400;
 
+/* LE PANNEAU D'ICO, EN PAUSE
+   A false, le bouton "Ico" de la carte est cache : le bouton "?"
+   (js/aide.js) le remplace. Rien n'est supprime : js/ico.js, le
+   HTML du panneau et ses textes ci-dessus sont intacts, et
+   repasser cette constante a true suffit a tout retrouver. Meme
+   principe que INTRO_ACTIVE.
+
+   Consequence a connaitre : les fragments d'identite d'Ico
+   (TEXTES_ICO_IDENTITE) ne sont plus accessibles nulle part dans
+   le jeu. Leur code est conserve, mais l'histoire d'Ico sera
+   refaite avec le nouvel arc narratif.
+
+   La sauvegarde ne change pas : le bloc "ico" (palierLu,
+   palierAtteint, didacticiensVus) reste lu et ecrit comme avant,
+   et majPastille() continue de suivre le palier en silence. */
+var ICO_PANNEAU_ACTIVE = false;
+
+/* LES BULLES D'ICO, COUPEES
+   A false, Ico.dire() ne fait plus rien : aucune bulle en combat
+   ni dans le grimoire, rien ne se pose par-dessus la scene. Les
+   appels Ico.dire() restent a leur place dans js/combat.js et
+   js/grimoire.js ; a true, tout revient comme avant. Une bulle
+   coupee n'est PAS notee comme vue : elle se jouerait le jour ou
+   on les rallume. */
+var ICO_BULLES_ACTIVES = false;
+
+
+/* ============================================================
+   L'AIDE (le bouton "?" de la carte)
+   Les cles des lignes, dans l'ordre d'affichage. Les phrases
+   elles-memes sont dans js/langues.js, en francais et en anglais.
+   Garder court : trois a cinq lignes.
+
+   A RAJOUTER plus tard : une ligne sur les poches d'Oubli, le
+   jour ou l'ecran de depot des fragments existera (aujourd'hui le
+   joueur ne peut pas encore les voir). Ajouter sa cle ici, et sa
+   phrase dans les deux tables de js/langues.js.
+   ============================================================ */
+
+var AIDE_LIGNES = ["aide.l1", "aide.l2", "aide.l3", "aide.l4"];
+
 
 /* ============================================================
    LA CINEMATIQUE D'OUVERTURE

@@ -127,7 +127,16 @@ var TEXTES = {
     "intro.echo.adieu":                  "Et {nom} — ce que tu n'assimiles pas, personne ne le fera après toi.",
 
     /* --- La carte de l'Echo de depart --- */
-    "intro.echoDepart.niveau":           "niveau {niveau}"
+    "intro.echoDepart.niveau":           "niveau {niveau}",
+
+    /* --- L'aide (le bouton "?", js/aide.js) ---
+       Les lignes affichees sont celles de AIDE_LIGNES (js/config.js). */
+    "aide.titre":  "Comment jouer",
+    "aide.l1":     "Marche jusqu'à un lieu de la carte, puis touche Approcher pour rencontrer son Écho.",
+    "aide.l2":     "En combat, affaiblis l'Écho puis touche Assimiler : il rejoint ton Grimoire. Trois Échos t'accompagnent au maximum.",
+    "aide.l3":     "Les lieux s'effacent de la mémoire. Chaque Écho que tu assimiles en ramène un souvenir.",
+    "aide.l4":     "Un fragment appartient à une seule espèce : il sert à la faire grandir, et à rien d'autre.",
+    "aide.fermer": "Fermer"
   },
 
 
@@ -149,7 +158,18 @@ var TEXTES = {
     "intro.genre.feminin":     "She came.",
     "intro.genre.neutre":      "Someone came.",
 
-    "intro.echoDepart.niveau": "level {niveau}"
+    "intro.echoDepart.niveau": "level {niveau}",
+
+    /* L'aide, elle, est traduite en entier. Les boutons du jeu ne
+       sont pas encore traduits : les lignes citent donc leur nom
+       tel qu'il s'affiche (Approcher, Assimiler). Le jour ou ils
+       le seront, ces deux mots devront suivre. */
+    "aide.titre":  "How to play",
+    "aide.l1":     "Walk to a place on the map, then tap Approcher to meet its Echo.",
+    "aide.l2":     "In battle, wear the Echo down, then tap Assimiler: it joins your Grimoire. Up to three Echoes can travel with you.",
+    "aide.l3":     "Places are fading from memory. Every Echo you assimilate brings one memory back.",
+    "aide.l4":     "A fragment belongs to a single species: it helps that species grow, and nothing else.",
+    "aide.fermer": "Close"
   }
 
 };

@@ -1829,6 +1829,14 @@ function lancerTests() {
 
   // --- Le comportement ---
 
+  /* Les bulles sont coupees dans le jeu (ICO_BULLES_ACTIVES a false,
+     js/config.js), mais leur mecanique est conservee : on la rallume
+     le temps de ces tests, pour qu'elle marche le jour ou on la
+     remet. verifier/parcours.js verifie, lui, qu'elles restent
+     muettes quand le reglage est a false. */
+  var bullesAvant = ICO_BULLES_ACTIVES;
+  ICO_BULLES_ACTIVES = true;
+
   var icoAvant = suiviIco;
   var journalAvant = minuteurJournal;
   var vraiST = setTimeout, vraiCT = clearTimeout;
@@ -1949,6 +1957,7 @@ function lancerTests() {
   clearTimeout = vraiCT;
   suiviIco = icoAvant;
   minuteurJournal = journalAvant;
+  ICO_BULLES_ACTIVES = bullesAvant;
 
 
   /* --- Cinematique d'ouverture --- */

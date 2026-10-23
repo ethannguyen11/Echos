@@ -1421,6 +1421,170 @@ function lancerParcours() {
   verifie("rien du rendu 3D n'a ecrit dans localStorage",
           [mr, w3.m, w4.m, w5.m, w6.m].every(function (m) { return Object.keys(m.stockage).length === 0; }));
 
+  /* ------------------------------------------------------------
+     ICO EN RETRAIT : LE BOUTON "?" ET LES BULLES COUPEES
+     Le panneau d'Ico est en pause (ICO_PANNEAU_ACTIVE), ses bulles
+     sont coupees (ICO_BULLES_ACTIVES), et le bouton "?" (js/aide.js)
+     prend sa place. La sauvegarde, elle, ne doit pas bouger : les
+     blocs "ico" et "savoir" ressortent tels qu'ils sont entres.
+     ------------------------------------------------------------ */
+  bloc("Ico en retrait : aide et bulles");
+
+  // Un monde qui charge aussi ico.js et aide.js, avec les elements
+  // de index.html dont ils se servent.
+  function mondeAide(stockage) {
+    var m = creerMonde({ stockage: stockage || {} });
+    ["btn-ico", "ico-pastille", "ico", "ico-portrait", "ico-sections", "ico-fragments",
+     "ico-bulle", "ico-bulle-l1", "ico-bulle-l2",
+     "btn-aide", "aide", "aide-titre", "aide-lignes", "btn-fermer-aide"].forEach(function (id) {
+      m.statiques[id] = creerElement("div");
+      m.statiques[id].id = id;
+    });
+    ["js/ico.js", "js/aide.js"].forEach(function (f) {
+      vm.runInContext(fs.readFileSync(path.join(RACINE, f), "utf8"), m.ctx, { filename: f });
+    });
+    return m;
+  }
+
+  var ma = mondeAide();
+  var A = ma.ctx;
+
+  verifie("ICO_PANNEAU_ACTIVE et ICO_BULLES_ACTIVES existent, et valent false",
+          A.ICO_PANNEAU_ACTIVE === false && A.ICO_BULLES_ACTIVES === false,
+          A.ICO_PANNEAU_ACTIVE + " / " + A.ICO_BULLES_ACTIVES);
+  verifie("l'aide tient en 3 a 5 lignes",
+          A.AIDE_LIGNES.length >= 3 && A.AIDE_LIGNES.length <= 5, A.AIDE_LIGNES.length);
+
+  // --- Le bouton "Ico" cache, le panneau qui ne s'ouvre plus ---
+  A.Aide.appliquerPanneauIco();
+  verifie("panneau en pause : le bouton Ico est cache",
+          ma.statiques["btn-ico"].style.display === "none", ma.statiques["btn-ico"].style.display);
+  var erreurOuvrir = null;
+  try { A.Ico.ouvrir(); } catch (e) { erreurOuvrir = e; }
+  verifie("panneau en pause : Ico.ouvrir() n'ouvre rien",
+          erreurOuvrir === null && !ma.statiques.ico.classList.contains("actif"),
+          erreurOuvrir && erreurOuvrir.message);
+
+  A.ICO_PANNEAU_ACTIVE = true;
+  A.Aide.appliquerPanneauIco();
+  verifie("panneau remis a true : le bouton Ico revient",
+          ma.statiques["btn-ico"].style.display === "", ma.statiques["btn-ico"].style.display);
+  A.ICO_PANNEAU_ACTIVE = false;
+  A.Aide.appliquerPanneauIco();
+
+  // --- Le bouton "?" ---
+  /* Dans un vrai navigateur, innerHTML = "" retire les lignes de
+     l'ouverture precedente ; le faux navigateur garde ses enfants.
+     On ne lit donc que les lignes de la DERNIERE ouverture. */
+  function lignesAffichees(m) {
+    var enfants = m.statiques["aide-lignes"].enfants;
+    return enfants.slice(enfants.length - m.ctx.AIDE_LIGNES.length)
+                  .map(function (p) { return p.textContent; });
+  }
+
+  A.Aide.ouvrir();
+  var fr = lignesAffichees(ma);
+  verifie("le ? ouvre l'aide", ma.statiques.aide.classList.contains("actif"));
+  verifie("l'aide montre les lignes de AIDE_LIGNES, en francais",
+          fr.length === A.AIDE_LIGNES.length &&
+          JSON.stringify(fr) === JSON.stringify(A.AIDE_LIGNES.map(function (c) { return A.TEXTES.fr[c]; })),
+          JSON.stringify(fr));
+  verifie("titre et bouton Fermer en francais",
+          ma.statiques["aide-titre"].textContent === A.TEXTES.fr["aide.titre"] &&
+          ma.statiques["btn-fermer-aide"].textContent === A.TEXTES.fr["aide.fermer"],
+          ma.statiques["aide-titre"].textContent + " / " + ma.statiques["btn-fermer-aide"].textContent);
+  A.Aide.fermer();
+  verifie("Fermer referme l'aide", !ma.statiques.aide.classList.contains("actif"));
+
+  // Chaque cle doit exister dans LES DEUX tables : pas de repli
+  // silencieux sur le francais pour l'aide.
+  var clesAide = A.AIDE_LIGNES.concat(["aide.titre", "aide.fermer"]);
+  var absentesAide = [];
+  ["fr", "en"].forEach(function (lg) {
+    clesAide.forEach(function (c) {
+      if (typeof A.TEXTES[lg][c] !== "string" || A.TEXTES[lg][c] === "") absentesAide.push(lg + ":" + c);
+    });
+  });
+  verifie("chaque texte de l'aide existe en francais ET en anglais",
+          absentesAide.length === 0, absentesAide.join(", "));
+
+  A.definirLangue("en");
+  A.Aide.ouvrir();
+  var en = lignesAffichees(ma);
+  verifie("en anglais, l'aide est en anglais (relue a l'ouverture)",
+          JSON.stringify(en) === JSON.stringify(A.AIDE_LIGNES.map(function (c) { return A.TEXTES.en[c]; })) &&
+          ma.statiques["aide-titre"].textContent === A.TEXTES.en["aide.titre"] &&
+          en.every(function (l, i) { return l !== fr[i]; }),
+          JSON.stringify(en));
+  A.Aide.fermer();
+  A.definirLangue("fr");
+
+  var textesAide = [];
+  ["fr", "en"].forEach(function (lg) {
+    clesAide.forEach(function (c) { textesAide.push(A.TEXTES[lg][c] || ""); });
+  });
+  verifie("aucune cle brute affichee",
+          fr.concat(en).every(function (l) { return l && l.indexOf("aide.") !== 0; }));
+  verifie("le mot Figement n'apparait pas dans l'aide",
+          textesAide.every(function (t) { return !/figement/i.test(t); }));
+
+  // --- Les bulles coupees ---
+  var stockAvant = JSON.stringify(ma.stockage);
+  var vusAvant = JSON.stringify(A.suiviIco);
+  var affichees = [];
+  A.TEXTES_ICO_DIDACTICIEL.forEach(function (d) {
+    A.Ico.dire(d.cle);
+    if (A.Ico.bulleAffichee() || A.Ico.enAttente().length) affichees.push(d.cle);
+  });
+  ma.horloge.avancer(60000);
+  verifie("bulles coupees : aucune des " + A.TEXTES_ICO_DIDACTICIEL.length + " interventions ne s'affiche",
+          affichees.length === 0 && !A.Ico.bulleAffichee() &&
+          !ma.statiques["ico-bulle"].classList.contains("visible") &&
+          ma.statiques["ico-bulle-l1"].textContent === "",
+          affichees.join(", "));
+  verifie("bulles coupees : rien n'est note comme vu, rien n'est ecrit",
+          JSON.stringify(A.suiviIco) === vusAvant && JSON.stringify(ma.stockage) === stockAvant,
+          JSON.stringify(A.suiviIco));
+
+  // --- Les anciennes sauvegardes demarrent, les blocs ne bougent pas ---
+  var icoPlein = { didacticiensVus: ["combat", "victoire"], palierLu: 2, palierAtteint: 3 };
+  var savoirPlein = { combats: 4, jours: ["2026-10-01", "2026-10-02"], lieux: ["lieu-a", "lieu-b"] };
+  var joueurAncien = { nom: "Ethan", genre: "n", voie: "gardien", lieuZero: null, introVue: true };
+  function pengAncien() { return { peng: { espece: "peng", niveau: 5, xp: 8, pv: 40 } }; }
+  var anciennes = [
+    ["v2", "echos_joueur_v2", { collection: pengAncien(), equipe: ["peng"] }],
+    ["v3", "echos_joueur_v3", { version: 3, collection: pengAncien(), equipe: ["peng"], joueur: joueurAncien }],
+    ["v4", "echos_joueur_v4", { version: 4, collection: pengAncien(), equipe: ["peng"], joueur: joueurAncien,
+                                ico: icoPlein }],
+    ["v5", "echos_joueur_v5", { version: 5, collection: pengAncien(), equipe: ["peng"], joueur: joueurAncien,
+                                ico: icoPlein, savoir: savoirPlein }]
+  ];
+
+  anciennes.forEach(function (a) {
+    var st = {};
+    st[a[1]] = JSON.stringify(a[2]);
+    var mv = mondeAide(st);
+    var err = null;
+    try {
+      mv.ctx.chargerJoueur();
+      mv.ctx.Aide.appliquerPanneauIco();
+      mv.ctx.Ico.dire("combat");
+      mv.ctx.Ico.dire("aptitudes");
+      mv.ctx.sauverJoueur();
+    } catch (e) { err = e; }
+
+    verifie(a[0] + " : se charge et se sauve sans erreur, avec le ? et Ico en retrait",
+            err === null && !!mv.ctx.collection.peng, err && err.message);
+
+    var relu = JSON.parse(mv.stockage.echos_joueur_v5 || "{}");
+    var icoAttendu = a[2].ico || { didacticiensVus: [], palierLu: 0, palierAtteint: 0 };
+    var savoirAttendu = a[2].savoir || { combats: 0, jours: [], lieux: [] };
+    verifie(a[0] + " : le bloc ico ressort identique",
+            JSON.stringify(relu.ico) === JSON.stringify(icoAttendu), JSON.stringify(relu.ico));
+    verifie(a[0] + " : le bloc savoir ressort identique",
+            JSON.stringify(relu.savoir) === JSON.stringify(savoirAttendu), JSON.stringify(relu.savoir));
+  });
+
   return resultats;
 }
 
