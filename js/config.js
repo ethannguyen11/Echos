@@ -1087,6 +1087,90 @@ var JOURNAL_OPACITES = [1, 0.62, 0.38, 0.22];
 
 
 /* ============================================================
+   LE COMBAT A PLUSIEURS (MOTEUR SEUL, PAS ENCORE BRANCHE)
+   Les reglages de js/combat3.js : jusqu'a 3 Echos contre jusqu'a
+   3 adversaires, au tour par tour. Le combat 1 contre 1 de
+   js/combat.js ne lit AUCUNE de ces valeurs : il garde les
+   siennes (ADVERSAIRE_PV_PAR_ECHO, sa fuite en dur...).
+   ============================================================ */
+
+// Le nombre d'adversaires qu'un combat accepte (1 en arene normale,
+// 2 dans une poche "profond", 3 dans une "critique" : c'est
+// l'appelant qui decide).
+var ADVERSAIRES_MAX = 3;
+
+/* LE BOOST DES SAUVAGES
+
+   Un adversaire sauvage recoit un multiplicateur de PV et d'ATQ
+   selon le NOMBRE d'adversaires : seul, il doit tenir tete a toute
+   une equipe ; a trois, ils se partagent le travail.
+
+     adversaires   PV     ATQ
+         1        x2.5   x2.2
+         2        x1.6   x1.4
+         3        x1.2   x1.1
+
+   Pourquoi ces ATQ : seul contre 3 Echos, x2.2 est exactement l'ATQ
+   du combat d'aujourd'hui (ADVERSAIRE_ATQ_PAR_ECHO), et x2.5 PV
+   en est tout proche (x2.4) : une arene normale garde sa
+   difficulte. Pour 2 et 3, l'ATQ garde le meme rapport qu'aujourd'hui
+   avec les PV (environ 0.9 fois le multiplicateur de PV). La
+   pression totale par tour (nombre x ATQ) monte donc avec la
+   profondeur de la poche, 2.2 -> 2.8 -> 3.3, sans qu'un adversaire
+   seul devienne ecrasant.
+
+   MODULE PAR LA TAILLE DE TON EQUIPE. Les valeurs ci-dessus sont
+   les valeurs PLEINES, contre 3 Echos. Avec moins d'Echos debout
+   au debut du combat :
+
+     boost effectif = 1 + (boost - 1) x (Echos debout / EQUIPE_MAX)
+
+   Seul contre un sauvage seul : PV x1.5, ATQ x1.4 au lieu de x2.5
+   et x2.2. Sans ce correctif, un debutant qui n'a qu'un Echo
+   affronterait un adversaire deux fois et demie plus solide
+   qu'aujourd'hui (ou il est a x1). Le boost est calcule une fois,
+   a la creation du combat : un Echo mis KO en cours de route ne
+   rend pas l'adversaire plus faible.
+
+   Le niveau de l'adversaire ne change pas : seuls ses PV et son
+   ATQ sont multiplies, jamais sa vitesse. Un adversaire marque
+   sauvage: false (un futur Gardien) n'est pas booste. */
+var BOOST_SAUVAGE = {
+  1: { pv: 2.5, atq: 2.2 },
+  2: { pv: 1.6, atq: 1.4 },
+  3: { pv: 1.2, atq: 1.1 }
+};
+
+/* LA VITESSE
+
+   La vitesse de base est dans js/especes.js (champ vit, de 2 a 9).
+   Elle grandit de VITESSE_CROISSANCE par niveau, bien plus
+   doucement que PV, ATQ et DEF (+26 % par niveau, statsAuNiveau).
+
+   Pourquoi +6 % : deux especes voisines dans le classement sont a
+   environ 2 points d'ecart (5 contre 7). Pour qu'une vit 5 depasse
+   une vit 7, il lui faut 5 x (1 + 0.06 x n) > 7, soit plus de 6,7
+   niveaux d'avance. A +26 %, un niveau et demi suffirait, et
+   l'ordre des tours ne dirait plus rien de l'espece. A +6 %,
+   l'espece decide, et seul un gros ecart de niveau la renverse. */
+var VITESSE_CROISSANCE = 0.06;
+
+/* LA FUITE du combat a plusieurs : meme formule que js/combat.js,
+   ou ces deux nombres sont ecrits en dur (et y restent).
+     chance = FUITE_BASE + (niveau moyen de ton equipe
+                            - plus haut niveau des adversaires debout)
+                           x FUITE_PAR_NIVEAU */
+var FUITE_BASE       = 0.5;
+var FUITE_PAR_NIVEAU = 0.07;
+
+/* Le niveau auquel un Echo assimile entre dans la collection.
+   ATTENTION : le combat 1 contre 1 l'ajoute aujourd'hui au niveau de
+   base du lieu (donjon.niveau). Le moteur a plusieurs rend ce
+   niveau dans son compte rendu ; c'est l'ecran qui l'appliquera. */
+var ASSIMILATION_NIVEAU_ENTREE = 1;
+
+
+/* ============================================================
    LE RENDU 3D (EN PREPARATION)
    Le combat affiche aujourd'hui des images 2D. Cette section
    prepare la RECEPTION des modeles 3D : ou ils se trouvent, a

@@ -29,6 +29,7 @@ var FICHIERS = [
   "js/fragments.js",
   "js/poche.js",
   "js/combat.js",
+  "js/combat3.js",
   "js/grimoire.js",
   "js/intro.js",
   "js/ico.js",

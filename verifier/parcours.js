@@ -20,7 +20,7 @@ var RACINE = path.join(__dirname, "..");
 // Tout sauf jeu.js : on ne veut pas brancher les boutons du jeu,
 // seulement disposer de ses fonctions.
 var FICHIERS = ["js/config.js", "js/langues.js", "js/especes.js", "js/lieux.js", "js/carte.js",
-                "js/joueur.js", "js/fragments.js", "js/poche.js", "js/combat.js", "js/grimoire.js", "js/intro.js",
+                "js/joueur.js", "js/fragments.js", "js/poche.js", "js/combat.js", "js/combat3.js", "js/grimoire.js", "js/intro.js",
                 "js/rendu3d.js", "js/modetest.js"];
 
 
@@ -1584,6 +1584,319 @@ function lancerParcours() {
     verifie(a[0] + " : le bloc savoir ressort identique",
             JSON.stringify(relu.savoir) === JSON.stringify(savoirAttendu), JSON.stringify(relu.savoir));
   });
+
+  /* ------------------------------------------------------------
+     LE COMBAT A PLUSIEURS (js/combat3.js)
+     Le moteur seul, sans ecran. Le hasard vient d'une suite fixe :
+     chaque test rejoue exactement la meme chose.
+     ------------------------------------------------------------ */
+  bloc("Combat a plusieurs : le moteur");
+
+  /* Un moteur casse peut lever une exception au milieu du bloc : on
+     la signale ici, sous son vrai nom, au lieu de faire tomber tout
+     le parcours. */
+  try {
+
+  var mc = creerMonde();
+  var K = mc.ctx;
+
+  // Une suite fixe qui tourne en boucle : le "hasard" des tests.
+  function suite(valeurs) {
+    var i = 0;
+    return function () { return valeurs[i++ % valeurs.length]; };
+  }
+  function photo(c) { return JSON.stringify(c); }
+  function creer(eq, adv, options) {
+    var r = K.creerCombatMulti(eq, adv, options);
+    if (!r.ok) throw new Error("creation refusee : " + r.refus);
+    return r.combat;
+  }
+  function E(espece, niveau) { return { espece: espece, niveau: niveau }; }
+  function ids(liste) { return liste.map(function (u) { return u.id; }).join(","); }
+  var zero = suite([0]), milieu = suite([0.5]);
+
+  // --- Les donnees ---
+  var sansVit = Object.keys(K.ESPECES).filter(function (id) {
+    return !(typeof K.ESPECES[id].vit === "number" && K.ESPECES[id].vit > 0);
+  });
+  verifie("chaque espece a une vitesse (vit) dans especes.js", sansVit.length === 0, sansVit.join(", "));
+  verifie("vitesse : +6 % par niveau (komainu 5 au niveau 1, 8 au niveau 11)",
+          K.VITESSE_CROISSANCE === 0.06 &&
+          K.vitesseAuNiveau("komainu", 1) === 5 && K.vitesseAuNiveau("komainu", 11) === 8,
+          K.vitesseAuNiveau("komainu", 1) + " / " + K.vitesseAuNiveau("komainu", 11));
+  verifie("l'espece compte plus que le niveau (komainu niv. 7 reste plus lent que vinci niv. 1)",
+          K.vitesseAuNiveau("komainu", 7) < K.vitesseAuNiveau("vinci", 1),
+          K.vitesseAuNiveau("komainu", 7));
+
+  // --- Le boost des sauvages ---
+  function memeBoost(b, pv, atq) { return !!b && b.pv === pv && b.atq === atq; }
+  verifie("boost plein : 1 adversaire x2.5 / x2.2, 2 x1.6 / x1.4, 3 x1.2 / x1.1",
+          memeBoost(K.boostSauvage(1), 2.5, 2.2) && memeBoost(K.boostSauvage(2), 1.6, 1.4) &&
+          memeBoost(K.boostSauvage(3), 1.2, 1.1) && K.boostSauvage(4) === null);
+  verifie("boost module par ton equipe : plein avec 3 Echos, 1 + (b - 1) / 3 avec un seul",
+          memeBoost(K.boostEffectif(1, 3), 2.5, 2.2) && memeBoost(K.boostEffectif(1, 1), 1.5, 1.4) &&
+          memeBoost(K.boostEffectif(3, 2), 1.1333, 1.0667),
+          JSON.stringify([K.boostEffectif(1, 3), K.boostEffectif(1, 1), K.boostEffectif(3, 2)]));
+
+  var equipe3 = [E("komainu", 10), E("peng", 10), E("baku", 10)];
+  var equipeAvant = photo(equipe3);
+  var cb = creer(equipe3, [E("hinezumi", 8)]);
+  var sH = K.statsAuNiveau("hinezumi", 8);
+  verifie("un sauvage seul contre 3 Echos : PV x2.5, ATQ x2.2, niveau et DEF inchanges",
+          cb.adversaires[0].pvMax === Math.round(sH.pvMax * 2.5) && cb.adversaires[0].pv === cb.adversaires[0].pvMax &&
+          cb.adversaires[0].atq === Math.round(sH.atq * 2.2) &&
+          cb.adversaires[0].niveau === 8 && cb.adversaires[0].def === sH.def &&
+          cb.adversaires[0].vit === K.vitesseAuNiveau("hinezumi", 8),
+          JSON.stringify(cb.adversaires[0]));
+  verifie("la creation ne touche pas aux Echos qu'on lui passe", photo(equipe3) === equipeAvant);
+
+  var cb1 = creer([E("komainu", 10)], [E("hinezumi", 8)]);
+  verifie("contre un seul Echo, le sauvage seul n'a que PV x1.5 et ATQ x1.4",
+          cb1.adversaires[0].pvMax === Math.round(sH.pvMax * 1.5) && cb1.adversaires[0].atq === Math.round(sH.atq * 1.4),
+          cb1.adversaires[0].pvMax + " / " + cb1.adversaires[0].atq);
+
+  var cb3 = creer(equipe3, [E("hinezumi", 8), E("palantir", 8), E("baku", 8)]);
+  verifie("trois sauvages contre 3 Echos : PV x1.2, ATQ x1.1 chacun",
+          cb3.adversaires[0].pvMax === Math.round(sH.pvMax * 1.2) && cb3.adversaires[0].atq === Math.round(sH.atq * 1.1),
+          cb3.adversaires[0].pvMax + " / " + cb3.adversaires[0].atq);
+
+  var cbG = creer(equipe3, [{ espece: "hinezumi", niveau: 8, sauvage: false }]);
+  verifie("un adversaire non sauvage n'est pas booste",
+          cbG.adversaires[0].pvMax === sH.pvMax && cbG.adversaires[0].atq === sH.atq);
+
+  // --- Les refus a la creation ---
+  var refusCreation = [
+    K.creerCombatMulti([], [E("peng", 1)]).refus,
+    K.creerCombatMulti([E("peng", 1), E("baku", 1), E("komainu", 1), E("vinci", 1)], [E("peng", 1)]).refus,
+    K.creerCombatMulti([E("peng", 1)], []).refus,
+    K.creerCombatMulti([E("peng", 1)], [E("peng", 1), E("peng", 1), E("peng", 1), E("peng", 1)]).refus,
+    K.creerCombatMulti([E("inconnue", 1)], [E("peng", 1)]).refus,
+    K.creerCombatMulti([E("peng", 1)], [E("peng", 0)]).refus
+  ];
+  verifie("creation refusee : equipe de 0 ou 4, 0 ou 4 adversaires, espece ou niveau impossibles",
+          JSON.stringify(refusCreation) === JSON.stringify(["equipe_invalide", "equipe_invalide",
+            "adversaires_invalides", "adversaires_invalides", "equipe_invalide", "adversaires_invalides"]),
+          JSON.stringify(refusCreation));
+
+  // --- Le gate break, fige a la creation ---
+  var optionsGB = { malusGateBreak: 3 };
+  var cgb = creer(equipe3, [E("hinezumi", 8)], optionsGB);
+  optionsGB.malusGateBreak = 5;
+  verifie("malusGateBreak : 0 par defaut, sinon recopie et ajoute au niveau de combat, puis fige",
+          cb.malusGateBreak === 0 && cgb.malusGateBreak === 3 && cgb.adversaires[0].niveau === 11 &&
+          cgb.adversaires[0].pvMax === Math.round(K.statsAuNiveau("hinezumi", 11).pvMax * 2.5),
+          cgb.malusGateBreak + " / niv. " + cgb.adversaires[0].niveau);
+
+  // --- L'ordre des tours ---
+  // vitesses au niveau 1 : hinezumi 9, palantir 5, komainu 5, baku 5
+  var co = creer([E("palantir", 1), E("komainu", 1)], [E("baku", 1), E("hinezumi", 1)]);
+  verifie("ordre : le plus rapide d'abord ; egalite : ton camp, puis l'ordre des places",
+          ids(K.ordreDesTours(co)) === "a1,j0,j1,a0", ids(K.ordreDesTours(co)));
+
+  var vus = [], finTour = false, garde = 0;
+  while (co.tour === 1 && garde++ < 10) {
+    var qui = K.acteurCourant(co);
+    vus.push(qui.id);
+    var act = qui.camp === "adverse" ? K.actionAdverse(co, zero) : { type: "defendre" };
+    var r = K.jouerActionMulti(co, act, milieu);
+    if (r.evenements.some(function (e) { return e.type === "finTour"; })) finTour = true;
+  }
+  verifie("un tour de table : chacun joue une fois, dans l'ordre, puis le tour 2 commence",
+          vus.join(",") === "a1,j0,j1,a0" && finTour && co.tour === 2 && K.acteurCourant(co).id === "a1",
+          vus.join(",") + " / tour " + co.tour);
+
+  // --- Le KO retire un monstre de l'ordre ---
+  var ck = creer([E("hinezumi", 10)], [E("palantir", 1), E("baku", 1)]);
+  ck.adversaires[0].pv = 1;
+  var rk = K.jouerActionMulti(ck, { type: "attaque", cible: "a0" }, milieu);
+  verifie("KO : l'adversaire a 0 PV sort de l'ordre et des cibles",
+          rk.ok && rk.evenements.some(function (e) { return e.type === "ko" && e.cible === "a0"; }) &&
+          ids(K.ordreDesTours(ck)).indexOf("a0") === -1 &&
+          K.ciblesValides(ck, ck.equipe[0], "attaque").join(",") === "a1" &&
+          K.acteurCourant(ck).id === "a1" && rk.issue === null,
+          ids(K.ordreDesTours(ck)) + " / " + JSON.stringify(rk));
+
+  // --- Les refus en combat, sans mutation ---
+  // ck : c'est au tour de a1 (baku, adversaire). On le fait jouer
+  // pour revenir a hinezumi.
+  K.jouerActionMulti(ck, K.actionAdverse(ck, zero), milieu);
+  var cr = creer([E("komainu", 1), E("peng", 1)], [E("palantir", 1), E("baku", 1)]);
+  // peng 7, puis komainu, palantir, baku (5) : c'est a peng (j1)
+  cr.adversaires[1].pv = 0;
+  var essais = [
+    ["attaque sur un coequipier",           { type: "attaque", cible: "j0" },          zero, "cible_invalide"],
+    ["attaque sur un id inconnu",           { type: "attaque", cible: "z9" },          zero, "cible_invalide"],
+    ["attaque sur un adversaire KO",        { type: "attaque", cible: "a1" },          zero, "cible_invalide"],
+    ["attaque sans cible",                  { type: "attaque" },                       zero, "cible_invalide"],
+    ["assimiler un coequipier",             { type: "assimiler", cible: "j0" },        zero, "cible_invalide"],
+    ["aptitude pas encore apprise",         { type: "aptitude", cle: "percee", cible: "a0" }, zero, "aptitude_inconnue"],
+    ["aptitude qui n'existe pas",           { type: "aptitude", cle: "danse", cible: "a0" },  zero, "aptitude_inconnue"],
+    ["action inconnue",                     { type: "danser" },                        zero, "action_inconnue"],
+    ["sans generateur de hasard",           { type: "defendre" },                      null, "alea_invalide"]
+  ];
+  var refusFaux = [];
+  essais.forEach(function (e) {
+    var avant = photo(cr);
+    var r = K.jouerActionMulti(cr, e[1], e[2]);
+    if (r.ok || r.refus !== e[3] || photo(cr) !== avant) refusFaux.push(e[0] + " -> " + JSON.stringify(r));
+  });
+  verifie("cibles et actions invalides refusees avec leur code, sans rien muter",
+          refusFaux.length === 0, refusFaux.join(" | "));
+
+  var cad = creer([E("palantir", 1)], [E("hinezumi", 1)]);   // hinezumi joue d'abord
+  var avantAd = photo(cad);
+  var rad = K.jouerActionMulti(cad, { type: "defendre" }, zero);
+  verifie("un adversaire ne peut qu'attaquer (action_interdite, sans mutation)",
+          !rad.ok && rad.refus === "action_interdite" && photo(cad) === avantAd, JSON.stringify(rad));
+
+  // --- Le ciblage adverse, au hasard injecte ---
+  var cc = creer([E("palantir", 1), E("penghou", 1), E("jinchan", 1)], [E("hinezumi", 1)]);
+  var avantCc = photo(cc);
+  var cibles = [suite([0]), suite([0.5]), suite([0.99])].map(function (g) { return K.actionAdverse(cc, g).cible; });
+  verifie("l'adversaire vise un de tes Echos debout tire au hasard (0 -> j0, 0.5 -> j1, 0.99 -> j2), sans muter",
+          cibles.join(",") === "j0,j1,j2" && photo(cc) === avantCc, cibles.join(","));
+  cc.equipe[0].pv = 0;
+  verifie("il ne vise jamais un Echo KO",
+          K.actionAdverse(cc, suite([0])).cible === "j1" && K.actionAdverse(cc, suite([0.99])).cible === "j2");
+  var ccTourJoueur = creer([E("hinezumi", 1)], [E("palantir", 1)]);
+  verifie("actionAdverse rend null quand c'est a toi de jouer", K.actionAdverse(ccTourJoueur, zero) === null);
+
+  // --- Victoire et defaite ---
+  var cv = creer([E("hinezumi", 10)], [E("palantir", 1)]);
+  cv.adversaires[0].pv = 1;
+  var rv = K.jouerActionMulti(cv, { type: "attaque", cible: "a0" }, milieu);
+  var avantFini = photo(cv);
+  var rApres = K.jouerActionMulti(cv, { type: "defendre" }, milieu);
+  verifie("victoire quand tous les adversaires sont KO ; ensuite combat_fini, sans mutation",
+          rv.issue === "victoire" && K.issueCombatMulti(cv) === "victoire" && K.acteurCourant(cv) === null &&
+          !rApres.ok && rApres.refus === "combat_fini" && photo(cv) === avantFini,
+          JSON.stringify(rv) + " " + JSON.stringify(rApres));
+
+  var cd = creer([E("palantir", 1), E("komainu", 1)], [E("hinezumi", 10)]);
+  cd.equipe[0].pv = 0;
+  cd.equipe[1].pv = 1;
+  var rd = K.jouerActionMulti(cd, K.actionAdverse(cd, zero), milieu);
+  verifie("defaite quand tous tes Echos sont KO (pas avant)",
+          rd.issue === "defaite" && cd.equipe[1].pv === 0, JSON.stringify(rd));
+
+  var cd2 = creer([E("palantir", 1), E("komainu", 1)], [E("hinezumi", 10)]);
+  cd2.equipe[0].pv = 1;
+  var rd2 = K.jouerActionMulti(cd2, { type: "attaque", cible: "j0" }, milieu);
+  verifie("un seul Echo KO sur deux : le combat continue", rd2.ok && rd2.issue === null, JSON.stringify(rd2));
+
+  // --- L'assimilation : un seul par combat, au niveau 1 ---
+  var collectionAvant = photo(K.collection);
+  // palantir au niveau 3 : on doit voir qu'il arrive au niveau 1,
+  // pas a son niveau de combat.
+  var ca = creer([E("komainu", 30)], [E("palantir", 3), E("chiguo", 1)]);
+  var ra = K.jouerActionMulti(ca, { type: "assimiler", cible: "a0" }, zero);
+  var evA = ra.evenements[0];
+  verifie("assimilation reussie : le compte rendu donne l'espece au niveau 1",
+          ra.ok && evA.type === "assimilation" && evA.reussi && evA.espece === "palantir" && evA.niveau === 1 &&
+          ca.assimile && ca.assimile.espece === "palantir" && ca.assimile.niveau === K.ASSIMILATION_NIVEAU_ENTREE &&
+          K.ASSIMILATION_NIVEAU_ENTREE === 1,
+          JSON.stringify(ra));
+  verifie("l'assimile sort de l'ordre et des cibles",
+          ids(K.ordreDesTours(ca)).indexOf("a0") === -1 && K.ciblesValides(ca, ca.equipe[0], "assimiler").join(",") === "a1");
+  // chiguo joue, puis c'est de nouveau a komainu
+  K.jouerActionMulti(ca, K.actionAdverse(ca, zero), milieu);
+  var avantA2 = photo(ca);
+  var ra2 = K.jouerActionMulti(ca, { type: "assimiler", cible: "a1" }, zero);
+  verifie("un seul Echo assimile par combat : le second est refuse (deja_assimile), sans mutation",
+          !ra2.ok && ra2.refus === "deja_assimile" && photo(ca) === avantA2, JSON.stringify(ra2));
+  verifie("le moteur n'ecrit pas dans la collection", photo(K.collection) === collectionAvant);
+
+  var ca1 = creer([E("komainu", 30)], [E("palantir", 1)]);
+  var raV = K.jouerActionMulti(ca1, { type: "assimiler", cible: "a0" }, zero);
+  verifie("assimiler le dernier adversaire, c'est la victoire", raV.issue === "victoire", JSON.stringify(raV));
+
+  var caR = creer([E("palantir", 1)], [E("mechadrill", 3)]);   // rang S : 5 % de chance
+  var raR = K.jouerActionMulti(caR, { type: "assimiler", cible: "a0" }, suite([0.99]));
+  verifie("assimilation ratee : le tour passe, rien n'est assimile",
+          raR.ok && raR.evenements[0].reussi === false && caR.assimile === null && caR.tentatives === 1,
+          JSON.stringify(raR));
+
+  var caX = creer([E("komainu", 30)], [{ espece: "palantir", niveau: 1, rang: "X" }]);
+  var avantX = photo(caX);
+  var rX = K.jouerActionMulti(caX, { type: "assimiler", cible: "a0" }, zero);
+  verifie("un adversaire de rang X est inassimilable (refus, sans mutation)",
+          !rX.ok && rX.refus === "inassimilable" && photo(caX) === avantX, JSON.stringify(rX));
+
+  // --- Preemptif ---
+  var cp = creer([E("palantir", 1)], [E("hinezumi", 1)], { preemptif: true });
+  var premier = K.acteurCourant(cp).id;
+  K.jouerActionMulti(cp, { type: "defendre" }, zero);
+  verifie("preemptif : les adversaires perdent leur premier tour, puis jouent au tour 2",
+          premier === "j0" && cp.tour === 2 && K.acteurCourant(cp).id === "a0", premier + " / tour " + cp.tour);
+
+  // --- Defendre : garde jusqu'a son prochain tour, +10 au tour suivant ---
+  // tortuedragon (vit 2) joue en dernier.
+  var cDef = creer([E("hinezumi", 5)], [E("tortuedragon", 5)]);
+  var cNu  = creer([E("hinezumi", 5)], [E("tortuedragon", 5)]);
+  K.jouerActionMulti(cDef, { type: "defendre" }, milieu);
+  K.jouerActionMulti(cNu, { type: "attaque", cible: "a0" }, milieu);
+  var pvAvantDef = cDef.equipe[0].pv, pvAvantNu = cNu.equipe[0].pv;
+  K.jouerActionMulti(cDef, { type: "attaque", cible: "j0" }, milieu);
+  K.jouerActionMulti(cNu, { type: "attaque", cible: "j0" }, milieu);
+  var subiDef = pvAvantDef - cDef.equipe[0].pv, subiNu = pvAvantNu - cNu.equipe[0].pv;
+  verifie("Defendre : les degats subis sont reduits (x" + K.DEFENDRE_REDUCTION + ")",
+          subiDef === Math.max(1, Math.round(subiNu * K.DEFENDRE_REDUCTION)) && subiDef < subiNu,
+          subiDef + " contre " + subiNu);
+  verifie("Defendre : +" + K.DEFENDRE_BONUS_ASSIMILATION + " d'assimilation au tour de table suivant, puis la garde tombe",
+          cDef.bonusDefense === K.DEFENDRE_BONUS_ASSIMILATION && cNu.bonusDefense === 0 &&
+          cDef.equipe[0].enDefense === true &&
+          K.jouerActionMulti(cDef, { type: "attaque", cible: "a0" }, milieu).ok &&
+          cDef.equipe[0].enDefense === false,
+          cDef.bonusDefense + " / " + cDef.equipe[0].enDefense);
+
+  // --- Fuir ---
+  var cf = creer([E("hinezumi", 1)], [E("palantir", 1), E("baku", 10)]);
+  cf.adversaires[1].pv = 0;     // le plus haut niveau est KO : on compare au niveau 1
+  var rfx = K.jouerActionMulti(cf, { type: "fuir" }, suite([0.6]));
+  verifie("fuite ratee : la chance se calcule sur le plus haut adversaire DEBOUT, et le tour passe",
+          rfx.ok && rfx.evenements[0].chance === K.FUITE_BASE && rfx.evenements[0].reussi === false &&
+          rfx.issue === null && K.acteurCourant(cf).id === "a0",
+          JSON.stringify(rfx));
+  var cf2 = creer([E("hinezumi", 1)], [E("palantir", 1)]);
+  var rf = K.jouerActionMulti(cf2, { type: "fuir" }, suite([0.4]));
+  verifie("fuite reussie : le combat se termine sur \"fuite\"",
+          rf.issue === "fuite" && K.issueCombatMulti(cf2) === "fuite", JSON.stringify(rf));
+
+  // --- Les aptitudes : immobilise, recharge ---
+  // sunwukong niv. 15 connait doubleFrappe, percee, frappeLourde.
+  var cap = creer([E("sunwukong", 15)], [E("tortuedragon", 5)]);
+  var rap = K.jouerActionMulti(cap, { type: "aptitude", cle: "frappeLourde", cible: "a0" }, milieu);
+  K.jouerActionMulti(cap, K.actionAdverse(cap, zero), milieu);   // tortue joue ; tour 2 : sunwukong se repose
+  var tour3 = cap.tour, acteur3 = K.acteurCourant(cap).id;
+  var avantRech = photo(cap);
+  var rRech = K.jouerActionMulti(cap, { type: "aptitude", cle: "frappeLourde", cible: "a0" }, milieu);
+  var intactRech = photo(cap) === avantRech;
+  verifie("Frappe lourde : degats, puis le tour suivant est perdu (repos automatique)",
+          rap.ok && rap.evenements[0].degats > 0 && acteur3 === "a0" && tour3 === 2,
+          JSON.stringify(rap) + " / tour " + tour3 + " / " + acteur3);
+  K.jouerActionMulti(cap, K.actionAdverse(cap, zero), milieu);   // tour 3 : sunwukong
+  var avantRech3 = photo(cap);
+  var rRech3 = K.jouerActionMulti(cap, { type: "aptitude", cle: "frappeLourde", cible: "a0" }, milieu);
+  var intactRech3 = photo(cap) === avantRech3;
+  verifie("une aptitude en recharge est refusee (aptitude_en_recharge), sans mutation ; pas pendant le tour adverse non plus",
+          !rRech.ok && rRech.refus === "action_interdite" && intactRech &&
+          !rRech3.ok && rRech3.refus === "aptitude_en_recharge" && intactRech3,
+          JSON.stringify(rRech) + " " + JSON.stringify(rRech3));
+
+  var cSc = creer([E("komainu", 10)], [E("tortuedragon", 5)]);
+  var atqAvant = cSc.adversaires[0].atq;
+  K.jouerActionMulti(cSc, { type: "aptitude", cle: "sceau", cible: "a0" }, milieu);
+  verifie("Sceau vise un adversaire precis et reduit son ATQ (x" + K.APTITUDES.sceau.affaiblit + ")",
+          cSc.adversaires[0].sceau === K.APTITUDES.sceau.affaiblit && cSc.adversaires[0].atq === atqAvant);
+
+  // --- Le combat 1 contre 1 n'a pas bouge ---
+  verifie("le moteur ne touche ni au combat du jeu ni au disque",
+          K.combat === null && Object.keys(mc.stockage).length === 0, Object.keys(mc.stockage).join(","));
+
+  } catch (e) {
+    verifie("combat a plusieurs : les tests vont au bout sans exception", false,
+            String(e && e.stack || e).split(/\r?\n/).slice(0, 2).join(" "));
+  }
 
   return resultats;
 }
