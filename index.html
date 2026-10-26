@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/intro.css">
 <link rel="stylesheet" href="css/ico.css">
+<link rel="stylesheet" href="css/combat3.css">
 </head>
 <body>
 
@@ -50,6 +51,16 @@
        lieux peuvent contenir, et seulement ceux decouverts ensuite. -->
   <label class="mt-ligne">Chapitre
     <select id="mt-chapitre"></select>
+  </label>
+  <!-- Le combat a plusieurs (js/ecran3.js) sur le terrain d'essai.
+       Le texte du bouton est reecrit par js/modetest.js. -->
+  <button id="mt-multi" class="mt-bouton mt-interrupteur">Combat à plusieurs : Non</button>
+  <label class="mt-ligne">Adversaires
+    <select id="mt-adversaires">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select>
   </label>
   <button id="btn-banc-3d" class="mt-bouton">Banc 3D</button>
 </div>
@@ -131,6 +142,22 @@
     <div id="liste-aptitudes"></div>
     <button id="btn-fermer-aptitudes">Retour</button>
   </div>
+</div>
+
+<!-- ------------------ COMBAT A PLUSIEURS ------------------
+     js/ecran3.js. Ne s'ouvre que si COMBAT_MULTI_ACTIF vaut true,
+     ou par l'interrupteur du mode test : sinon c'est #combat,
+     au-dessus, qui sert. Les cartes, l'ordre des tours et les
+     commandes sont fabriques par le JS a chaque rencontre. -->
+<div id="combat3">
+  <div id="c3-lieu"></div>
+  <div id="c3-adversaires"></div>
+  <div id="c3-ordre"></div>
+  <div id="c3-equipe"></div>
+  <div id="c3-journal"></div>
+  <div id="c3-commandes"></div>
+  <!-- Le menu d'aptitudes de l'Echo dont c'est le tour -->
+  <div id="c3-aptitudes"></div>
 </div>
 
 <!-- ------------------ GRIMOIRE ------------------ -->
@@ -228,6 +255,7 @@
 <script src="js/aide.js"></script>
 <script src="js/rendu3d.js"></script>
 <script src="js/modetest.js"></script>
+<script src="js/ecran3.js"></script>
 <script src="js/jeu.js"></script>
 
 </body>

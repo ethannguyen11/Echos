@@ -1,0 +1,233 @@
+/* ============================================================
+   L'ECRAN DU COMBAT A PLUSIEURS (js/ecran3.js)
+   Pense pour un iPhone (environ 390 px de large) : adversaires en
+   haut, l'ordre des tours au milieu, ton equipe en dessous, puis
+   le journal et les 5 commandes sur deux colonnes. Rien ne deborde
+   en largeur : tout se partage la place en flex, les noms passent
+   a la ligne. Toute zone a toucher fait au moins 44 px.
+   ============================================================ */
+
+#combat3 {
+  display: none;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 2000;
+  background: linear-gradient(#1a1024 0%, #2a1636 55%, #0d0812 100%);
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#combat3.actif { display: flex; }
+
+#c3-lieu {
+  text-align: center;
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 8px;
+  font-size: 12px; color: #b98fd0; letter-spacing: 1px;
+}
+
+/* ---------- Les cartes ---------- */
+
+#c3-adversaires {
+  flex: 1; min-height: 150px;
+  display: flex; gap: 6px; align-items: stretch;
+  padding: 0 12px;
+}
+
+#c3-equipe {
+  display: flex; gap: 6px;
+  padding: 0 12px 8px;
+}
+
+.c3-carte {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: stretch;
+  box-sizing: border-box;
+  padding: 6px 5px 7px;
+  font-family: inherit; font-size: 11px; text-align: center;
+  color: #eee;
+  background: rgba(10, 6, 16, 0.7);
+  border: 1px solid #4a3060; border-radius: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.c3-allie { min-height: 64px; }
+
+/* Une carte d'adversaire se touche pendant le ciblage : elle
+   prend toute la hauteur de sa zone, bien plus que 44 px. */
+.c3-adverse { min-height: 140px; }
+
+/* Le conteneur visuel : l'image ou le secours.
+   POINT D'ACCROCHE 3D : le canvas de Rendu3D viendra ici. */
+.c3-visuel {
+  flex: 1; min-height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+.c3-img {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 14px rgba(180, 85, 212, 0.35));
+}
+
+/* Les couleurs sont posees par poserSecours() (js/especes.js). */
+.c3-secours {
+  width: 56px; height: 56px;
+  border-radius: 50% 50% 42% 42%;
+  border: 2px solid #6b4a85;
+  align-items: center; justify-content: center;
+  font-size: 24px;
+}
+
+/* Le nom en haut du bloc de texte : jamais coupe, jamais recouvert. */
+.c3-nom {
+  margin-top: 4px;
+  font-size: 12px; font-weight: 700; line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.c3-info { margin-top: 2px; color: #b9b0c8; }
+
+.c3-jauge {
+  height: 6px; margin-top: 4px;
+  background: #241a2e; border-radius: 3px; overflow: hidden;
+}
+.c3-jauge span { display: block; height: 100%; background: #6ec06e; transition: width 0.35s; }
+.c3-jauge span.bas    { background: #d4a02a; }
+.c3-jauge span.danger { background: #d4554a; }
+
+.c3-affinite { margin-top: 4px; min-height: 16px; }
+.c3-affinite .past-affinite { padding: 1px 7px; font-size: 10px; letter-spacing: 0.3px; }
+
+.c3-chance { font-size: 13px; font-weight: 700; color: #e6b8f5; }
+.c3-chance:empty { display: none; }
+
+.c3-carte.c3-ko, .c3-carte.c3-assimile { opacity: 0.35; }
+
+/* Celui dont c'est le tour : un cadre dore. */
+.c3-carte.c3-actif {
+  border-color: #ffd36b;
+  box-shadow: 0 0 0 2px #ffd36b;
+}
+
+/* Les cibles possibles pendant le ciblage. */
+.c3-carte.c3-ciblable {
+  border-color: #d58cf0;
+  box-shadow: 0 0 0 3px #b455d4;
+  animation: c3-appel 1s ease-in-out infinite;
+}
+
+@keyframes c3-appel {
+  0%, 100% { box-shadow: 0 0 0 3px #b455d4; }
+  50%      { box-shadow: 0 0 0 5px #d58cf0; }
+}
+
+/* ---------- L'ordre des tours ---------- */
+
+#c3-ordre {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  align-items: center; justify-content: center;
+  padding: 8px 12px;
+  font-size: 11px;
+}
+
+.c3-tour { margin-right: 4px; font-weight: 600; color: #b98fd0; }
+
+.c3-jeton {
+  padding: 3px 8px;
+  border: 1px solid; border-radius: 999px;
+}
+.c3-jeton.c3-joueur { border-color: #6ec06e; color: #cfeacf; }
+.c3-jeton.c3-ennemi { border-color: #e0796d; color: #f0c9c4; }
+.c3-jeton.c3-joue   { opacity: 0.4; }
+.c3-jeton.c3-actif  { background: #ffd36b; border-color: #ffd36b; color: #171021; font-weight: 700; }
+
+/* ---------- Le journal ----------
+   Le meme cadre que #combat-message, un peu plus bas : il y a
+   plus de monde a l'ecran. Les lignes gardent .journal-ligne. */
+
+#c3-journal {
+  margin: 0 12px 8px; padding: 10px 12px;
+  box-sizing: border-box;
+  height: 118px;
+  background: rgba(10, 6, 16, 0.85);
+  border: 1px solid #4a3060; border-radius: 12px;
+  font-size: 14px; line-height: 1.4;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  overflow: hidden;
+}
+
+.c3-surprise { color: #b455d4; }
+
+/* ---------- Les commandes ---------- */
+
+#c3-commandes {
+  padding: 0 12px calc(env(safe-area-inset-bottom) + 16px);
+}
+
+.c3-grille {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+
+#c3-commandes button {
+  width: 100%; min-height: 52px;
+  padding: 12px 8px;
+  font-family: inherit; font-size: 16px; font-weight: 600;
+  color: #fff; background: #3d2452;
+  border: 1px solid #6b4a85; border-radius: 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#c3-commandes button:disabled { opacity: 0.3; filter: grayscale(0.7); }
+
+#c3-commandes button.c3-assimiler { background: #7a3d95; border-color: #b455d4; }
+
+/* Fuir : pleine largeur, discret, mais 44 px pour le pouce. */
+#c3-commandes button.c3-fuir {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  font-size: 15px; font-weight: 400;
+  color: #8b8296; background: transparent; border-color: transparent;
+}
+
+#c3-commandes button.c3-sortie { background: #b455d4; border-color: #b455d4; }
+
+/* Pendant le ciblage : la consigne et Annuler, a la place de la grille. */
+.c3-ciblage { text-align: center; }
+
+.c3-consigne {
+  padding: 4px 0 10px;
+  text-align: center; font-size: 15px; color: #e6b8f5;
+}
+
+/* ---------- Le menu d'aptitudes ----------
+   Comme #aptitudes : il se pose par-dessus l'ecran sans le cacher
+   entierement. Ses lignes reprennent .apt-ligne (style.css). */
+
+#c3-aptitudes {
+  display: none;
+  position: absolute; left: 0; right: 0; bottom: 0;
+  z-index: 2100;
+  max-height: 72%;
+  padding: 14px 16px calc(env(safe-area-inset-bottom) + 20px);
+  box-sizing: border-box;
+  background: #170f20;
+  border-top: 1px solid #6b4a85;
+  border-radius: 18px 18px 0 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#c3-aptitudes.c3-ouvert { display: block; }
+
+.c3-retour {
+  width: 100%; min-height: 52px; margin-top: 6px;
+  font-family: inherit; font-size: 16px; font-weight: 600;
+  color: #fff; background: #3d2452;
+  border: 1px solid #6b4a85; border-radius: 12px;
+}
+
+/* ---------- L'interrupteur du mode test ---------- */
+
+.mt-interrupteur { min-height: 44px; margin-bottom: 6px; }
+.mt-interrupteur.mt-allume { background: #7a3d95; color: #fff; border: 1px solid #b455d4; }
+#mt-adversaires { min-height: 32px; }

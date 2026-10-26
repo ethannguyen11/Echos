@@ -36,6 +36,7 @@ var FICHIERS = [
   "js/aide.js",
   "js/rendu3d.js",
   "js/modetest.js",
+  "js/ecran3.js",
   "js/jeu.js"
 ];
 
@@ -209,7 +210,8 @@ ligne(manquants.length === 0,
       manquants.length ? "introuvable(s) : " + manquants.join(", ") : null);
 
 // Les classes CSS employees par le JS doivent exister dans les feuilles
-var css = lire("css/style.css") + "\n" + lire("css/intro.css") + "\n" + lire("css/ico.css");
+var css = lire("css/style.css") + "\n" + lire("css/intro.css") + "\n" + lire("css/ico.css") +
+          "\n" + lire("css/combat3.css");
 var classesManquantes = [];
 ["actif", "visible", "secoue", "ko", "bas", "danger", "assimilation", "sortie",
  "carte-echo", "mini-jauge", "ligne-echo", "equipee", "pastille", "infos",
@@ -231,7 +233,14 @@ var classesManquantes = [];
  "prete", "acheve", "gourde",
  "montee", "monter", "confirmer", "annuler",
  "rendu3d", "banc-repli", "banc-repli-vide",
- "aide-ligne"].forEach(function (c) {
+ "aide-ligne",
+ "c3-carte", "c3-adverse", "c3-allie", "c3-visuel", "c3-secours", "c3-img",
+ "c3-nom", "c3-info", "c3-jauge", "c3-affinite", "c3-chance",
+ "c3-ko", "c3-assimile", "c3-actif", "c3-ciblable",
+ "c3-tour", "c3-jeton", "c3-joueur", "c3-ennemi", "c3-joue",
+ "c3-grille", "c3-assimiler", "c3-fuir", "c3-ciblage", "c3-consigne",
+ "c3-sortie", "c3-ouvert", "c3-retour", "c3-surprise",
+ "mt-interrupteur", "mt-allume"].forEach(function (c) {
   if (css.indexOf("." + c) === -1) classesManquantes.push(c);
 });
 ligne(classesManquantes.length === 0,
@@ -280,7 +289,7 @@ if (demarrageOk && ctx.TEXTES_ICO_DIDACTICIEL) {
 }
 
 // Tous les fichiers doivent etre appeles par index.html
-var oublies = FICHIERS.concat(["css/style.css", "css/intro.css", "css/ico.css"]).filter(function (f) {
+var oublies = FICHIERS.concat(["css/style.css", "css/intro.css", "css/ico.css", "css/combat3.css"]).filter(function (f) {
   return html.indexOf(f) === -1;
 });
 ligne(oublies.length === 0, "index.html appelle bien tous les fichiers",

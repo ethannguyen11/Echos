@@ -21,7 +21,7 @@ var RACINE = path.join(__dirname, "..");
 // seulement disposer de ses fonctions.
 var FICHIERS = ["js/config.js", "js/langues.js", "js/especes.js", "js/lieux.js", "js/carte.js",
                 "js/joueur.js", "js/fragments.js", "js/poche.js", "js/combat.js", "js/combat3.js", "js/grimoire.js", "js/intro.js",
-                "js/rendu3d.js", "js/modetest.js"];
+                "js/rendu3d.js", "js/modetest.js", "js/ecran3.js"];
 
 
 /* ------------------------------------------------------------
@@ -53,6 +53,10 @@ function creerElement(tag) {
     remove: function (c) { var i = this.liste.indexOf(c); if (i !== -1) this.liste.splice(i, 1); },
     contains: function (c) { return this.liste.indexOf(c) !== -1; }
   };
+  // Le premier enfant, comme dans un vrai navigateur (pour vider un noeud).
+  Object.defineProperty(el, "firstChild", {
+    get: function () { return el.enfants.length ? el.enfants[0] : null; }
+  });
   el.appendChild = function (e) { this.enfants.push(e); e.parentNode = this; return e; };
   el.removeChild = function (e) {
     var i = this.enfants.indexOf(e);
@@ -1896,6 +1900,402 @@ function lancerParcours() {
   } catch (e) {
     verifie("combat a plusieurs : les tests vont au bout sans exception", false,
             String(e && e.stack || e).split(/\r?\n/).slice(0, 2).join(" "));
+  }
+
+
+  /* ------------------------------------------------------------
+     L'ECRAN DU COMBAT A PLUSIEURS (js/ecran3.js)
+     On joue de vrais combats dans le faux navigateur : on touche
+     les commandes et les cartes, on fait avancer l'horloge, et on
+     regarde l'ecran, le journal et le disque.
+     ------------------------------------------------------------ */
+  bloc("Combat a plusieurs : l'ecran");
+
+  try {
+
+  // Un monde avec les elements des deux ecrans de combat, et Ico
+  // (l'ancien combat l'appelle).
+  function mondeC3(stockage) {
+    var m = creerMonde({ stockage: stockage || {} });
+    ["combat3", "c3-lieu", "c3-adversaires", "c3-ordre", "c3-equipe", "c3-journal",
+     "c3-commandes", "c3-aptitudes",
+     "combat-lieu", "m-nom", "monstre-img", "monstre-vide", "combat-actions",
+     "aptitudes", "liste-aptitudes", "btn-fermer-aptitudes", "figement-bloc",
+     "f-jauge", "f-libelle", "f-val", "m-fleche", "m-affinite", "m-pv", "m-jauge", "scene",
+     "btn-attaquer", "btn-aptitude", "btn-assimiler", "btn-defendre", "btn-fuir",
+     "btn-ico", "ico-pastille", "ico", "ico-portrait", "ico-sections", "ico-fragments",
+     "ico-bulle", "ico-bulle-l1", "ico-bulle-l2"].forEach(function (id) {
+      m.statiques[id] = creerElement("div");
+      m.statiques[id].id = id;
+    });
+    ["js/ico.js", "js/aide.js"].forEach(function (f) {
+      vm.runInContext(fs.readFileSync(path.join(RACINE, f), "utf8"), m.ctx, { filename: f });
+    });
+    m.ctx.chargerJoueur();
+    m.ctx.MODE_TEST = true;     // le terrain d'essai, meme sur la copie de livraison
+    return m;
+  }
+
+  // L'equipe voulue, enregistree : [["hinezumi", 15], ...]
+  function equipeDe(m, liste) {
+    m.ctx.collection = {};
+    m.ctx.equipe = [];
+    liste.forEach(function (e) { m.ctx.ajouterAlaCollection(e[0], e[1]); });
+    m.ctx.sauverJoueur();
+    // Comme le jeu apres tout changement de collection : Ico note son
+    // palier ici, et non pendant le rechargement du combat d'essai.
+    m.ctx.majFiche();
+  }
+
+  function lieu3(espece, niveau, fictif) {
+    return { id: "test/c3/" + espece, lat: 48.85, lon: 2.35, nom: "Lieu d'essai", lieu: "Lieu",
+             categorie: "temple", espece: espece, niveau: niveau, figement: 0,
+             capture: false, dissipe: false, fictif: !!fictif };
+  }
+
+  function fixe(v) { return function () { return v; }; }
+  function clic(b) { b.declencher("click", { target: null, stopPropagation: function () {} }); }
+  function etat3(m) { return m.ctx.Ecran3.pourTests.etat(); }
+
+  // Avance l'horloge jusqu'a ce que la main revienne (ou la fin).
+  function attendreMain(m) {
+    for (var i = 0; i < 400; i++) {
+      var e = etat3(m);
+      if (!e || e.phase === "commande" || e.phase === "fin") return e;
+      m.horloge.avancer(250);
+    }
+    return etat3(m);
+  }
+
+  // Attaque la premiere cible jusqu'a la fin du combat. Rend l'issue.
+  function finirEnAttaquant(m) {
+    for (var i = 0; i < 300; i++) {
+      var e = attendreMain(m);
+      if (!e || e.phase === "fin") break;
+      clic(e.cmd.attaquer);
+      if (e.phase === "ciblage") clic(e.cartes[e.cibles[0]].racine);
+    }
+    m.horloge.avancer(120000);    // le journal de fin
+    return etat3(m) && etat3(m).issue;
+  }
+
+  function lignes3(m) { return etat3(m).historique.map(function (h) { return h.ligne; }); }
+  function contient(liste, morceau) { return liste.some(function (l) { return l.indexOf(morceau) !== -1; }); }
+
+  // --- Le choix de l'ecran : l'ancien reste celui du jeu ---
+  var m0 = mondeC3();
+  var X0 = m0.ctx, S0 = m0.statiques;
+  verifie("COMBAT_MULTI_ACTIF vaut false et l'interrupteur du mode test part sur Non",
+          X0.COMBAT_MULTI_ACTIF === false && X0.ModeTest.reglages.multi === false &&
+          X0.ModeTest.reglages.adversaires === 1 && X0.COMBAT_MULTI_ADVERSAIRES_LIEU === 1 &&
+          X0.Ecran3.choisi() === false);
+  X0.Ecran3.lancer(lieu3("komainu", 3), false);
+  var actions0 = S0["combat-actions"].innerHTML;
+  verifie("reglage a false : Approcher ouvre l'ANCIEN combat, avec ses 5 boutons, et pas le nouveau",
+          S0.combat.classList.contains("actif") && !S0.combat3.classList.contains("actif") &&
+          X0.combat !== null && !X0.Ecran3.enCours() &&
+          ['id="btn-attaquer">Attaquer', 'id="btn-aptitude">Aptitude',
+           'id="btn-assimiler" class="assimilation">Assimiler', 'id="btn-defendre">Défendre',
+           'id="btn-fuir" class="discret">Fuir'].every(function (b) { return actions0.indexOf(b) !== -1; }),
+          actions0);
+
+  var m1 = mondeC3();
+  var X1 = m1.ctx;
+  X1.ModeTest.reglages.multi = true;
+  var parPanneau = X1.Ecran3.choisi();
+  X1.MODE_TEST = false;
+  var panneauEteint = X1.Ecran3.choisi();
+  X1.COMBAT_MULTI_ACTIF = true;
+  var parConfig = X1.Ecran3.choisi();
+  verifie("l'interrupteur du mode test allume le nouvel ecran ; mode test eteint, il ne compte plus ; COMBAT_MULTI_ACTIF suffit seul",
+          parPanneau === true && panneauEteint === false && parConfig === true,
+          parPanneau + " / " + panneauEteint + " / " + parConfig);
+
+  // --- Trois adversaires sur le terrain d'essai : le ciblage ---
+  var m = mondeC3();
+  var X = m.ctx, S = m.statiques;
+  equipeDe(m, [["hinezumi", 15], ["jinchan", 3]]);
+  X.ModeTest.reglages.multi = true;
+  X.ModeTest.reglages.adversaires = 3;
+  X.Ecran3.pourTests.reglerAlea(fixe(0));
+  var disqueAvant = JSON.stringify(m.stockage);
+  var dEssai = lieu3("chiguo", 3, true);
+
+  X.Ecran3.lancer(dEssai, false);
+  verifie("mode test sur Oui : le nouvel ecran s'ouvre, l'ancien reste ferme",
+          S.combat3.classList.contains("actif") && !S.combat.classList.contains("actif") &&
+          X.combat === null && X.Ecran3.enCours());
+  var e = attendreMain(m);
+  if (!e) throw new Error("le nouvel ecran ne s'est pas ouvert : la suite du bloc est sans objet");
+  var c = e.combat;
+  var nomChiguo = X.ESPECES.chiguo.nom;
+  verifie("le selecteur du mode test decide : 3 adversaires, 3 cartes, nommes A, B, C",
+          c.adversaires.length === 3 && S["c3-adversaires"].enfants.length === 3 &&
+          e.cartes.a2.nom.textContent === nomChiguo + " C",
+          c.adversaires.length + " / " + e.cartes.a2.nom.textContent);
+
+  var ordre = X.ordreDesTours(c).map(function (u) { return e.cartes[u.id].nom.textContent; });
+  var jetons = e.jetons.map(function (j) { return j.textContent; });
+  var actifs = e.jetons.filter(function (j) { return j.className.indexOf("c3-actif") !== -1; });
+  verifie("la barre d'ordre suit ordreDesTours, et met en evidence celui dont c'est le tour",
+          jetons.join(",") === ordre.join(",") && actifs.length === 1 &&
+          actifs[0].textContent === X.ESPECES.hinezumi.nom &&
+          e.cartes.j0.racine.className.indexOf("c3-actif") !== -1 &&
+          S["c3-ordre"].enfants[0].textContent === X.txt("c3.tour", { n: 1 }),
+          jetons.join(",") + " / " + ordre.join(","));
+
+  var photoAvant = JSON.stringify(c);
+  clic(e.cmd.attaquer);
+  var ciblables = ["a0", "a1", "a2", "j0", "j1"].filter(function (id) {
+    return e.cartes[id].racine.className.indexOf("c3-ciblable") !== -1;
+  });
+  verifie("Attaquer avec 3 adversaires : on attend une cible, et seuls les 3 adversaires s'allument",
+          e.phase === "ciblage" && ciblables.join(",") === "a0,a1,a2" &&
+          e.cmd.grille.style.display === "none" && e.cmd.ciblage.style.display === "" &&
+          JSON.stringify(c) === photoAvant,
+          e.phase + " / " + ciblables.join(","));
+  clic(e.cmd.annuler);
+  verifie("Annuler revient aux commandes sans rien jouer",
+          e.phase === "commande" && JSON.stringify(c) === photoAvant &&
+          !["a0", "a1", "a2"].some(function (id) { return e.cartes[id].racine.className.indexOf("c3-ciblable") !== -1; }),
+          e.phase);
+
+  clic(e.cmd.attaquer);
+  clic(e.cartes.a1.racine);
+  verifie("toucher la carte B frappe B, et seulement B",
+          c.adversaires[1].pv < c.adversaires[1].pvMax &&
+          c.adversaires[0].pv === c.adversaires[0].pvMax && c.adversaires[2].pv === c.adversaires[2].pvMax,
+          c.adversaires.map(function (u) { return u.pv + "/" + u.pvMax; }).join(" "));
+
+  var photoOccupe = JSON.stringify(c);
+  clic(e.cmd.defendre);
+  clic(e.cartes.a0.racine);
+  verifie("pendant le recit, les commandes sont eteintes et un appui ne joue rien",
+          e.phase === "occupe" && e.cmd.attaquer.disabled && e.cmd.defendre.disabled &&
+          JSON.stringify(c) === photoOccupe, e.phase);
+
+  // Jin Chan se defend (deux appuis : le second est un clic fantome).
+  e = attendreMain(m);
+  verifie("c'est ensuite a Jin Chan", X.acteurCourant(c).id === "j1", X.acteurCourant(c).id);
+  clic(e.cmd.defendre);
+  clic(e.cmd.defendre);
+  m.horloge.avancer(120000);
+  var h = e.historique;
+  var defenses = h.filter(function (x) { return x.ligne === X.txt("c3.defense", { acteur: X.ESPECES.jinchan.nom }); });
+  var iDef = h.indexOf(defenses[0]);
+  var apres = h.slice(iDef + 1).filter(function (x) { return x.ligne.indexOf(nomChiguo + " A") === 0; })[0];
+  verifie("un double appui sur Defendre ne joue qu'une fois", defenses.length === 1, defenses.length);
+  verifie("l'adversaire joue tout seul, apres la pause : DELAI_JOURNAL + COMBAT3_DELAI_ADVERSE",
+          !!apres && apres.quand - defenses[0].quand === X.DELAI_JOURNAL + X.COMBAT3_DELAI_ADVERSE,
+          apres ? (apres.quand - defenses[0].quand) + " ms" : "aucune action adverse");
+
+  // Assimiler parmi trois : le taux s'affiche sur chaque carte.
+  e = attendreMain(m);
+  clic(e.cmd.assimiler);
+  verifie("Assimiler avec plusieurs cibles : le taux s'affiche sur chaque carte allumee",
+          e.phase === "ciblage" && /^\d+ %$/.test(e.cartes.a2.chance.textContent) &&
+          e.cartes.j0.chance.textContent === "", e.phase + " / " + e.cartes.a2.chance.textContent);
+  clic(e.cartes.a2.racine);
+  verifie("l'Echo touche est assimile (alea 0), sa carte le dit",
+          c.assimile && c.assimile.id === "a2" &&
+          e.cartes.a2.racine.className.indexOf("c3-assimile") !== -1,
+          JSON.stringify(c.assimile));
+
+  var issueEssai = finirEnAttaquant(m);
+  var fin = etat3(m);
+  verifie("le combat d'essai va au bout (victoire), et le bouton de sortie n'arrive qu'apres le recit",
+          issueEssai === "victoire" && fin.sortiePrete === true && fin.cmd.sortie.style.display === "",
+          issueEssai);
+  verifie("combat d'essai : RIEN n'est ecrit sur le disque, meme avec une assimilation et un butin",
+          JSON.stringify(m.stockage) === disqueAvant && !X.collection.chiguo,
+          Object.keys(m.stockage).join(","));
+  var lignesFr = lignes3(m);
+  clic(fin.cmd.sortie);
+  verifie("Revenir a la carte ferme l'ecran", !S.combat3.classList.contains("actif") && !X.Ecran3.enCours());
+
+  // --- Une arene : un seul adversaire, cible automatique, niveau 1 ---
+  var mr = mondeC3();
+  var XR = mr.ctx;
+  equipeDe(mr, [["hinezumi", 15], ["jinchan", 3]]);
+  XR.COMBAT_MULTI_ACTIF = true;
+  XR.Ecran3.pourTests.reglerAlea(fixe(0));
+  var dR = lieu3("palantir", 3);
+  XR.Ecran3.lancer(dR, false);
+  var eR = attendreMain(mr);
+  var cR = eR.combat;
+  verifie("arene : COMBAT_MULTI_ADVERSAIRES_LIEU adversaire(s), soit 1", cR.adversaires.length === 1, cR.adversaires.length);
+  var chanceR = XR.chanceAssimilation({ adversaire: cR.adversaires[0], equipe: cR.equipe,
+                                        bonusAppel: cR.bonusAppel, bonusDefense: cR.bonusDefense });
+  verifie("un seul adversaire : le taux s'affiche sur le bouton Assimiler",
+          eR.cmd.assimiler.textContent === XR.txt("c3.cmd.assimilerChance", { chance: chanceR }),
+          eR.cmd.assimiler.textContent);
+  clic(eR.cmd.attaquer);
+  verifie("un seul adversaire debout : Attaquer frappe sans demander de cible",
+          eR.phase === "occupe" && cR.adversaires[0].pv < cR.adversaires[0].pvMax, eR.phase);
+  eR = attendreMain(mr);
+  clic(eR.cmd.assimiler);
+  mr.horloge.avancer(120000);
+  var savR = JSON.parse(mr.stockage[XR.CLE_JOUEUR]);
+  verifie("assimile : il entre au niveau ASSIMILATION_NIVEAU_ENTREE (1), pas au niveau du lieu (3)",
+          XR.collection.palantir && XR.collection.palantir.niveau === 1 && savR.collection.palantir.niveau === 1,
+          JSON.stringify(XR.collection.palantir));
+  verifie("arene reelle : la partie est sauvegardee et le lieu passe a capture",
+          dR.capture === true && eR.issue === "victoire", eR.issue);
+  var gainR = XR.Ecran3.gainXpParAdversaire(dR, true);
+  verifie("XP : une part pour l'adversaire assimile, Fortune comprise (Jin Chan)",
+          contient(lignes3(mr), XR.txt("c3.xp.fortune", { gain: gainR })), lignes3(mr).join(" | "));
+
+  // --- Deux KO dans une arene : le butin, une fois par adversaire ---
+  var mb = mondeC3();
+  var XB = mb.ctx;
+  equipeDe(mb, [["hinezumi", 20]]);
+  XB.COMBAT_MULTI_ACTIF = true;
+  XB.COMBAT_MULTI_ADVERSAIRES_LIEU = 2;
+  XB.Ecran3.pourTests.reglerAlea(fixe(0));
+  var dB = lieu3("chiguo", 3);
+  XB.Ecran3.lancer(dB, false);
+  var issueB = finirEnAttaquant(mb);
+  var attendu = 2 * XB.butinDeKo(3).nombre;
+  var recu = XB.totalFragments(XB.fragmentsEnGourde("chiguo"));
+  verifie("victoire par KO a deux : " + attendu + " fragments (un butin par adversaire KO, pas plus)",
+          issueB === "victoire" && recu === attendu, issueB + " / " + recu);
+  verifie("XP : une part par adversaire KO (deux parts)",
+          contient(lignes3(mb), XB.txt("c3.xp", { gain: 2 * XB.Ecran3.gainXpParAdversaire(dB, false) })),
+          lignes3(mb).join(" | "));
+  verifie("une arene sans assimilation reste ouverte", dB.capture === false);
+
+  // --- Le gate break est lu au demarrage et passe au moteur ---
+  var mg = mondeC3();
+  var XG = mg.ctx;
+  equipeDe(mg, [["hinezumi", 15]]);
+  XG.COMBAT_MULTI_ACTIF = true;
+  var appel = null;
+  XG.malusGateBreak = function (arene, liste, maintenant) { appel = [arene, liste, maintenant]; return 2; };
+  var dG = lieu3("palantir", 3);
+  XG.Ecran3.lancer(dG, false);
+  verifie("gate break : malusGateBreak(lieu, poches, maintenant) au demarrage, et le malus monte le niveau",
+          appel && appel[0] === dG && appel[1] === XG.poches && typeof appel[2] === "number" &&
+          etat3(mg).combat.adversaires[0].niveau === 5 && etat3(mg).combat.malusGateBreak === 2,
+          appel ? etat3(mg).combat.adversaires[0].niveau : "jamais appele");
+
+  // --- Assimiler puis perdre : l'Echo reste, rien d'autre ---
+  var md = mondeC3();
+  var XD = md.ctx;
+  equipeDe(md, [["penghou", 1]]);
+  XD.COMBAT_MULTI_ACTIF = true;
+  XD.COMBAT_MULTI_ADVERSAIRES_LIEU = 2;
+  XD.Ecran3.pourTests.reglerAlea(fixe(0));
+  var dD = lieu3("chiguo", 20);
+  XD.Ecran3.lancer(dD, true);           // preemptif : on joue en premier
+  var eD = attendreMain(md);
+  clic(eD.cmd.assimiler);
+  clic(eD.cartes.a0.racine);
+  var issueD = finirEnAttaquant(md);
+  verifie("assimiler puis perdre : defaite, l'Echo est garde au niveau 1, le lieu passe a capture",
+          issueD === "defaite" && XD.collection.chiguo && XD.collection.chiguo.niveau === 1 && dD.capture === true,
+          issueD + " / " + JSON.stringify(XD.collection.chiguo));
+  verifie("defaite : pas de butin de KO",
+          XD.totalFragments(XD.fragmentsEnGourde("chiguo")) === 0 && contient(lignes3(md), XD.txt("c3.defaite")),
+          XD.totalFragments(XD.fragmentsEnGourde("chiguo")));
+
+  // --- La fuite ---
+  var mf = mondeC3();
+  var XF = mf.ctx;
+  equipeDe(mf, [["hinezumi", 5]]);
+  XF.COMBAT_MULTI_ACTIF = true;
+  XF.Ecran3.pourTests.reglerAlea(fixe(0));
+  var collAvant = JSON.stringify(XF.collection);
+  XF.collection.hinezumi.pv = 1;        // il arrive blesse : la fin doit le soigner
+  var dF = lieu3("palantir", 3);
+  XF.Ecran3.lancer(dF, false);
+  var eF = attendreMain(mf);
+  clic(eF.cmd.fuir);
+  mf.horloge.avancer(120000);
+  verifie("fuite reussie : fin du combat, ni butin ni XP, PV rendus, le lieu garde le sien",
+          eF.issue === "fuite" && JSON.stringify(XF.collection) === collAvant && dF.capture === false &&
+          contient(lignes3(mf), XF.txt("c3.lieuGarde")) && eF.sortiePrete,
+          eF.issue);
+
+  // --- Le menu d'aptitudes ---
+  var ma3 = mondeC3();
+  var XA = ma3.ctx;
+  equipeDe(ma3, [["komainu", 10]]);
+  XA.ModeTest.reglages.multi = true;
+  XA.ModeTest.reglages.adversaires = 2;
+  XA.Ecran3.pourTests.reglerAlea(fixe(0.5));
+  XA.Ecran3.lancer(lieu3("chiguo", 3, true), false);
+  var eA = attendreMain(ma3);
+  clic(eA.cmd.aptitude);
+  var ouvert = ma3.statiques["c3-aptitudes"].classList.contains("c3-ouvert");
+  var cles = Object.keys(eA.boutonsApt).join(",");
+  clic(eA.boutonsApt.sceau);
+  var apresSceau = eA.phase;
+  clic(eA.cmd.annuler);
+  clic(eA.cmd.aptitude);
+  clic(eA.boutonsApt.rempart);
+  verifie("Aptitude : le menu liste celles de l'Echo dont c'est le tour ; Sceau demande une cible, Rempart part tout de suite",
+          ouvert && cles === "rempart,sceau" && apresSceau === "ciblage" && eA.phase === "occupe" &&
+          eA.combat.equipe[0].recharges.rempart > 0 && !ma3.statiques["c3-aptitudes"].classList.contains("c3-ouvert"),
+          ouvert + " / " + cles + " / " + apresSceau + " / " + eA.phase);
+
+  // --- L'XP ne diverge pas de distribuerXp() ---
+  var divergences = [];
+  [1, 5, 12, 30].forEach(function (niv) {
+    [0, 40, 100].forEach(function (fig) {
+      [false, true].forEach(function (fortune) {
+        var d = { id: "x", espece: "komainu", niveau: niv, figement: fig };
+        XR.combat = { donjon: d, equipe: [] };
+        var ancien = XR.distribuerXp(fortune).gain;
+        var nouveau = XR.Ecran3.gainXpParAdversaire(d, fortune);
+        if (ancien !== nouveau) divergences.push(niv + "/" + fig + "/" + fortune + " : " + ancien + " contre " + nouveau);
+      });
+    });
+  });
+  XR.combat = null;
+  verifie("l'XP d'un adversaire = celle de distribuerXp (niveaux 1 a 30, avec et sans Jin Chan, lieux figes ou non)",
+          divergences.length === 0, divergences.join(" | "));
+
+  // --- Les textes ---
+  var srcEcran = fs.readFileSync(path.join(RACINE, "js/ecran3.js"), "utf8");
+  var clesC3 = [];
+  srcEcran.replace(/"(c3\.[a-zA-Z.]+)"/g, function (t, cle) { if (clesC3.indexOf(cle) === -1) clesC3.push(cle); });
+  var absentesFr = clesC3.filter(function (k) { return typeof X.TEXTES.fr[k] !== "string"; });
+  var absentesEn = clesC3.filter(function (k) { return k.indexOf("c3.cmd.") !== 0 && typeof X.TEXTES.en[k] !== "string"; });
+  var cmdEn = clesC3.filter(function (k) { return k.indexOf("c3.cmd.") === 0 && X.TEXTES.en[k] !== undefined; });
+  verifie("chaque cle c3.* de l'ecran existe en francais, et en anglais sauf les boutons (c3.cmd.*, francais expres)",
+          clesC3.length > 40 && absentesFr.length === 0 && absentesEn.length === 0 && cmdEn.length === 0,
+          "fr : " + absentesFr.join(",") + " / en : " + absentesEn.join(",") + " / boutons en : " + cmdEn.join(","));
+
+  function brutes(liste) {
+    return liste.filter(function (l) { return /c3\.[a-z]/.test(l) || /[{}]/.test(l) || /undefined|NaN/.test(l); });
+  }
+  var toutesFr = lignesFr.concat(lignes3(mr), lignes3(mb), lignes3(md), lignes3(mf));
+  verifie("journal en francais : aucune cle brute, aucun {jeton}, aucun undefined (" + toutesFr.length + " lignes)",
+          toutesFr.length > 30 && brutes(toutesFr).length === 0, brutes(toutesFr).join(" | "));
+
+  var me = mondeC3();
+  var XE = me.ctx;
+  XE.definirLangue("en");
+  equipeDe(me, [["hinezumi", 15], ["jinchan", 3]]);
+  XE.ModeTest.reglages.multi = true;
+  XE.ModeTest.reglages.adversaires = 2;
+  XE.Ecran3.pourTests.reglerAlea(fixe(0));
+  XE.Ecran3.lancer(lieu3("chiguo", 3, true), false);
+  var eE = attendreMain(me);
+  clic(eE.cmd.assimiler);
+  clic(eE.cartes.a0.racine);
+  finirEnAttaquant(me);
+  var lignesEn = lignes3(me);
+  verifie("journal en anglais : aucune cle brute, et c'est bien de l'anglais",
+          lignesEn.length > 5 && brutes(lignesEn).length === 0 && contient(lignesEn, " hits ") &&
+          eE.cmd.attaquer.textContent === "Attaquer",
+          brutes(lignesEn).join(" | ") || lignesEn.slice(0, 3).join(" | "));
+
+  verifie("l'ecran ne fait jamais parler Ico (aucune bulle)", srcEcran.indexOf("Ico.") === -1);
+
+  } catch (e3) {
+    verifie("ecran du combat a plusieurs : les tests vont au bout sans exception", false,
+            String(e3 && e3.stack || e3).split(/\r?\n/).slice(0, 3).join(" "));
   }
 
   return resultats;

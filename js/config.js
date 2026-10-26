@@ -1171,6 +1171,29 @@ var ASSIMILATION_NIVEAU_ENTREE = 1;
 
 
 /* ============================================================
+   L'ECRAN DU COMBAT A PLUSIEURS (js/ecran3.js)
+   ============================================================ */
+
+/* L'INTERRUPTEUR. A false, le jeu se comporte exactement comme
+   avant : "Approcher" ouvre le combat 1 contre 1 de js/combat.js.
+   Le mode test peut l'allumer sans toucher a cette ligne (bouton
+   "Combat a plusieurs" du panneau), pour le terrain d'essai. */
+var COMBAT_MULTI_ACTIF = false;
+
+/* Combien d'adversaires dans une arene ordinaire. 1 : c'est pour ce
+   cas que BOOST_SAUVAGE est calibre (un sauvage seul face a toute
+   l'equipe). POINT D'ACCROCHE : les poches d'Oubli passeront plus
+   tard leur propre nombre (profond 2, critique 3). En mode test, le
+   selecteur "Adversaires" du panneau decide pour le terrain d'essai. */
+var COMBAT_MULTI_ADVERSAIRES_LIEU = 1;
+
+/* La pause avant chaque action d'un adversaire, en millisecondes.
+   Elle s'ajoute a DELAI_JOURNAL : le joueur a le temps de lire la
+   ligne precedente avant que l'adversaire suivant ne bouge. */
+var COMBAT3_DELAI_ADVERSE = 500;
+
+
+/* ============================================================
    LE RENDU 3D (EN PREPARATION)
    Le combat affiche aujourd'hui des images 2D. Cette section
    prepare la RECEPTION des modeles 3D : ou ils se trouvent, a

@@ -12,7 +12,10 @@ function positionMiseAJour(position) {
   dernierePosition = [lat, lon];
   joueur.setLatLng([lat, lon]);
 
-  if (!combat) carte.setView([lat, lon], carte.getZoom());
+  // Ni l'un ni l'autre combat ne doit voir la carte bouger dessous.
+  var enCombat = !!combat || Ecran3.enCours();
+
+  if (!enCombat) carte.setView([lat, lon], carte.getZoom());
 
   if (!chargementEnCours &&
       (!dernierePosRequete ||
@@ -20,7 +23,7 @@ function positionMiseAJour(position) {
     chargerDonjons(lat, lon, 0);
   }
 
-  if (!combat) mettreAJourHud(lat, lon);
+  if (!enCombat) mettreAJourHud(lat, lon);
 }
 
 function erreurPosition(err) {
@@ -64,7 +67,11 @@ elem("btn-depart").addEventListener("click", function () {
 
 elem("entrer").addEventListener("click", function () {
   if (!donjonProche || estClos(donjonProche) || equipe.length === 0) return;
-  demarrerCombat(donjonProche, distanceProche <= DISTANCE_PREEMPTIF);
+
+  /* Ecran3.lancer choisit l'ecran : le combat a plusieurs si
+     COMBAT_MULTI_ACTIF (ou l'interrupteur du mode test) le demande,
+     sinon demarrerCombat(), exactement comme avant. */
+  Ecran3.lancer(donjonProche, distanceProche <= DISTANCE_PREEMPTIF);
 });
 
 /* Un appui n'importe ou sur l'ecran de combat fait avancer le

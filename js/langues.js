@@ -52,6 +52,14 @@
    pas encore traduits parce que les traduire demande une
    decision d'ecriture, pas une traduction. La liste des cles a
    rediger est dans le message qui accompagne ce fichier.
+
+   LES BOUTONS DU COMBAT A PLUSIEURS (cles "c3.cmd.*") restent en
+   francais dans les deux langues, comme ceux du combat 1 contre 1 :
+   ils n'existent QUE dans "fr", et txt() y retombe en anglais. Ils
+   passent deja par txt() : le jour ou on les traduit, il suffit
+   d'ajouter les cles "c3.cmd.*" dans "en" (et de faire suivre les
+   mots Approcher / Assimiler de l'aide anglaise). Toutes les autres
+   cles "c3.*" (le journal) existent dans les deux langues.
    ------------------------------------------------------------ */
 
 var TEXTES = {
@@ -136,7 +144,82 @@ var TEXTES = {
     "aide.l2":     "En combat, affaiblis l'Écho puis touche Assimiler : il rejoint ton Grimoire. Trois Échos t'accompagnent au maximum.",
     "aide.l3":     "Les lieux s'effacent de la mémoire. Chaque Écho que tu assimiles en ramène un souvenir.",
     "aide.l4":     "Un fragment appartient à une seule espèce : il sert à la faire grandir, et à rien d'autre.",
-    "aide.fermer": "Fermer"
+    "aide.fermer": "Fermer",
+
+    /* --- Le combat a plusieurs (js/ecran3.js) --- */
+
+    // Les boutons : francais seulement, voir l'en-tete.
+    "c3.cmd.attaquer":        "Attaquer",
+    "c3.cmd.aptitude":        "Aptitude",
+    "c3.cmd.assimiler":       "Assimiler",
+    "c3.cmd.assimilerChance": "Assimiler {chance} %",
+    "c3.cmd.sourd":           "Il ne t'écoutera pas.",
+    "c3.cmd.defendre":        "Défendre",
+    "c3.cmd.fuir":            "Fuir",
+    "c3.cmd.annuler":         "Annuler",
+    "c3.cmd.retour":          "Retour",
+    "c3.cmd.sortir":          "Revenir à la carte",
+
+    // Les cartes, l'ordre des tours, le ciblage, les aptitudes
+    "c3.niveau":              "niv. {n}",
+    "c3.ko":                  "KO",
+    "c3.assimile":            "Assimilé",
+    "c3.tour":                "Tour {n}",
+    "c3.consigne":            "Choisis une cible.",
+    "c3.apt.titre":           "Aptitudes de {nom}",
+    "c3.apt.aucune":          "Aucune aptitude connue",
+    "c3.apt.tours.un":        "{n} tour",
+    "c3.apt.tours.plusieurs": "{n} tours",
+
+    // Le journal : une phrase par evenement du moteur
+    "c3.apparition.un":        "<b>{nom}</b>, {titre}, se manifeste.",
+    "c3.apparition.plusieurs": "{nombre} échos se manifestent : <b>{nom}</b>, {titre}.",
+    "c3.preemptif.un":         "Tu l'as surpris : il perd son premier tour.",
+    "c3.preemptif.plusieurs":  "Tu les as surpris : ils perdent leur premier tour.",
+    "c3.gateBreak":            "L'Oubli déborde sur ce lieu : ils gagnent {malus} niveau(x).",
+    "c3.attaque":              "{acteur} frappe {cible} : {degats} dégâts.",
+    "c3.apt.degats":           "{acteur} emploie <b>{apt}</b> sur {cible} : {degats} dégâts.",
+    "c3.apt.soin":             "{acteur} emploie <b>{apt}</b> : +{soin} PV.",
+    "c3.apt.garde":            "{acteur} emploie <b>{apt}</b> : il encaisse beaucoup moins.",
+    "c3.apt.sceau":            "{acteur} emploie <b>{apt}</b> : {cible} frappe moins fort.",
+    "c3.apt.appel":            "{acteur} emploie <b>{apt}</b> : les échos d'en face tendent l'oreille.",
+    "c3.affinite.renforce":    "Coup renforcé.",
+    "c3.affinite.attenue":     "Coup atténué.",
+    "c3.ko.echo":              "{cible} est épuisé.",
+    "c3.ko.adverse":           "{cible} cède.",
+    "c3.assim.reussie":        "Le savoir de <b>{cible}</b> se laisse enfin saisir.",
+    "c3.assim.ratee":          "Assimilation ratée. {cible} t'ignore.",
+    "c3.defense":              "{acteur} se met en garde.",
+    "c3.fuite.ratee":          "On te barre le passage !",
+    "c3.fuite.reussie":        "Tu rappelles tes échos et t'éloignes.",
+    "c3.lieuGarde":            "Le lieu garde le sien.",
+    "c3.repos":                "{acteur} reprend son souffle.",
+    "c3.finTour":              "— Tour {n} —",
+
+    // La fin du combat
+    "c3.victoire":             "Les échos du lieu se retirent.",
+    "c3.defaite":              "Tes échos sont épuisés. Tu recules.",
+    "c3.assim.nouveau":        "<b>{nom}</b> est assimilé au niveau {niveau}. Son savoir rejoint ton grimoire.",
+    "c3.assim.renforce":       "Le savoir de <b>{nom}</b> niveau {niveau} supplante celui que tu détenais.",
+    "c3.assim.connu":          "<b>{nom}</b> se livre, mais tu en savais déjà davantage.",
+    "c3.gourde":               "Ta gourde se vide : {fragments} de <b>{nom}</b> lui reviennent.",
+    "c3.butin":                "Tu ramasses {fragments} de <b>{nom}</b>.",
+    "c3.butin.echo.un":        "Il rejoint ton Écho.",
+    "c3.butin.echo.plusieurs": "Ils rejoignent ton Écho.",
+    "c3.butin.gourde.un":      "Il attend dans ta gourde ({total}/{capacite}).",
+    "c3.butin.gourde.plusieurs": "Ils attendent dans ta gourde ({total}/{capacite}).",
+    "c3.butin.perdu.un":       "Ta gourde est pleine : {fragments} se perd.",
+    "c3.butin.perdu.plusieurs": "Ta gourde est pleine : {fragments} se perdent.",
+    "c3.xp":                   "+{gain} points d'écho.",
+    "c3.xp.fortune":           "+{gain} points d'écho (Fortune).",
+    "c3.montee":               "{nom} atteint le niveau {niveau} !",
+    "c3.fragment.mince.un":           "fragment mince",
+    "c3.fragment.mince.plusieurs":    "fragments minces",
+    "c3.fragment.grand.un":           "grand fragment",
+    "c3.fragment.grand.plusieurs":    "grands fragments",
+    "c3.fragment.complet.un":         "fragment complet",
+    "c3.fragment.complet.plusieurs":  "fragments complets",
+    "c3.et":                   " et "
   },
 
 
@@ -169,7 +252,67 @@ var TEXTES = {
     "aide.l2":     "In battle, wear the Echo down, then tap Assimiler: it joins your Grimoire. Up to three Echoes can travel with you.",
     "aide.l3":     "Places are fading from memory. Every Echo you assimilate brings one memory back.",
     "aide.l4":     "A fragment belongs to a single species: it helps that species grow, and nothing else.",
-    "aide.fermer": "Close"
+    "aide.fermer": "Close",
+
+    /* --- Le combat a plusieurs (js/ecran3.js) ---
+       Les boutons "c3.cmd.*" sont absents expres : voir l'en-tete. */
+    "c3.niveau":              "lv. {n}",
+    "c3.ko":                  "KO",
+    "c3.assimile":            "Assimilated",
+    "c3.tour":                "Round {n}",
+    "c3.consigne":            "Choose a target.",
+    "c3.apt.titre":           "{nom}'s skills",
+    "c3.apt.aucune":          "No skill known yet",
+    "c3.apt.tours.un":        "{n} round",
+    "c3.apt.tours.plusieurs": "{n} rounds",
+
+    "c3.apparition.un":        "<b>{nom}</b>, {titre}, appears.",
+    "c3.apparition.plusieurs": "{nombre} echoes appear: <b>{nom}</b>, {titre}.",
+    "c3.preemptif.un":         "You caught it off guard: it loses its first turn.",
+    "c3.preemptif.plusieurs":  "You caught them off guard: they lose their first turn.",
+    "c3.gateBreak":            "Oblivion spills over this place: they gain {malus} level(s).",
+    "c3.attaque":              "{acteur} hits {cible}: {degats} damage.",
+    "c3.apt.degats":           "{acteur} uses <b>{apt}</b> on {cible}: {degats} damage.",
+    "c3.apt.soin":             "{acteur} uses <b>{apt}</b>: +{soin} HP.",
+    "c3.apt.garde":            "{acteur} uses <b>{apt}</b>: it takes much less damage.",
+    "c3.apt.sceau":            "{acteur} uses <b>{apt}</b>: {cible} hits softer.",
+    "c3.apt.appel":            "{acteur} uses <b>{apt}</b>: the echoes across are listening.",
+    "c3.affinite.renforce":    "Stronger hit.",
+    "c3.affinite.attenue":     "Softened hit.",
+    "c3.ko.echo":              "{cible} is exhausted.",
+    "c3.ko.adverse":           "{cible} gives way.",
+    "c3.assim.reussie":        "The knowledge of <b>{cible}</b> finally lets itself be grasped.",
+    "c3.assim.ratee":          "Assimilation failed. {cible} ignores you.",
+    "c3.defense":              "{acteur} raises its guard.",
+    "c3.fuite.ratee":          "Your way is blocked!",
+    "c3.fuite.reussie":        "You call your echoes back and walk away.",
+    "c3.lieuGarde":            "The place keeps its own.",
+    "c3.repos":                "{acteur} catches its breath.",
+    "c3.finTour":              "— Round {n} —",
+
+    "c3.victoire":             "The echoes of this place withdraw.",
+    "c3.defaite":              "Your echoes are exhausted. You fall back.",
+    "c3.assim.nouveau":        "<b>{nom}</b> is assimilated at level {niveau}. Its knowledge joins your grimoire.",
+    "c3.assim.renforce":       "The knowledge of <b>{nom}</b> at level {niveau} replaces the one you held.",
+    "c3.assim.connu":          "<b>{nom}</b> yields, but you already knew more.",
+    "c3.gourde":               "Your gourd empties: {fragments} of <b>{nom}</b> return to it.",
+    "c3.butin":                "You pick up {fragments} of <b>{nom}</b>.",
+    "c3.butin.echo.un":        "It joins your Echo.",
+    "c3.butin.echo.plusieurs": "They join your Echo.",
+    "c3.butin.gourde.un":      "It waits in your gourd ({total}/{capacite}).",
+    "c3.butin.gourde.plusieurs": "They wait in your gourd ({total}/{capacite}).",
+    "c3.butin.perdu.un":       "Your gourd is full: {fragments} is lost.",
+    "c3.butin.perdu.plusieurs": "Your gourd is full: {fragments} are lost.",
+    "c3.xp":                   "+{gain} echo points.",
+    "c3.xp.fortune":           "+{gain} echo points (Fortune).",
+    "c3.montee":               "{nom} reaches level {niveau}!",
+    "c3.fragment.mince.un":           "thin fragment",
+    "c3.fragment.mince.plusieurs":    "thin fragments",
+    "c3.fragment.grand.un":           "large fragment",
+    "c3.fragment.grand.plusieurs":    "large fragments",
+    "c3.fragment.complet.un":         "whole fragment",
+    "c3.fragment.complet.plusieurs":  "whole fragments",
+    "c3.et":                   " and "
   }
 
 };

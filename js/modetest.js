@@ -35,7 +35,14 @@ var reglages = {
   /* 0 = ne force rien, on suit chapitreAtteint(). Sa valeur de
      depart vient de MODE_TEST_CHAPITRE, comme le reste du panneau
      part de constantes de config.js. */
-  chapitre: MODE_TEST_CHAPITRE
+  chapitre: MODE_TEST_CHAPITRE,
+
+  /* Le combat a plusieurs (js/ecran3.js) sur le terrain d'essai :
+     l'interrupteur, et le nombre d'adversaires (1 a 3). Comme le
+     reste du panneau, rien n'est enregistre : ils reviennent a
+     "Non" et 1 a chaque rechargement. */
+  multi: false,
+  adversaires: 1
 };
 
 var panneauPret = false;
@@ -170,11 +177,35 @@ function preparerPanneau() {
     rafraichir();
   });
 
+  elem("mt-adversaires").value = reglages.adversaires;
+  elem("mt-multi").addEventListener("click", function () {
+    reglages.multi = !reglages.multi;
+    majInterrupteur();
+  });
+  elem("mt-adversaires").addEventListener("change", function () {
+    reglages.adversaires = Number(this.value);
+  });
+  majInterrupteur();
+
   preparerBanc();
 
   boite.classList.add("actif");
   panneauPret = true;
   rafraichir();
+}
+
+// L'interrupteur du combat a plusieurs dit son etat en toutes lettres.
+function majInterrupteur() {
+  var b = elem("mt-multi");
+  b.textContent = "Combat à plusieurs : " + (reglages.multi ? "Oui" : "Non");
+  b.classList[reglages.multi ? "add" : "remove"]("mt-allume");
+}
+
+/* Le combat a plusieurs est-il demande par le panneau ? Lu par
+   Ecran3.choisi() (js/ecran3.js). Faux des que le mode test est
+   eteint : l'interrupteur ne survit pas a MODE_TEST = false. */
+function combatMulti() {
+  return actif() && reglages.multi === true;
 }
 
 // Reecrit les valeurs lues a cote des reglages, puis le bandeau.
@@ -357,6 +388,7 @@ function preparerBanc() {
 return {
   actif: actif,
   chapitreForce: chapitreForce,
+  combatMulti: combatMulti,
   donjonDeTest: donjonDeTest,
   preparerPanneau: preparerPanneau,
   reglages: reglages
