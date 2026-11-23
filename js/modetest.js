@@ -42,7 +42,15 @@ var reglages = {
      reste du panneau, rien n'est enregistre : ils reviennent a
      "Non" et 1 a chaque rechargement. */
   multi: false,
-  adversaires: 1
+  adversaires: 1,
+
+  /* Les breches permanentes (js/brechesjeu.js) : l'interrupteur, et
+     le terrain d'essai change en breche n (1 a BRECHES_TERRAINS_ESSAI,
+     0 = arene normale). Comme le reste, ils reviennent a Non et 0 au
+     rechargement. Les jours simules, eux, sont gardes : voir
+     joursSimules() plus bas. */
+  breches: false,
+  brecheTerrain: 0
 };
 
 var panneauPret = false;
@@ -105,12 +113,19 @@ function chapitreForce() {
 function donjonDeTest(lat, lon) {
   if (!actif()) return null;
 
+  /* En breche d'essai, le terrain prend un id a part par numero (les
+     quatre breches sont distinctes) et la famille de l'espece choisie
+     au-dessus : changer d'espece, c'est changer de famille de boss. */
+  var n = Math.round(Number(reglages.brecheTerrain));
+  var essai = reglages.breches === true && n >= 1 && n <= BRECHES_TERRAINS_ESSAI;
+
   return {
-    id: "test/fictif",
+    id: essai ? "test/breche/" + n : "test/fictif",
     lat: lat, lon: lon,
     lieu: "Terrain d'essai",
-    nom: "Terrain d'essai",
-    categorie: "temple",
+    nom: essai ? "Brèche d'essai " + n : "Terrain d'essai",
+    categorie: essai ? ESPECES[reglages.espece].famille : "temple",
+    brecheEssai: essai,
     espece: reglages.espece,
     niveau: reglages.niveau,
 
@@ -187,6 +202,7 @@ function preparerPanneau() {
   });
   majInterrupteur();
 
+  preparerBreches();
   preparerBanc();
 
   boite.classList.add("actif");
@@ -234,6 +250,142 @@ function rafraichir() {
   if (!combat && dernierePosition) {
     mettreAJourHud(dernierePosition[0], dernierePosition[1]);
   }
+}
+
+
+/* ------------------------------------------------------------
+   LES BRECHES PERMANENTES
+
+   On ne peut pas attendre 7 vrais jours, ni un mois. Ces outils font
+   passer le temps du jeu, et rien d'autre :
+     "+1 jour", "+3 jours"  des jours simules, ajoutes au jour reel
+                            (BrechesJeu.aujourdhui) ;
+     "Finir la semaine"     sur la breche d'essai choisie, une
+                            victoire par jour jusqu'au matin du jour 7 :
+                            il reste le boss final a battre a la main ;
+     "Mois suivant"         saute au 1er du mois suivant : la saison
+                            bascule au prochain affichage ;
+     "Etat"                 montre ce que contiennent les donnees ;
+     "Reinitialiser"        remet les breches d'essai et les jours a 0.
+
+   CE QU'ILS ECRIVENT : en mode test, js/brechesjeu.js sauve sous
+   CLE_BRECHES_TEST, jamais sous la vraie cle ; les jours simules
+   vivent sous CLE_BRECHES_TEST_JOURS. Mode test eteint, chaque outil
+   s'arrete sur actif() et joursSimules() rend 0 : le jeu retrouve
+   le vrai jour, sans rien avoir a defaire.
+   ------------------------------------------------------------ */
+
+var brechesPretes = false;
+var etatOuvert = false;
+
+// Les jours simules, relus a chaque fois : 0 hors du mode test.
+function joursSimules() {
+  if (!actif()) return 0;
+  try {
+    var n = Number(localStorage.getItem(CLE_BRECHES_TEST_JOURS));
+    return isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  } catch (e) { return 0; }
+}
+
+function ecrireJours(n) {
+  try { localStorage.setItem(CLE_BRECHES_TEST_JOURS, String(Math.max(0, Math.floor(n)))); } catch (e) {}
+}
+
+// Apres chaque outil : anneaux, bandeau, et l'etat s'il est ouvert.
+function apresOutil() {
+  BrechesJeu.rafraichirTout();
+  afficherEtatBreches();
+  rafraichir();
+}
+
+function avancerJours(n) {
+  if (!actif() || !(n > 0)) return false;
+  ecrireJours(joursSimules() + n);
+  apresOutil();
+  return true;
+}
+
+function moisSuivant() {
+  if (!actif() || !BrechesJeu.actif()) return false;
+  var j = BrechesJeu.aujourdhui();
+  return avancerJours(premierJourDuMoisSuivant(j) - j);
+}
+
+/* Une victoire par jour sur la breche d'essai, jusqu'au jour ou le
+   boss final attend. S'arrete aussi sur une breche possedee ou hors
+   d'atteinte. Rend un mot pour le panneau. */
+function finirSemaine() {
+  if (!actif() || !BrechesJeu.actif()) return "breches eteintes";
+  var pos = typeof dernierePosition !== "undefined" && dernierePosition ? dernierePosition : [0, 0];
+  var d = donjonDeTest(pos[0], pos[1]);
+  var info = BrechesJeu.infoArene(d);
+  if (!info) return "choisis une breche d'essai";
+
+  // Gagner, passer au lendemain, recommencer. Au plus deux tours par
+  // jour du cycle : la borne ne sert qu'a ne jamais boucler.
+  for (var i = 0; i < 3 * BRECHES_CYCLE_JOURS && info; i++) {
+    if (info.statut === "possedee" || info.statut === "plafond") break;
+    if (info.statut === "eteinte") ecrireJours(joursSimules() + 1);   // le lendemain
+    else if (info.boss.role === "final") break;                         // le jour 7 est la
+    else if (!BrechesJeu.simulerVictoire(d)) break;
+    info = BrechesJeu.infoArene(d);
+  }
+  apresOutil();
+  return info ? info.statut : "";
+}
+
+function reinitialiserBreches() {
+  if (!actif()) return false;
+  ecrireJours(0);
+  BrechesJeu.effacerTest();
+  apresOutil();
+  return true;
+}
+
+function afficherEtatBreches() {
+  var boite = elem("mt-breches-texte");
+  if (!boite) return;
+  boite.innerHTML = etatOuvert && actif() ? BrechesJeu.lignesEtat().join("<br>") : "";
+}
+
+function majBreches() {
+  var b = elem("mt-breches");
+  b.textContent = "Brèches : " + (reglages.breches ? "Oui" : "Non");
+  b.classList[reglages.breches ? "add" : "remove"]("mt-allume");
+  elem("mt-breches-outils").classList[reglages.breches ? "add" : "remove"]("actif");
+}
+
+function preparerBreches() {
+  if (brechesPretes || !actif()) return;
+
+  var terrains = '<option value="0">Arène normale</option>';
+  for (var n = 1; n <= BRECHES_TERRAINS_ESSAI; n++) {
+    terrains += '<option value="' + n + '">Brèche d\'essai ' + n + '</option>';
+  }
+  elem("mt-breche-terrain").innerHTML = terrains;
+  elem("mt-breche-terrain").value = reglages.brecheTerrain;
+
+  elem("mt-breches").addEventListener("click", function () {
+    reglages.breches = !reglages.breches;
+    majBreches();
+    apresOutil();
+  });
+  elem("mt-breche-terrain").addEventListener("change", function () {
+    reglages.brecheTerrain = Number(elem("mt-breche-terrain").value);
+    apresOutil();
+  });
+  elem("mt-jour-1").addEventListener("click", function () { avancerJours(1); });
+  elem("mt-jour-3").addEventListener("click", function () { avancerJours(3); });
+  elem("mt-semaine").addEventListener("click", finirSemaine);
+  elem("mt-mois").addEventListener("click", moisSuivant);
+  elem("mt-etat").addEventListener("click", function () {
+    etatOuvert = !etatOuvert;
+    afficherEtatBreches();
+  });
+  elem("mt-raz").addEventListener("click", reinitialiserBreches);
+
+  majBreches();
+  brechesPretes = true;
 }
 
 
@@ -391,6 +543,11 @@ return {
   combatMulti: combatMulti,
   donjonDeTest: donjonDeTest,
   preparerPanneau: preparerPanneau,
+  joursSimules: joursSimules,
+  avancerJours: avancerJours,
+  moisSuivant: moisSuivant,
+  finirSemaine: finirSemaine,
+  reinitialiserBreches: reinitialiserBreches,
   reglages: reglages
 };
 

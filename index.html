@@ -63,6 +63,25 @@
     </select>
   </label>
   <button id="btn-banc-3d" class="mt-bouton">Banc 3D</button>
+  <!-- Les breches permanentes (js/brechesjeu.js). Les outils ne
+       s'affichent que sur "Breches : Oui" ; ils ecrivent sous
+       echos_breches_test_v1 et echos_breches_test_jours, jamais
+       dans la vraie partie. Textes reecrits par js/modetest.js. -->
+  <button id="mt-breches" class="mt-bouton mt-interrupteur">Brèches : Non</button>
+  <div id="mt-breches-outils">
+    <label class="mt-ligne">Terrain
+      <select id="mt-breche-terrain"></select>
+    </label>
+    <div class="mt-grille">
+      <button id="mt-jour-1" class="mt-bouton">+1 jour</button>
+      <button id="mt-jour-3" class="mt-bouton">+3 jours</button>
+      <button id="mt-semaine" class="mt-bouton">Finir la semaine</button>
+      <button id="mt-mois" class="mt-bouton">Mois suivant</button>
+      <button id="mt-etat" class="mt-bouton">État</button>
+      <button id="mt-raz" class="mt-bouton">Réinitialiser</button>
+    </div>
+    <div id="mt-breches-texte"></div>
+  </div>
 </div>
 
 <!-- Le banc 3D, ouvert depuis le panneau du mode test, et seulement

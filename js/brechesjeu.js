@@ -314,6 +314,68 @@ function victoire(d) {
   return [txt("breche.victoire.jour"), txt("breche.trophee")];
 }
 
+/* ------------------------------------------------------------
+   5. POUR LE MODE TEST SEULEMENT
+
+   Ces trois fonctions refusent de travailler hors du mode test
+   (enTest() faux : elles rendent false ou [] sans rien toucher). En
+   mode test, cle() est CLE_BRECHES_TEST : elles ne peuvent donc pas
+   ecrire dans la vraie partie.
+   ------------------------------------------------------------ */
+
+/* Une victoire sans combat, au jour du jeu (jours simules compris) :
+   ce que fait "Finir la semaine". false si la breche de ce lieu ne
+   se combat pas aujourd'hui. */
+function simulerVictoire(d) {
+  if (!enTest() || !actif()) return false;
+  var info = infoArene(d);
+  if (!combattable(info)) return false;
+  var r = inscrireVictoire(donnees, d.id, d.categorie, info.jour, SAISONS_BRECHES);
+  if (!r.ok) return false;
+  donnees = r.donnees;
+  sauverBreches(cle(), donnees);
+  return true;
+}
+
+// Remet les breches du mode test a zero (journal et trophees compris).
+function effacerTest() {
+  if (!enTest()) return false;
+  var mois = moisDuJour(aujourdhui());
+  if (!mois) return false;
+  donnees = donneesBrechesVides(mois);
+  cleChargee = cle();
+  sauverBreches(cleChargee, donnees);
+  return true;
+}
+
+/* L'etat lisible, pour le panneau : une ligne par breche commencee,
+   puis les compteurs. Rend [] hors du mode test. */
+function lignesEtat() {
+  if (!enTest()) return [];
+  var dn = preparer();
+  if (!dn) return ["Brèches éteintes"];
+  var jour = aujourdhui();
+  var d = dateDuJour(jour);
+  var lignes = [
+    "Jour " + d.quantieme + "/" + d.mois + "/" + d.annee +
+      (ModeTest.joursSimules() ? " (+" + ModeTest.joursSimules() + " simulés)" : "") +
+      " · saison " + dn.saison,
+    "Possédées : " + compterPossedees(dn) + " · ouvertes : " + compterActives(dn.breches, jour) + "/" +
+      BRECHES_ACTIVES_MAX
+  ];
+  dn.breches.forEach(function (b) {
+    var statut = statutBreche(b, jour, dn.breches);
+    var boss = bossDuJour(b, jour, SAISONS_BRECHES);
+    lignes.push(b.arene_id + " · " + statut +
+                (boss ? " · jour " + boss.jourDuCycle + "/" + BRECHES_CYCLE_JOURS + " " +
+                        (ESPECES[boss.espece] || {}).nom + " ×" + force(boss.multiplicateur) : ""));
+  });
+  lignes.push("Journal : " + dn.journal.length + " · trophées : " + dn.trophees.length +
+              " · saisons passées : " + dn.saisons_passees.length);
+  return lignes;
+}
+
+
 // Pour l'ecran du combat : la ligne qui annonce le boss.
 function annonce(d) {
   if (!d || !d.breche) return "";
@@ -339,6 +401,9 @@ return {
   victoire: victoire,
   annonce: annonce,
   cle: cle,
+  simulerVictoire: simulerVictoire,
+  effacerTest: effacerTest,
+  lignesEtat: lignesEtat,
 
   // Pour verifier/breches.js seulement.
   pourTests: {

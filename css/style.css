@@ -154,6 +154,15 @@ button { font-family: inherit; }
   font-size: 11px; border-radius: 8px;
 }
 
+/* Les outils des breches permanentes : caches tant que l'interrupteur
+   "Breches" est sur Non. Le panneau defile s'il devient trop haut
+   pour l'ecran du telephone. */
+#mode-test.actif { max-height: calc(100vh - 230px); overflow-y: auto; }
+#mt-breches-outils { display: none; margin-top: 4px; }
+#mt-breches-outils.actif { display: block; }
+.mt-grille { display: grid; grid-template-columns: 1fr 1fr; gap: 0 4px; }
+#mt-breches-texte { margin-top: 4px; font-size: 10px; line-height: 1.35; color: #ddd; word-break: break-all; }
+
 /* ---------- Le banc 3D (mode test) ----------
    Par-dessus tout, combat compris. Invisible tant que
    js/modetest.js ne lui pose pas la classe "actif". */

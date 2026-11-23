@@ -1260,6 +1260,15 @@ var BRECHES_SAISONS_PASSEES_MAX  = 120;
 var BRECHES_FORMAT_CLASSEMENT = 1;
 var BRECHES_JOUEUR_ID         = "local";
 
+/* LE MODE TEST (js/modetest.js) : on ne peut pas attendre 7 vrais
+   jours. Les jours simules s'ajoutent au jour reel, en mode test
+   seulement, et sont gardes sous leur propre cle pour survivre a un
+   rechargement de la page. Le terrain d'essai peut devenir l'une de
+   BRECHES_TERRAINS_ESSAI breches distinctes : quatre, pour pouvoir
+   buter sur le plafond de trois. */
+var CLE_BRECHES_TEST_JOURS  = "echos_breches_test_jours";
+var BRECHES_TERRAINS_ESSAI  = 4;
+
 
 /* ============================================================
    LE RENDU 3D (EN PREPARATION)

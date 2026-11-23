@@ -245,7 +245,7 @@ var classesManquantes = [];
  "c3-grille", "c3-assimiler", "c3-fuir", "c3-ciblage", "c3-consigne",
  "c3-sortie", "c3-ouvert", "c3-retour", "c3-surprise",
  "mt-interrupteur", "mt-allume",
- "pop-breche", "breche-note", "breche-anneau", "breche-possedee"].forEach(function (c) {
+ "pop-breche", "breche-note", "breche-anneau", "breche-possedee", "mt-grille"].forEach(function (c) {
   if (css.indexOf("." + c) === -1) classesManquantes.push(c);
 });
 ligne(classesManquantes.length === 0,

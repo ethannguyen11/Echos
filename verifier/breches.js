@@ -42,6 +42,7 @@ function lancerTestsBreches(options) {
     testerSaison(monde, bloc, verifie);
     testerSauvegarde(monde, bloc, verifie);
     testerJeu(monde, bloc, verifie);
+    testerModeTest(monde, bloc, verifie);
   } catch (e) {
     verifie("les tests des breches vont au bout sans exception", false,
             String(e && e.stack || e).split(/\r?\n/).slice(0, 3).join(" "));
@@ -954,6 +955,196 @@ function testerJeu(monde, bloc, verifie) {
             var s = fs.readFileSync(path.join(__dirname, "..", f), "utf8");
             return s.indexOf("BrechesJeu.") !== -1 && s.indexOf("echos_breches") === -1 && s.indexOf("CLE_BRECHES") === -1;
           }));
+}
+
+/* ------------------------------------------------------------
+   BRIQUE 7 : LES OUTILS DU MODE TEST
+   Les vrais boutons du panneau, touches dans le faux navigateur.
+   ------------------------------------------------------------ */
+
+function testerModeTest(monde, bloc, verifie) {
+  bloc("Breches : outils du mode test");
+
+  var vm = require("vm"), fs = require("fs"), path = require("path");
+  var html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  var idsPage = [];
+  html.replace(/\bid="([^"]+)"/g, function (t, id) { idsPage.push(id); });
+
+  // Un monde avec TOUS les elements de la page (le panneau compris).
+  function mondePanneau(o) {
+    var m = monde(o.stockage || {});
+    idsPage.forEach(function (id) {
+      if (m.statiques[id]) return;
+      m.statiques[id] = parcours.creerElement("div");
+      m.statiques[id].id = id;
+    });
+    // Un vrai <select> a ses options ; le panneau relit la premiere.
+    m.statiques["mt-chapitre"].options = [parcours.creerElement("option")];
+    ["js/ico.js", "js/aide.js"].forEach(function (f) {
+      vm.runInContext(fs.readFileSync(path.join(__dirname, "..", f), "utf8"), m.ctx, { filename: f });
+    });
+    var X = m.ctx;
+    X.MODE_TEST = o.modeTest !== false;
+    X.BRECHES_PERMANENTES_ACTIF = !!o.actif;
+    m.instant = NOV_10;
+    X.BrechesJeu.pourTests.reglerHorloge(function () { return m.instant; }, function () { return -480; });
+    X.chargerJoueur();
+    X.collection = {};
+    X.equipe = [];
+    [["hinezumi", 30], ["peng", 30], ["jinchan", 30]].forEach(function (e) { X.ajouterAlaCollection(e[0], e[1]); });
+    X.sauverJoueur();
+    X.majFiche();
+    X.Ecran3.pourTests.reglerAlea(function () { return 0.5; });
+    X.dernierePosition = [25.03, 121.56];
+    return m;
+  }
+  function clic(m, id) { m.statiques[id].declencher("click", { target: null, stopPropagation: function () {} }); }
+  function choisir(m, id, v) { m.statiques[id].value = String(v); m.statiques[id].declencher("change"); }
+  function lue(m, cle) { return m.stockage[cle] ? JSON.parse(m.stockage[cle]) : null; }
+  function etat3(m) { return m.ctx.Ecran3.pourTests.etat(); }
+  function combattreIci(m) {
+    var X = m.ctx;
+    X.mettreAJourHud(25.03, 121.56);
+    var boss = X.donjonProche;
+    X.Ecran3.lancer(boss, false);
+    for (var i = 0; i < 300; i++) {
+      var e = etat3(m);
+      if (!e || e.phase === "fin") break;
+      if (e.phase !== "commande") { m.horloge.avancer(250); continue; }
+      e.cmd.attaquer.declencher("click", { target: null });
+      if (e.phase === "ciblage") e.cartes[e.cibles[0]].racine.declencher("click", { target: null });
+    }
+    m.horloge.avancer(120000);
+    var issue = etat3(m) && etat3(m).issue;
+    if (etat3(m)) etat3(m).cmd.sortie.declencher("click", { target: null });
+    return { boss: boss, issue: issue };
+  }
+
+  // --- Mode test eteint : aucun outil ne fait rien ---
+  var mo = mondePanneau({ modeTest: false, actif: true, stockage: { echos_breches_test_jours: "5" } });
+  var Xo = mo.ctx;
+  var joueurO = mo.stockage.echos_joueur_v5;
+  var jourReel = Xo.jourDeLaDate(2026, 11, 10);
+  // Une vraie arene a breche, ouverte aujourd'hui : simuler doit pourtant refuser.
+  var vraie = null;
+  for (var k = 1; !vraie && k < 500; k++) {
+    if (Xo.estAreneBreche("way/" + (900000 + k), "temple", "2026-11", Xo.SAISONS_BRECHES)) {
+      vraie = { id: "way/" + (900000 + k), lat: 1, lon: 2, categorie: "temple", niveau: 3, nom: "x", lieu: "x" };
+    }
+  }
+  var ouverte = !!Xo.BrechesJeu.surDonjonProche(vraie).breche;
+  var refus = [Xo.ModeTest.avancerJours(3), Xo.ModeTest.moisSuivant(), Xo.ModeTest.reinitialiserBreches(),
+               Xo.BrechesJeu.simulerVictoire(vraie),
+               Xo.BrechesJeu.effacerTest()];
+  verifie("mode test eteint : les jours simules sont ignores, le jeu suit le vrai jour",
+          Xo.ModeTest.joursSimules() === 0 && Xo.BrechesJeu.aujourdhui() === jourReel);
+  verifie("mode test eteint : chaque outil refuse, sans rien ecrire",
+          ouverte && refus.every(function (r) { return r === false; }) &&
+          Xo.ModeTest.finirSemaine() === "breches eteintes" &&
+          Xo.BrechesJeu.lignesEtat().length === 0 &&
+          JSON.stringify(Object.keys(mo.stockage).sort()) === JSON.stringify(["echos_breches_test_jours", "echos_joueur_v5"]) &&
+          mo.stockage.echos_breches_test_jours === "5" && mo.stockage.echos_joueur_v5 === joueurO,
+          JSON.stringify(refus) + " " + Object.keys(mo.stockage).join(","));
+
+  // --- Mode test allume ---
+  var m = mondePanneau({});
+  var X = m.ctx, S = m.statiques;
+  var joueurAvant = m.stockage.echos_joueur_v5;
+  X.ModeTest.preparerPanneau();
+  verifie("le panneau : interrupteur sur Non, outils caches",
+          S["mt-breches"].textContent === "Brèches : Non" && !S["mt-breches-outils"].classList.contains("actif") &&
+          !X.BrechesJeu.actif());
+  clic(m, "mt-breches");
+  verifie("Breches : Oui allume le systeme et montre les outils",
+          S["mt-breches"].textContent === "Brèches : Oui" && S["mt-breches-outils"].classList.contains("actif") &&
+          X.BrechesJeu.actif() && S["mt-breche-terrain"].innerHTML.indexOf("Brèche d'essai 4") !== -1);
+  verifie("sur Arene normale, Finir la semaine demande une breche d'essai",
+          X.ModeTest.finirSemaine() === "choisis une breche d'essai");
+
+  choisir(m, "mt-breche-terrain", 1);
+  var terrain = X.ModeTest.donjonDeTest(25.03, 121.56);
+  verifie("Breche d'essai 1 : le terrain devient une breche de la famille de l'espece choisie",
+          terrain.id === "test/breche/1" && terrain.brecheEssai === true && terrain.fictif === true &&
+          terrain.categorie === X.ESPECES[X.ModeTest.reglages.espece].famille);
+
+  var c1 = combattreIci(m);
+  var t1 = lue(m, "echos_breches_test_v1");
+  verifie("le combat du terrain d'essai inscrit la victoire dans la cle de test",
+          c1.boss.breche && c1.boss.breche.areneId === "test/breche/1" && c1.issue === "victoire" &&
+          t1 && t1.breches[0].arene_id === "test/breche/1" && t1.breches[0].cran === 1,
+          c1.issue + " " + JSON.stringify(t1));
+  verifie("... sans toucher la vraie cle ni la partie du joueur (combat d'essai)",
+          !m.stockage.echos_breches_v1 && m.stockage.echos_joueur_v5 === joueurAvant);
+
+  clic(m, "mt-jour-1");
+  verifie("+1 jour : le lendemain, la breche se rouvre au cran suivant",
+          X.ModeTest.joursSimules() === 1 && m.stockage.echos_breches_test_jours === "1" &&
+          X.BrechesJeu.aujourdhui() === jourReel + 1 &&
+          X.BrechesJeu.infoArene(terrain).statut === "active" && X.BrechesJeu.infoArene(terrain).boss.cran === 1);
+
+  clic(m, "mt-jour-3");
+  verifie("+3 jours : trois jours manques, trois crans perdus (retour au jour 1)",
+          X.ModeTest.joursSimules() === 4 && X.BrechesJeu.infoArene(terrain).boss.cran === 0 &&
+          X.BrechesJeu.infoArene(terrain).statut === "disponible");
+
+  clic(m, "mt-semaine");
+  var ap = X.BrechesJeu.infoArene(terrain);
+  var t2 = lue(m, "echos_breches_test_v1");
+  verifie("Finir la semaine : six victoires, six jours, le boss final attend",
+          ap.statut === "active" && ap.boss.role === "final" && X.ModeTest.joursSimules() === 10 &&
+          t2.journal.length === 7 && t2.breches[0].cran === 6,
+          JSON.stringify(ap) + " jours " + X.ModeTest.joursSimules());
+
+  var cf = combattreIci(m);
+  var t3 = lue(m, "echos_breches_test_v1");
+  verifie("le boss final se bat a la main, et la breche d'essai est possedee",
+          cf.boss.breche.role === "final" && cf.issue === "victoire" && t3.breches[0].possedee === true);
+  verifie("Finir la semaine sur une breche possedee ne fait rien",
+          X.ModeTest.finirSemaine() === "possedee" && lue(m, "echos_breches_test_v1").journal.length === 8);
+
+  clic(m, "mt-etat");
+  verifie("Etat : le panneau montre la saison, les compteurs et la breche",
+          S["mt-breches-texte"].innerHTML.indexOf("saison 2026-11") !== -1 &&
+          S["mt-breches-texte"].innerHTML.indexOf("Possédées : 1") !== -1 &&
+          S["mt-breches-texte"].innerHTML.indexOf("test/breche/1 · possedee") !== -1,
+          S["mt-breches-texte"].innerHTML);
+
+  clic(m, "mt-mois");
+  var t4 = lue(m, "echos_breches_test_v1");
+  verifie("Mois suivant : on est le 1er decembre, la saison a bascule",
+          X.BrechesJeu.aujourdhui() === X.jourDeLaDate(2026, 12, 1) && t4.saison === "2026-12" &&
+          t4.breches.length === 0 && t4.saisons_passees[0].possedees === 1 &&
+          t4.trophees.some(function (t) { return t.type === "saison"; }) &&
+          S["mt-breches-texte"].innerHTML.indexOf("saison 2026-12") !== -1,
+          JSON.stringify(t4).slice(0, 300));
+  verifie("en decembre, la breche d'essai a les boss de la saison de decembre",
+          X.BrechesJeu.infoArene(terrain).boss.espece === X.SAISONS_BRECHES[1].familles[terrain.categorie].a);
+
+  // Le plafond, avec les quatre breches d'essai.
+  [1, 2, 3].forEach(function (n) {
+    choisir(m, "mt-breche-terrain", n);
+    X.BrechesJeu.simulerVictoire(X.ModeTest.donjonDeTest(25.03, 121.56));
+  });
+  choisir(m, "mt-breche-terrain", 4);
+  var quatre = X.ModeTest.donjonDeTest(25.03, 121.56);
+  X.mettreAJourHud(25.03, 121.56);
+  verifie("quatre breches d'essai : la 4e bute sur le plafond, le bandeau le dit",
+          X.BrechesJeu.infoArene(quatre).statut === "plafond" && X.ModeTest.finirSemaine() === "plafond" &&
+          X.donjonProche.id === "test/breche/4" && S.texte.innerHTML.indexOf("3 brèches sont déjà ouvertes") !== -1,
+          S.texte.innerHTML);
+
+  clic(m, "mt-raz");
+  var t5 = lue(m, "echos_breches_test_v1");
+  verifie("Reinitialiser : jours a 0, breches d'essai, journal et trophees vides",
+          X.ModeTest.joursSimules() === 0 && m.stockage.echos_breches_test_jours === "0" &&
+          t5.saison === "2026-11" && t5.breches.length === 0 && t5.journal.length === 0 && t5.trophees.length === 0);
+
+  clic(m, "mt-breches");
+  verifie("Breches : Non eteint tout : terrain d'essai ordinaire, plus de boss",
+          !X.BrechesJeu.actif() && X.ModeTest.donjonDeTest(1, 2).id === "test/fictif" &&
+          X.BrechesJeu.surDonjonProche(X.ModeTest.donjonDeTest(1, 2)).breche === undefined);
+  verifie("de bout en bout : la vraie cle n'a jamais ete ecrite, la partie du joueur n'a pas bouge",
+          !m.stockage.echos_breches_v1 && m.stockage.echos_joueur_v5 === joueurAvant);
 }
 
 // Comparaison de valeurs, avec l'ecart en clair.
