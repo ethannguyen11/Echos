@@ -375,3 +375,149 @@ function appliquerForceBoss(adversaires, multiplicateur) {
     u.atq = Math.max(1, Math.round(u.atq * multiplicateur));
   }
 }
+
+
+/* ------------------------------------------------------------
+   6. LA SAISON ET SES DONNEES
+
+   Tout ce que le joueur a des breches tient dans UN objet, celui
+   que js/brechesjeu.js sauve sous CLE_BRECHES :
+     {
+       version:          VERSION_BRECHES
+       saison:           "2026-11"   le mois en cours
+       breches:          [breche]    celles commencees ce mois-ci
+       journal:          [entree]    toutes les victoires, toutes saisons
+       trophees:         [trophee]   tous, toutes saisons
+       saisons_passees:  [bilan]     le bilan de chaque mois fini
+     }
+
+   LA BASCULE MENSUELLE (basculerSaison) remet a zero les breches
+   du mois, donc le compteur de breches possedees, qui se deduit
+   d'elles. Elle CONSERVE le journal, les trophees et le bilan des
+   saisons passees. Les Echos assimiles et les glyphes ne sont pas
+   ici (echos_joueur_v5) : la bascule ne peut pas y toucher.
+
+   Une horloge qui recule vers un mois deja passe ne rebascule
+   PAS : la saison en cours est gardee (un mois ne revient jamais).
+
+   LE BILAN (bilanClassement) est le format prevu pour le futur
+   classement : il pourra etre envoye tel quel a un serveur.
+     {
+       format:     BRECHES_FORMAT_CLASSEMENT
+       saison:     "2026-11"
+       joueur_id:  "local" aujourd'hui
+       possedees:  le nombre de breches possedees ce mois-la
+       breches:    [{ arene_id, jour_possession }], du plus ancien
+                   au plus recent (puis par arene_id)
+     }
+   Les arene_id sont les id OpenStreetMap : les memes pour tous les
+   joueurs, donc comparables cote serveur.
+
+   Toutes ces fonctions sont pures : elles rendent un objet neuf.
+   ------------------------------------------------------------ */
+
+function donneesBrechesVides(mois) {
+  return { version: VERSION_BRECHES, saison: mois, breches: [], journal: [], trophees: [], saisons_passees: [] };
+}
+
+// Les plus recents seulement, au-dela du plafond.
+function garderLesDerniers(liste, max) {
+  return liste.length > max ? liste.slice(liste.length - max) : liste.slice();
+}
+
+function copieDonnees(d) {
+  return {
+    version: d.version, saison: d.saison,
+    breches: d.breches.map(copieBreche),
+    journal: d.journal.slice(), trophees: d.trophees.slice(),
+    saisons_passees: d.saisons_passees.slice()
+  };
+}
+
+function compterPossedees(donnees) {
+  return donnees.breches.filter(function (b) { return b.possedee && b.saison === donnees.saison; }).length;
+}
+
+function bilanClassement(donnees, joueurId) {
+  var possedees = donnees.breches.filter(function (b) { return b.possedee && b.saison === donnees.saison; })
+    .map(function (b) { return { arene_id: b.arene_id, jour_possession: b.jour_possession }; })
+    .sort(function (x, y) {
+      if (x.jour_possession !== y.jour_possession) return x.jour_possession - y.jour_possession;
+      return x.arene_id < y.arene_id ? -1 : (x.arene_id > y.arene_id ? 1 : 0);
+    });
+  return {
+    format: BRECHES_FORMAT_CLASSEMENT,
+    saison: donnees.saison,
+    joueur_id: joueurId,
+    possedees: possedees.length,
+    breches: possedees
+  };
+}
+
+/* Rend { change, donnees }. change vaut false (et donnees est
+   l'objet recu, intact) si le mois est illisible, le meme, ou plus
+   ancien que la saison en cours.
+
+   Au changement : le bilan du mois fini rejoint saisons_passees,
+   et un trophee de saison s'ajoute s'il a possede au moins une
+   breche : { id: "saison/2026-11", type: "saison", saison,
+   possedees }. */
+function basculerSaison(donnees, mois, joueurId) {
+  if (!moisValide(mois) || mois === donnees.saison) return { change: false, donnees: donnees };
+  if (moisValide(donnees.saison) && mois < donnees.saison) return { change: false, donnees: donnees };
+
+  var d = copieDonnees(donnees);
+  if (moisValide(donnees.saison)) {
+    var bilan = bilanClassement(donnees, joueurId);
+    d.saisons_passees = garderLesDerniers(d.saisons_passees.concat([bilan]), BRECHES_SAISONS_PASSEES_MAX);
+    if (bilan.possedees > 0) {
+      d.trophees = ajouterTrophee(d.trophees, {
+        id: "saison/" + bilan.saison, type: "saison", saison: bilan.saison, possedees: bilan.possedees
+      });
+    }
+  }
+  d.saison = mois;
+  d.breches = [];
+  return { change: true, donnees: d };
+}
+
+// Un trophee de plus, sauf s'il est deja la (meme id).
+function ajouterTrophee(trophees, t) {
+  for (var i = 0; i < trophees.length; i++) if (trophees[i].id === t.id) return trophees.slice();
+  return garderLesDerniers(trophees.concat([t]), BRECHES_TROPHEES_MAX);
+}
+
+/* La breche de cette arene dans les donnees, ou une breche neuve
+   (pas encore enregistree) si elle n'a jamais ete commencee. */
+function brecheDeLArene(donnees, areneId, categorie) {
+  for (var i = 0; i < donnees.breches.length; i++) {
+    if (donnees.breches[i].arene_id === areneId) return donnees.breches[i];
+  }
+  return creerBreche(areneId, categorie, donnees.saison);
+}
+
+/* La victoire du jour, inscrite dans les donnees : la breche mise a
+   jour (ou ajoutee), une ligne de journal, un trophee. Rend
+     { ok: true, raison: "", donnees (neuves), entree, trophee }
+     { ok: false, raison }   les raisons de gagnerBreche, plus
+                             "autre_saison" : le jour n'est pas dans
+                             le mois des donnees (il faut basculer
+                             d'abord). */
+function inscrireVictoire(donnees, areneId, categorie, jour, saisons) {
+  if (!brecheEntier(jour)) return { ok: false, raison: "jour_invalide" };
+  if (moisDuJour(jour) !== donnees.saison) return { ok: false, raison: "autre_saison" };
+
+  var breche = brecheDeLArene(donnees, areneId, categorie);
+  var r = gagnerBreche(breche, jour, donnees.breches, saisons);
+  if (!r.ok) return { ok: false, raison: r.raison };
+
+  var d = copieDonnees(donnees);
+  var place = -1;
+  for (var i = 0; i < d.breches.length; i++) if (d.breches[i].arene_id === areneId) place = i;
+  if (place === -1) d.breches.push(r.breche);
+  else d.breches[place] = r.breche;
+
+  d.journal = garderLesDerniers(d.journal.concat([r.entree]), BRECHES_JOURNAL_MAX);
+  d.trophees = ajouterTrophee(d.trophees, r.trophee);
+  return { ok: true, raison: "", donnees: d, entree: r.entree, trophee: r.trophee };
+}

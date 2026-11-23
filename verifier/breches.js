@@ -39,6 +39,7 @@ function lancerTestsBreches(options) {
     testerDonnees(monde, bloc, verifie);
     testerCalendrier(monde, bloc, verifie);
     testerCycle(monde, bloc, verifie, source);
+    testerSaison(monde, bloc, verifie);
   } catch (e) {
     verifie("les tests des breches vont au bout sans exception", false,
             String(e && e.stack || e).split(/\r?\n/).slice(0, 3).join(" "));
@@ -370,6 +371,124 @@ function testerCycle(monde, bloc, verifie, source) {
   var code = source("js/breches.js").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
   verifie("js/breches.js ne lit ni l'horloge ni le hasard (ni Date, ni Math.random)",
           !/\bDate\b/.test(code) && !/Math\.random/.test(code) && !/performance\.now/.test(code));
+}
+
+/* ------------------------------------------------------------
+   BRIQUE 4 : LA SAISON
+   ------------------------------------------------------------ */
+
+function testerSaison(monde, bloc, verifie) {
+  bloc("Breches : saisons mensuelles et bilan");
+
+  var X = monde().ctx;
+  var S = X.SAISONS_BRECHES;
+  var NOV = X.jourDeLaDate(2026, 11, 10);       // un jour de novembre 2026
+  var trioT = S[0].familles.temple;
+
+  // Une saison de novembre bien remplie : way/1 possedee (jours 10 a
+  // 16), way/2 commencee (2 victoires), way/3 possedee plus tard.
+  function novembre() {
+    var d = X.donneesBrechesVides("2026-11");
+    function gagne(id, cat, debut, n) {
+      for (var i = 0; i < n; i++) {
+        var r = X.inscrireVictoire(d, id, cat, debut + i, S);
+        if (!r.ok) throw new Error(id + " refusee : " + r.raison);
+        d = r.donnees;
+      }
+    }
+    gagne("way/1", "temple", NOV, 7);
+    gagne("way/2", "parc", NOV, 2);
+    gagne("node/3", "metro", NOV + 1, 7);
+    return d;
+  }
+
+  var d0 = X.donneesBrechesVides("2026-11");
+  verifie("des donnees neuves : la saison, et tout le reste vide",
+          JSON.stringify(d0) === JSON.stringify({ version: 1, saison: "2026-11", breches: [], journal: [],
+                                                  trophees: [], saisons_passees: [] }));
+
+  var r1 = X.inscrireVictoire(d0, "way/1", "temple", NOV, S);
+  verifie("inscrire une victoire : la breche est ajoutee, une ligne de journal, un trophee",
+          r1.ok && r1.donnees.breches.length === 1 && r1.donnees.breches[0].cran === 1 &&
+          r1.donnees.journal.length === 1 && r1.donnees.journal[0].espece === trioT.a &&
+          r1.donnees.trophees.length === 1 && r1.donnees.trophees[0].id === "breche/2026-11/way/1/0",
+          JSON.stringify(r1));
+  verifie("inscrire une victoire ne touche pas les donnees recues",
+          d0.breches.length === 0 && d0.journal.length === 0 && d0.trophees.length === 0);
+  var r2 = X.inscrireVictoire(r1.donnees, "way/1", "temple", NOV + 1, S);
+  verifie("la victoire suivante met la meme breche a jour, sans doublon",
+          r2.ok && r2.donnees.breches.length === 1 && r2.donnees.breches[0].cran === 2 && r2.donnees.journal.length === 2);
+  verifie("inscrire refuse ce que gagnerBreche refuse (meme jour)",
+          X.inscrireVictoire(r1.donnees, "way/1", "temple", NOV, S).raison === "eteinte");
+  verifie("inscrire refuse un jour d'un autre mois que la saison des donnees",
+          X.inscrireVictoire(d0, "way/1", "temple", X.jourDeLaDate(2026, 12, 1), S).raison === "autre_saison" &&
+          X.inscrireVictoire(d0, "way/1", "temple", 1.5, S).raison === "jour_invalide");
+  verifie("le plafond tient aussi dans les donnees",
+          (function () {
+            var d = d0;
+            ["way/a", "way/b", "way/c"].forEach(function (id) { d = X.inscrireVictoire(d, id, "temple", NOV, S).donnees; });
+            return X.inscrireVictoire(d, "way/d", "temple", NOV, S).raison === "plafond";
+          })());
+
+  var nov = novembre();
+  verifie("le compteur du mois : 2 breches possedees", X.compterPossedees(nov) === 2);
+
+  resultatEgal(verifie, "le bilan pour le classement, trie par jour de possession",
+    X.bilanClassement(nov, "local"),
+    { format: 1, saison: "2026-11", joueur_id: "local", possedees: 2,
+      breches: [{ arene_id: "way/1", jour_possession: NOV + 6 }, { arene_id: "node/3", jour_possession: NOV + 7 }] });
+  verifie("le bilan est du JSON pur : il survit a un aller-retour sans changer",
+          JSON.stringify(JSON.parse(JSON.stringify(X.bilanClassement(nov, "local")))) ===
+          JSON.stringify(X.bilanClassement(nov, "local")));
+
+  var avant = JSON.stringify(nov);
+  var b = X.basculerSaison(nov, "2026-12", "local");
+  var dec = b.donnees;
+  verifie("la bascule de decembre remet les breches et le compteur a zero",
+          b.change === true && dec.saison === "2026-12" && dec.breches.length === 0 && X.compterPossedees(dec) === 0);
+  verifie("la bascule garde tout le journal et tous les trophees de novembre",
+          dec.journal.length === nov.journal.length && dec.journal.length === 16 &&
+          nov.trophees.every(function (t) { return dec.trophees.some(function (u) { return u.id === t.id; }); }));
+  verifie("la bascule range le bilan de novembre dans les saisons passees",
+          dec.saisons_passees.length === 1 &&
+          JSON.stringify(dec.saisons_passees[0]) === JSON.stringify(X.bilanClassement(nov, "local")));
+  verifie("la bascule donne un trophee de saison (2 possedees)",
+          dec.trophees.filter(function (t) { return t.type === "saison"; }).length === 1 &&
+          JSON.stringify(dec.trophees[dec.trophees.length - 1]) ===
+          JSON.stringify({ id: "saison/2026-11", type: "saison", saison: "2026-11", possedees: 2 }));
+  verifie("la bascule ne touche pas les donnees recues", JSON.stringify(nov) === avant);
+
+  var vide = X.basculerSaison(X.donneesBrechesVides("2026-11"), "2026-12", "local").donnees;
+  verifie("un mois sans breche possedee : bilan a 0, pas de trophee de saison",
+          vide.saisons_passees.length === 1 && vide.saisons_passees[0].possedees === 0 && vide.trophees.length === 0);
+
+  verifie("meme mois, mois illisible : rien ne change",
+          X.basculerSaison(nov, "2026-11", "local").change === false &&
+          X.basculerSaison(nov, "2026-11", "local").donnees === nov &&
+          X.basculerSaison(nov, "bientot", "local").change === false);
+  verifie("une horloge revenue a un mois passe ne rebascule pas",
+          X.basculerSaison(dec, "2026-11", "local").change === false && X.basculerSaison(dec, "2026-11", "local").donnees === dec);
+
+  var deux = X.basculerSaison(X.basculerSaison(nov, "2027-02", "local").donnees, "2027-03", "local").donnees;
+  verifie("plusieurs mois d'absence : une seule bascule, puis la suivante",
+          deux.saison === "2027-03" && deux.saisons_passees.length === 2 &&
+          deux.saisons_passees[0].saison === "2026-11" && deux.saisons_passees[1].saison === "2027-02");
+
+  // Le bestiaire change avec le mois.
+  var dDec = X.inscrireVictoire(dec, "way/1", "temple", X.jourDeLaDate(2026, 12, 2), S);
+  verifie("en decembre, la meme arene a les boss de la saison de decembre",
+          dDec.ok && dDec.entree.espece === S[1].familles.temple.a && dDec.entree.espece !== trioT.a);
+
+  // Les plafonds du journal et des trophees.
+  var plein = X.donneesBrechesVides("2026-11");
+  for (var i = 0; i < X.BRECHES_JOURNAL_MAX + 5; i++) plein.journal.push({ jour: i });
+  var apres = X.inscrireVictoire(plein, "way/9", "temple", NOV, S).donnees;
+  verifie("le journal garde les plus recentes au-dela de BRECHES_JOURNAL_MAX",
+          apres.journal.length === X.BRECHES_JOURNAL_MAX && apres.journal[apres.journal.length - 1].arene_id === "way/9" &&
+          apres.journal[0].jour === 6);
+  verifie("un trophee deja gagne n'est pas ajoute deux fois",
+          X.ajouterTrophee([{ id: "t" }], { id: "t" }).length === 1 &&
+          X.ajouterTrophee([{ id: "t" }], { id: "u" }).length === 2);
 }
 
 // Comparaison de valeurs, avec l'ecart en clair.
