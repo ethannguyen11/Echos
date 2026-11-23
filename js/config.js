@@ -1194,6 +1194,74 @@ var COMBAT3_DELAI_ADVERSE = 500;
 
 
 /* ============================================================
+   LES BRECHES PERMANENTES (js/breches.js, js/brechesjeu.js)
+
+   Une breche permanente est une arene ordinaire qui heberge, pour
+   un mois, un cycle de 7 jours : 3 jours contre le boss A (de plus
+   en plus fort), 3 jours contre le boss B, puis le boss final.
+   Une victoire par jour au plus. Battre le boss final rend la
+   breche "possedee". Les monstres de chaque saison sont dans
+   js/saisons.js.
+
+   Correspondance de vocabulaire : les "poches d'Oubli" de
+   js/poche.js sont un AUTRE systeme (breches sporadiques a minuteur).
+   ============================================================ */
+
+/* L'INTERRUPTEUR. A false, le jeu se comporte exactement comme
+   avant : aucun marqueur, aucun boss, aucune ecriture. Le mode test
+   peut l'allumer sans toucher a cette ligne (bouton "Breches" du
+   panneau). */
+var BRECHES_PERMANENTES_ACTIF = false;
+
+/* LE CYCLE. 3 crans pour le boss A, 3 pour le boss B, 1 pour le
+   final : 3 + 3 + 1 = 7 jours. Les deux valeurs doivent rester
+   liees (verifier/breches.js le controle). */
+var BRECHES_CYCLE_JOURS    = 7;
+var BRECHES_CRANS_PAR_BOSS = 3;
+
+/* LA FORCE DU BOSS : ses PV et son ATQ sont multiplies par
+     BRECHES_MULT_ROLE[role] x BRECHES_MULT_CRAN[cran du role]
+   Le final n'a qu'un cran : il prend BRECHES_MULT_ROLE.final seul.
+   Les 7 jours du cycle donnent donc :
+     1.00  1.15  1.30 | 1.40  1.61  1.82 | 2.00
+   La suite doit monter strictement (controle dans les tests).
+   Le niveau du boss, lui, est celui de l'arene. VALEURS PRUDENTES,
+   a equilibrer en jouant (voir BRECHES_COMPTE_RENDU.md). */
+var BRECHES_MULT_CRAN = [1, 1.15, 1.3];
+var BRECHES_MULT_ROLE = { a: 1, b: 1.4, final: 2 };
+
+// Combien de breches commencees et pas encore possedees a la fois.
+var BRECHES_ACTIVES_MAX = 3;
+
+/* Une arene sur combien porte une breche, chaque mois. Le tirage
+   est deterministe (l'id de l'arene et le mois) : tous les
+   appareils voient les memes breches, qui changent de place a
+   chaque saison. */
+var BRECHES_UNE_ARENE_SUR = 4;
+
+/* LA SAUVEGARDE. Une cle a part, jamais dans echos_joueur_v5 ni
+   dans echos_poches_v1. Le mode test ecrit dans SA PROPRE cle :
+   ses outils (jours simules, saison suivante, remise a zero) ne
+   peuvent pas toucher la vraie partie.
+   Le journal et les trophees gardent les plus recents au-dela de
+   leur plafond : 1000 victoires, c'est presque trois ans a une
+   victoire par jour. */
+var CLE_BRECHES                  = "echos_breches_v1";
+var CLE_BRECHES_TEST             = "echos_breches_test_v1";
+var VERSION_BRECHES              = 1;
+var BRECHES_JOURNAL_MAX          = 1000;
+var BRECHES_TROPHEES_MAX         = 1000;
+var BRECHES_SAISONS_PASSEES_MAX  = 120;
+
+/* LE FUTUR CLASSEMENT. Le bilan d'une saison (bilanClassement) a
+   un numero de format, pour que le serveur sache le lire. Il n'y a
+   qu'un joueur par appareil : joueur_id est local pour l'instant,
+   comme dans les depots des poches d'Oubli. */
+var BRECHES_FORMAT_CLASSEMENT = 1;
+var BRECHES_JOUEUR_ID         = "local";
+
+
+/* ============================================================
    LE RENDU 3D (EN PREPARATION)
    Le combat affiche aujourd'hui des images 2D. Cette section
    prepare la RECEPTION des modeles 3D : ou ils se trouvent, a
