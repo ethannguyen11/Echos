@@ -41,6 +41,7 @@ function lancerTestsBreches(options) {
     testerCycle(monde, bloc, verifie, source);
     testerSaison(monde, bloc, verifie);
     testerSauvegarde(monde, bloc, verifie);
+    testerJeu(monde, bloc, verifie);
   } catch (e) {
     verifie("les tests des breches vont au bout sans exception", false,
             String(e && e.stack || e).split(/\r?\n/).slice(0, 3).join(" "));
@@ -654,6 +655,305 @@ function testerSauvegarde(monde, bloc, verifie) {
           joueurAvant.length > 50 && pochesAvant.length > 50);
   verifie("les Echos assimiles et la gourde sont toujours la apres une bascule",
           (function () { X.chargerJoueur(); return !!X.collection.peng && X.gourde.hinezumi.mince === 2; })());
+}
+
+/* ------------------------------------------------------------
+   BRIQUE 6 : LE BRANCHEMENT DANS LE JEU
+   Un vrai combat Ecran3, de bout en bout, dans le faux navigateur.
+   ------------------------------------------------------------ */
+
+var JOUR_MS = 86400000;
+var NOV_10 = Date.UTC(2026, 10, 9, 20, 0);      // 4 h du matin a Taipei, le 10 novembre 2026
+
+// Le meme decor que mondeC3 (verifier/parcours.js) : les deux ecrans
+// de combat, Ico et l'aide.
+var IDS_COMBAT = ["combat3", "c3-lieu", "c3-adversaires", "c3-ordre", "c3-equipe", "c3-journal",
+  "c3-commandes", "c3-aptitudes",
+  "combat-lieu", "m-nom", "monstre-img", "monstre-vide", "combat-actions",
+  "aptitudes", "liste-aptitudes", "btn-fermer-aptitudes", "figement-bloc",
+  "f-jauge", "f-libelle", "f-val", "m-fleche", "m-affinite", "m-pv", "m-jauge", "scene",
+  "btn-attaquer", "btn-aptitude", "btn-assimiler", "btn-defendre", "btn-fuir",
+  "btn-ico", "ico-pastille", "ico", "ico-portrait", "ico-sections", "ico-fragments",
+  "ico-bulle", "ico-bulle-l1", "ico-bulle-l2"];
+
+function testerJeu(monde, bloc, verifie) {
+  bloc("Breches : dans le jeu");
+
+  var vm = require("vm"), fs = require("fs"), path = require("path");
+
+  /* options : actif (BRECHES_PERMANENTES_ACTIF), modeTest (MODE_TEST),
+     brechesTest (l'interrupteur du panneau), stockage, instant. */
+  function mondeJeu(o) {
+    var m = monde(o.stockage || {});
+    IDS_COMBAT.forEach(function (id) {
+      m.statiques[id] = parcours.creerElement("div");
+      m.statiques[id].id = id;
+    });
+    ["js/ico.js", "js/aide.js"].forEach(function (f) {
+      vm.runInContext(fs.readFileSync(path.join(__dirname, "..", f), "utf8"), m.ctx, { filename: f });
+    });
+    var X = m.ctx;
+    X.MODE_TEST = !!o.modeTest;
+    X.BRECHES_PERMANENTES_ACTIF = !!o.actif;
+    X.ModeTest.reglages.breches = !!o.brechesTest;
+    m.instant = o.instant || NOV_10;
+    X.BrechesJeu.pourTests.reglerHorloge(function () { return m.instant; }, function () { return -480; });
+    X.chargerJoueur();
+    X.collection = {};
+    X.equipe = [];
+    [["hinezumi", 30], ["peng", 30], ["jinchan", 30]].forEach(function (e) { X.ajouterAlaCollection(e[0], e[1]); });
+    X.sauverJoueur();
+    X.majFiche();
+    X.Ecran3.pourTests.reglerAlea(function () { return 0.5; });
+    return m;
+  }
+
+  // Deux arenes : la premiere qui porte une breche de temple en
+  // novembre 2026, et une qui n'en porte pas.
+  var X0 = monde().ctx;
+  var idBreche = null, idSans = null;
+  for (var k = 1; k < 500 && (!idBreche || !idSans); k++) {
+    var id = "way/" + (900000 + k);
+    if (X0.estAreneBreche(id, "temple", "2026-11", X0.SAISONS_BRECHES)) { if (!idBreche) idBreche = id; }
+    else if (!idSans) idSans = id;
+  }
+  var trio = X0.SAISONS_BRECHES[0].familles.temple;
+
+  function arene(m, id, niveau) {
+    var d = { id: id, lat: 25.03, lon: 121.56, lieu: "Longshan", nom: "Porte du Temple de Longshan",
+              categorie: "temple", espece: "komainu", niveau: niveau || 3, capture: false, dissipe: false };
+    m.ctx.donjons[id] = d;
+    m.ctx.poserMarqueur(d);
+    return d;
+  }
+
+  function etat3(m) { return m.ctx.Ecran3.pourTests.etat(); }
+  function clic(b) { b.declencher("click", { target: null, stopPropagation: function () {} }); }
+  function attendreMain(m) {
+    for (var i = 0; i < 400; i++) {
+      var e = etat3(m);
+      if (!e || e.phase === "commande" || e.phase === "fin") return e;
+      m.horloge.avancer(250);
+    }
+    return etat3(m);
+  }
+  // Joue jusqu'a la fin avec la commande donnee. Rend l'issue.
+  function finir(m, commande) {
+    for (var i = 0; i < 300; i++) {
+      var e = attendreMain(m);
+      if (!e || e.phase === "fin") break;
+      clic(e.cmd[commande || "attaquer"]);
+      if (e.phase === "ciblage") clic(e.cartes[e.cibles[0]].racine);
+    }
+    m.horloge.avancer(120000);
+    return etat3(m) && etat3(m).issue;
+  }
+  function lignes(m) { return etat3(m).historique.map(function (h) { return h.ligne; }); }
+  function sortir(m) { var e = etat3(m); if (e && e.cmd) clic(e.cmd.sortie); }
+  function lue(m, cle) { return m.stockage[cle] ? JSON.parse(m.stockage[cle]) : null; }
+  function clesBreches(m) {
+    return Object.keys(m.stockage).filter(function (c) { return c.indexOf("echos_breches") === 0; });
+  }
+  // Le combat du boss du jour, de l'approche a la sortie.
+  function combattre(m, d, commande) {
+    var boss = m.ctx.BrechesJeu.surDonjonProche(d);
+    m.ctx.Ecran3.lancer(boss, false);
+    var e = etat3(m);
+    var adv = e ? e.combat.adversaires.map(function (u) { return { pvMax: u.pvMax, atq: u.atq, espece: u.espece }; }) : [];
+    var issue = finir(m, commande);
+    var l = etat3(m) ? lignes(m) : [];
+    sortir(m);
+    return { boss: boss, adv: adv, issue: issue, lignes: l };
+  }
+
+  verifie("deux arenes d'essai trouvees (une breche de temple en novembre, une sans)", !!idBreche && !!idSans);
+
+  // --- Eteint : le jeu ne change pas ---
+  var mo = mondeJeu({});
+  var Xo = mo.ctx;
+  var dOff = arene(mo, idBreche);
+  Xo.BrechesJeu.demarrer();
+  Xo.BrechesJeu.verifierJour();
+  verifie("eteint : le lieu reste le lieu, ni bandeau, ni infobulle, ni anneau",
+          Xo.BrechesJeu.actif() === false && Xo.BrechesJeu.surDonjonProche(dOff) === dOff &&
+          Xo.BrechesJeu.noteHud(dOff) === "" && Xo.texteInfobulle(dOff).indexOf("pop-breche") === -1 &&
+          Object.keys(Xo.BrechesJeu.pourTests.anneaux()).length === 0 && Xo.BrechesJeu.preparer() === null);
+  Xo.dernierePosition = [dOff.lat, dOff.lon];
+  Xo.mettreAJourHud(dOff.lat, dOff.lon);
+  verifie("eteint : le bandeau montre l'Echo de l'arene, sans breche",
+          Xo.donjonProche === dOff && mo.statiques.texte.innerHTML.indexOf("Brèche") === -1 &&
+          mo.statiques.texte.innerHTML.indexOf("Komainu") !== -1, mo.statiques.texte.innerHTML);
+  Xo.Ecran3.lancer(dOff, false);
+  verifie("eteint : Approcher ouvre l'ancien combat, comme avant",
+          !Xo.Ecran3.enCours() && !!Xo.combat);
+  verifie("eteint : aucune cle de breches n'est ecrite", clesBreches(mo).length === 0, clesBreches(mo).join(","));
+
+  // --- Allume : le jour 1 ---
+  var m1 = mondeJeu({ actif: true });
+  var X1 = m1.ctx;
+  var d1 = arene(m1, idBreche), sans = arene(m1, idSans);
+  X1.COMBAT_MULTI_ADVERSAIRES_LIEU = 3;      // la breche doit rester a 1 adversaire
+  X1.BrechesJeu.demarrer();
+  var boss1 = X1.BrechesJeu.surDonjonProche(d1);
+  verifie("le jour du jeu est le jour local du joueur (Taipei : deja le 10, a Londres encore le 9)",
+          X1.BrechesJeu.aujourdhui() === X1.jourDeLaDate(2026, 11, 10));
+  verifie("allume : la cle est la vraie, le mode test est eteint, rien n'est ecrit au demarrage",
+          X1.BrechesJeu.cle() === "echos_breches_v1" && clesBreches(m1).length === 0);
+  verifie("une arene sans breche reste elle-meme, sans anneau",
+          X1.BrechesJeu.surDonjonProche(sans) === sans && !X1.BrechesJeu.pourTests.anneaux()[idSans]);
+  verifie("l'arene de la breche : un anneau, une ligne d'infobulle",
+          !!X1.BrechesJeu.pourTests.anneaux()[idBreche] &&
+          X1.texteInfobulle(d1).indexOf("Brèche ouverte · jour 1/7") !== -1);
+  verifie("son boss du jour : le boss A de la saison, au niveau et au Figement de l'arene",
+          boss1 !== d1 && boss1.id === "breche/" + idBreche && boss1.espece === trio.a && boss1.niveau === 3 &&
+          boss1.figement === X1.figementDuLieu(d1) && boss1.fictif === false &&
+          boss1.breche.multiplicateur === 1 && boss1.breche.jourDuCycle === 1 && boss1.breche.areneId === idBreche,
+          JSON.stringify(boss1));
+  X1.dernierePosition = [d1.lat, d1.lon];
+  X1.mettreAJourHud(d1.lat, d1.lon);
+  verifie("le bandeau annonce le boss de la breche, jour 1 sur 7",
+          X1.donjonProche.breche && m1.statiques.texte.innerHTML.indexOf("Brèche · jour 1/7 · force ×1") !== -1 &&
+          m1.statiques.entrer.style.display === "block", m1.statiques.texte.innerHTML);
+
+  // La force de reference : le meme adversaire, sans breche.
+  var base = X1.creerCombatMulti([{ espece: "hinezumi", niveau: 30 }, { espece: "peng", niveau: 30 },
+                                  { espece: "jinchan", niveau: 30 }],
+                                 [{ espece: trio.a, niveau: X1.niveauAdversaire(boss1) }], {}).combat.adversaires[0];
+  var c1 = combattre(m1, d1);
+  verifie("le boss se bat dans Ecran3 (meme ecran a plusieurs eteint), seul, a la force x1",
+          c1.adv.length === 1 && c1.adv[0].espece === trio.a && c1.adv[0].pvMax === base.pvMax &&
+          c1.adv[0].atq === base.atq && X1.COMBAT_MULTI_ACTIF === false, JSON.stringify(c1.adv));
+  var s1 = lue(m1, "echos_breches_v1");
+  verifie("la victoire du jour est inscrite : cran 1, journal, trophee",
+          c1.issue === "victoire" && s1 && s1.breches.length === 1 && s1.breches[0].cran === 1 &&
+          s1.breches[0].dernier_jour === X1.BrechesJeu.aujourdhui() && s1.journal.length === 1 &&
+          s1.trophees.length === 1 && s1.trophees[0].type === "victoire",
+          c1.issue + " " + JSON.stringify(s1));
+  verifie("le journal du combat annonce le boss et la breche refermee",
+          c1.lignes.some(function (l) { return l.indexOf("Une brèche s'ouvre : jour 1 sur 7") !== -1; }) &&
+          c1.lignes.some(function (l) { return l.indexOf(X1.txt("breche.victoire.jour")) !== -1; }),
+          c1.lignes.join(" | "));
+  verifie("l'arene n'est pas marquee capturee, et la cle de test n'est pas touchee",
+          d1.capture === false && d1.dissipe === false && !m1.stockage.echos_breches_test_v1);
+  verifie("apres la victoire : l'arene reprend sa place, la breche est refermee jusqu'a demain",
+          X1.BrechesJeu.surDonjonProche(d1) === d1 &&
+          X1.BrechesJeu.noteHud(d1).indexOf(X1.txt("breche.hud.eteinte")) !== -1 &&
+          X1.texteInfobulle(d1).indexOf("Brèche refermée") !== -1 &&
+          !!X1.BrechesJeu.pourTests.anneaux()[idBreche]);
+  X1.mettreAJourHud(d1.lat, d1.lon);
+  verifie("le bandeau du lieu dit que la breche revient demain",
+          X1.donjonProche === d1 && m1.statiques.texte.innerHTML.indexOf("revient demain") !== -1,
+          m1.statiques.texte.innerHTML);
+  // Le boss du jour 1, battu une seconde fois (un ecran reste ouvert,
+  // un double appui) : rien ne doit s'inscrire.
+  var avantRefus = m1.stockage.echos_breches_v1;
+  var encore = X1.BrechesJeu.victoire(boss1);
+  verifie("une seconde victoire le meme jour n'est pas inscrite",
+          encore.length === 0 && m1.stockage.echos_breches_v1 === avantRefus);
+
+  // Le lendemain.
+  m1.instant += JOUR_MS;
+  X1.BrechesJeu.verifierJour();
+  var c2 = combattre(m1, d1);
+  verifie("le lendemain : le meme boss, plus fort (x1.15)",
+          c2.boss.breche.jourDuCycle === 2 && c2.boss.breche.multiplicateur === 1.15 &&
+          c2.adv[0].pvMax === Math.round(base.pvMax * 1.15) && c2.adv[0].atq === Math.round(base.atq * 1.15) &&
+          c2.issue === "victoire" && lue(m1, "echos_breches_v1").breches[0].cran === 2,
+          JSON.stringify(c2.adv) + " " + c2.issue);
+
+  // La fuite ne compte pas.
+  m1.instant += JOUR_MS;
+  X1.Ecran3.pourTests.reglerAlea(function () { return 0; });
+  var avantFuite = m1.stockage.echos_breches_v1;
+  var cf = combattre(m1, d1, "fuir");
+  verifie("fuir le boss n'inscrit rien", cf.issue === "fuite" && m1.stockage.echos_breches_v1 === avantFuite, cf.issue);
+
+  // Assimiler le boss : c'est une victoire, et l'arene reste intacte.
+  var donjonsAvant = m1.stockage.echos_donjons_v5;
+  var ca = combattre(m1, d1, "assimiler");
+  verifie("assimiler le boss compte comme la victoire du jour, sans capturer l'arene",
+          ca.issue === "victoire" && lue(m1, "echos_breches_v1").breches[0].cran === 3 &&
+          !!X1.collection[trio.a] && d1.capture === false && m1.stockage.echos_donjons_v5 === donjonsAvant,
+          ca.issue + " " + JSON.stringify(lue(m1, "echos_breches_v1").breches[0]));
+  X1.Ecran3.pourTests.reglerAlea(function () { return 0.5; });
+
+  // Le jour 7 et la possession.
+  var jour = X1.BrechesJeu.aujourdhui() + 1;
+  var mp = mondeJeu({ actif: true, instant: m1.instant + JOUR_MS, stockage: { echos_breches_v1: JSON.stringify({
+    version: 1, saison: "2026-11", journal: [], trophees: [], saisons_passees: [],
+    breches: [{ arene_id: idBreche, categorie: "temple", saison: "2026-11", cran: 6, dernier_jour: jour - 1,
+                possedee: false, jour_possession: null, victoires: 6 }] }) } });
+  var dp = arene(mp, idBreche);
+  var cp = combattre(mp, dp);
+  var sp = lue(mp, "echos_breches_v1");
+  verifie("jour 7 : le boss final, sa propre espece, force x2",
+          cp.boss.espece === trio.final && cp.boss.breche.role === "final" && cp.boss.breche.multiplicateur === 2 &&
+          cp.lignes.some(function (l) { return l.indexOf("Septième jour") !== -1; }));
+  verifie("battre le final : la breche est possedee, trophee de possession, message de possession",
+          cp.issue === "victoire" && sp.breches[0].possedee === true && sp.breches[0].jour_possession === jour &&
+          sp.trophees.some(function (t) { return t.type === "possession"; }) &&
+          cp.lignes.some(function (l) { return l.indexOf(mp.ctx.txt("breche.victoire.possession")) !== -1; }),
+          cp.issue + " " + JSON.stringify(sp));
+  mp.instant += 3 * JOUR_MS;
+  verifie("une breche possedee : plus de boss, le bandeau et l'infobulle le disent",
+          mp.ctx.BrechesJeu.surDonjonProche(dp) === dp &&
+          mp.ctx.BrechesJeu.noteHud(dp).indexOf(mp.ctx.txt("breche.hud.possedee")) !== -1 &&
+          mp.ctx.texteInfobulle(dp).indexOf("Brèche possédée") !== -1);
+  var stylePos = mp.ctx.BrechesJeu.pourTests.styleAnneau("possedee");
+  verifie("l'anneau d'une breche possedee est dore et porte l'effet de possession",
+          stylePos.color === "#d4a02a" && stylePos.fill === true && stylePos.className === "breche-possedee" &&
+          stylePos.interactive === false &&
+          mp.ctx.BrechesJeu.pourTests.styleAnneau("active").className === "breche-anneau" &&
+          mp.ctx.BrechesJeu.pourTests.styleAnneau("eteinte").dashArray !== null &&
+          mp.ctx.BrechesJeu.pourTests.styleAnneau("inconnu") === null);
+
+  // Le plafond, vu du jeu.
+  var j0 = mondeJeu({ actif: true }).ctx.BrechesJeu.aujourdhui();
+  function enCours(id) {
+    return { arene_id: id, categorie: "parc", saison: "2026-11", cran: 2, dernier_jour: j0 - 1,
+             possedee: false, jour_possession: null, victoires: 2 };
+  }
+  var mf = mondeJeu({ actif: true, stockage: { echos_breches_v1: JSON.stringify({ saison: "2026-11",
+    breches: [enCours("way/x1"), enCours("way/x2"), enCours("way/x3")] }) } });
+  var df = arene(mf, idBreche);
+  verifie("3 breches deja ouvertes : celle-ci ne s'ouvre pas, le bandeau dit pourquoi",
+          mf.ctx.BrechesJeu.surDonjonProche(df) === df &&
+          mf.ctx.BrechesJeu.noteHud(df).indexOf("3 brèches sont déjà ouvertes") !== -1 &&
+          mf.ctx.texteInfobulle(df).indexOf("hors d'atteinte") !== -1);
+  verifie("une arene decouverte apres le demarrage recoit son anneau des sa pose",
+          !!mf.ctx.BrechesJeu.pourTests.anneaux()[idBreche]);
+
+  // La bascule au demarrage.
+  var mb = mondeJeu({ actif: true, stockage: { echos_breches_v1: JSON.stringify({ saison: "2026-10",
+    breches: [enCours("way/x1")], journal: [], trophees: [] }) } });
+  mb.ctx.BrechesJeu.demarrer();
+  var sb = lue(mb, "echos_breches_v1");
+  verifie("au demarrage d'un nouveau mois, la saison bascule et c'est enregistre",
+          sb.saison === "2026-11" && sb.breches.length === 0 && sb.saisons_passees.length === 1 &&
+          sb.saisons_passees[0].saison === "2026-10");
+
+  // Le terrain d'essai n'est jamais une breche sans le dire.
+  var mt = mondeJeu({ actif: true, modeTest: true });
+  var fictif = mt.ctx.ModeTest.donjonDeTest(25, 121);
+  verifie("le terrain d'essai du mode test n'est pas une breche par defaut",
+          mt.ctx.BrechesJeu.surDonjonProche(fictif) === fictif);
+
+  // Le mode test ecrit dans sa propre cle.
+  var mq = mondeJeu({ modeTest: true, brechesTest: true });
+  var dq = arene(mq, idBreche);
+  var cq = combattre(mq, dq);
+  verifie("mode test (interrupteur Breches) : tout va dans echos_breches_test_v1, rien dans la vraie cle",
+          mq.ctx.BrechesJeu.actif() && cq.issue === "victoire" && !!mq.stockage.echos_breches_test_v1 &&
+          !mq.stockage.echos_breches_v1 && mq.ctx.BrechesJeu.cle() === "echos_breches_test_v1");
+  var mr = mondeJeu({ actif: true, modeTest: true });
+  verifie("meme allume pour de vrai, le mode test garde sa propre cle",
+          mr.ctx.BrechesJeu.cle() === "echos_breches_test_v1");
+
+  verifie("les accroches de js/carte.js et js/ecran3.js passent toutes par BrechesJeu",
+          ["js/carte.js", "js/ecran3.js"].every(function (f) {
+            var s = fs.readFileSync(path.join(__dirname, "..", f), "utf8");
+            return s.indexOf("BrechesJeu.") !== -1 && s.indexOf("echos_breches") === -1 && s.indexOf("CLE_BRECHES") === -1;
+          }));
 }
 
 // Comparaison de valeurs, avec l'ecart en clair.

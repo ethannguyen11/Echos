@@ -719,3 +719,15 @@ button { font-family: inherit; }
 .pop-titre { font-weight: 700; font-size: 15px; }
 .pop-lieu { color: #666; font-size: 12px; margin-top: 2px; }
 .pop-mons { margin-top: 6px; }
+
+/* Les breches permanentes (js/brechesjeu.js). L'anneau est un cercle
+   Leaflet pose par-dessus le marqueur de l'arene ; celui d'une breche
+   possedee respire doucement : c'est tout l'effet de possession. */
+.pop-breche { margin-top: 6px; color: #b455d4; font-weight: 600; }
+.breche-note { color: #b455d4; }
+.breche-anneau { pointer-events: none; }
+.breche-possedee { pointer-events: none; animation: breche-lueur 2.4s ease-in-out infinite; }
+@keyframes breche-lueur {
+  0%, 100% { stroke-opacity: 0.95; fill-opacity: 0.25; }
+  50%      { stroke-opacity: 0.45; fill-opacity: 0.08; }
+}

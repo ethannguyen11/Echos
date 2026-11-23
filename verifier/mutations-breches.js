@@ -193,6 +193,64 @@ var MUTATIONS = [
   { fichier: "js/breches.js", quoi: "les saisons passees perdues au chargement",
     avant: "d.saisons_passees = garderLesDerniers(listeNormalisee(brut.saisons_passees, normaliserBilan),",
     apres: "d.saisons_passees = garderLesDerniers([]," },
+  // --- Brique 6 : le branchement ---
+  { fichier: "js/brechesjeu.js", quoi: "toujours allume",
+    avant: "  if (BRECHES_PERMANENTES_ACTIF) return true;", apres: "  return true;" },
+  { fichier: "js/brechesjeu.js", quoi: "le mode test ecrit dans la vraie cle",
+    avant: "function cle() { return enTest() ? CLE_BRECHES_TEST : CLE_BRECHES; }",
+    apres: "function cle() { return CLE_BRECHES; }" },
+  { fichier: "js/brechesjeu.js", quoi: "la bascule n'est pas enregistree",
+    avant: "    donnees = b.donnees;\n    sauverBreches(c, donnees);", apres: "    donnees = b.donnees;" },
+  { fichier: "js/brechesjeu.js", quoi: "le fuseau ignore",
+    avant: "return jourCalendaire(t, horloge.decalage(t)) + simules;", apres: "return jourCalendaire(t, 0) + simules;" },
+  { fichier: "js/brechesjeu.js", quoi: "toutes les arenes portent une breche",
+    avant: "} else if (!estAreneBreche(d.id, d.categorie, dn.saison, SAISONS_BRECHES)) {", apres: "} else if (false) {" },
+  { fichier: "js/brechesjeu.js", quoi: "le terrain d'essai devient une breche sans le demander",
+    avant: "    if (!d.brecheEssai || !enTest()) return null;", apres: "" },
+  { fichier: "js/brechesjeu.js", quoi: "une breche eteinte se combat encore",
+    avant: 'return !!info && !!info.boss && (info.statut === "active" || info.statut === "disponible");',
+    apres: 'return !!info && !!info.boss && info.statut !== "possedee";' },
+  { fichier: "js/brechesjeu.js", quoi: "le boss prend l'espece de l'arene",
+    avant: "    espece: info.boss.espece,", apres: "    espece: arene.espece," },
+  { fichier: "js/brechesjeu.js", quoi: "le boss garde l'id de l'arene",
+    avant: '    id: "breche/" + arene.id,', apres: "    id: arene.id," },
+  { fichier: "js/brechesjeu.js", quoi: "la force du cran oubliee",
+    avant: "      multiplicateur: info.boss.multiplicateur\n", apres: "      multiplicateur: 1\n" },
+  { fichier: "js/brechesjeu.js", quoi: "la victoire n'est pas sauvee",
+    avant: "  donnees = r.donnees;\n  sauverBreches(cle(), donnees);", apres: "  donnees = r.donnees;" },
+  { fichier: "js/brechesjeu.js", quoi: "la victoire inscrite au jour de la fin, pas du debut",
+    avant: "var r = inscrireVictoire(dn, b.areneId, b.categorie, b.jour, SAISONS_BRECHES);",
+    apres: "var r = inscrireVictoire(dn, b.areneId, b.categorie, aujourdhui() + 1, SAISONS_BRECHES);" },
+  { fichier: "js/brechesjeu.js", quoi: "le message de possession oublie",
+    avant: '  if (r.trophee.type === "possession") {', apres: "  if (false) {" },
+  { fichier: "js/brechesjeu.js", quoi: "pas de note de plafond dans le bandeau",
+    avant: '  if (info.statut === "plafond") {', apres: "  if (false) {" },
+  { fichier: "js/brechesjeu.js", quoi: "l'anneau possede sans effet",
+    avant: 'fillOpacity: 0.25, className: "breche-possedee" }', apres: 'fillOpacity: 0.25 }' },
+  { fichier: "js/carte.js", quoi: "le bandeau ne laisse pas la place au boss",
+    avant: "  donjonProche = BrechesJeu.surDonjonProche(donjonProche);\n", apres: "" },
+  { fichier: "js/carte.js", quoi: "la note du bandeau oubliee",
+    avant: '  if (note) texte.innerHTML += "<br>" + note;', apres: "" },
+  { fichier: "js/carte.js", quoi: "l'infobulle sans ligne de breche",
+    avant: '(typeof BrechesJeu !== "undefined" ? BrechesJeu.ligneInfobulle(d) : "");', apres: '"";' },
+  { fichier: "js/carte.js", quoi: "pas d'anneau a la pose du marqueur",
+    avant: '  if (typeof BrechesJeu !== "undefined") BrechesJeu.poserAnneau(d);\n}\n\nfunction texteInfobulle',
+    apres: "}\n\nfunction texteInfobulle" },
+  { fichier: "js/ecran3.js", quoi: "le boss passe par l'ancien combat",
+    avant: "if (choisi() || (donjon && donjon.breche)) return demarrer(donjon, preemptif);",
+    apres: "if (choisi()) return demarrer(donjon, preemptif);" },
+  { fichier: "js/ecran3.js", quoi: "le boss a plusieurs",
+    avant: "  if (donjon && donjon.breche) return 1;     // le boss d'une breche est seul\n", apres: "" },
+  { fichier: "js/ecran3.js", quoi: "la force du boss pas appliquee",
+    avant: "  if (donjon.breche) appliquerForceBoss(r.combat.adversaires, donjon.breche.multiplicateur);\n", apres: "" },
+  { fichier: "js/ecran3.js", quoi: "assimiler le boss capture l'arene",
+    avant: "if (!donjon.fictif && !donjon.breche) { rafraichirMarqueur(donjon); sauvegarder(); }",
+    apres: "if (!donjon.fictif) { rafraichirMarqueur(donjon); sauvegarder(); }" },
+  { fichier: "js/ecran3.js", quoi: "la victoire n'est pas transmise",
+    avant: '  if (issue === "victoire" && d.breche) lignes = lignes.concat(BrechesJeu.victoire(d));\n', apres: "" },
+  { fichier: "js/ecran3.js", quoi: "la fuite compte comme une victoire",
+    avant: '  if (issue === "victoire" && d.breche) lignes = lignes.concat(BrechesJeu.victoire(d));\n',
+    apres: '  if (d.breche) lignes = lignes.concat(BrechesJeu.victoire(d));\n' },
   { fichier: "js/breches.js", quoi: "les regles lisent l'horloge",
     avant: "function cranDuJour(breche, jour) {", apres: "function cranDuJour(breche, jour) {\n  var t = Date.now();" }
 ];
@@ -208,7 +266,11 @@ function lancer() {
 
   MUTATIONS.forEach(function (m) {
     var source = fs.readFileSync(path.join(RACINE, m.fichier), "utf8");
-    var n = source.split(m.avant).length - 1;
+    // Git peut rendre certains fichiers avec des fins de ligne Windows.
+    var crlf = source.indexOf("\r\n") !== -1;
+    var avant = crlf ? m.avant.replace(/\r?\n/g, "\r\n") : m.avant;
+    var apres = crlf ? m.apres.replace(/\r?\n/g, "\r\n") : m.apres;
+    var n = source.split(avant).length - 1;
     if (n !== 1) {
       malEcrites++;
       lignes.push(" ECHEC  mutation mal ecrite (" + n + " occurrence(s)) : " + m.quoi);
@@ -216,7 +278,9 @@ function lancer() {
     }
 
     var r = tests.lancerTestsBreches({
-      transformer: function (f, src) { return f === m.fichier ? src.replace(m.avant, m.apres) : src; }
+      transformer: function (f, src) {
+        return f === m.fichier ? src.replace(avant, function () { return apres; }) : src;
+      }
     });
     var rouges = r.filter(function (x) { return !x.ok; });
     if (rouges.length === 0) survivantes++;

@@ -21,7 +21,7 @@ var RACINE = path.join(__dirname, "..");
 // seulement disposer de ses fonctions.
 var FICHIERS = ["js/config.js", "js/langues.js", "js/especes.js", "js/saisons.js", "js/lieux.js", "js/carte.js",
                 "js/joueur.js", "js/fragments.js", "js/poche.js", "js/breches.js", "js/combat.js", "js/combat3.js", "js/grimoire.js", "js/intro.js",
-                "js/rendu3d.js", "js/modetest.js", "js/ecran3.js"];
+                "js/rendu3d.js", "js/modetest.js", "js/ecran3.js", "js/brechesjeu.js"];
 
 
 /* ------------------------------------------------------------

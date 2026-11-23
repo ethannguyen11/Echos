@@ -36,6 +36,10 @@ function poserMarqueur(d) {
 
   m.bindPopup(texteInfobulle(d));
   marqueurs[d.id] = m;
+
+  // L'anneau d'une breche permanente (js/brechesjeu.js), s'il y en a
+  // une ici et que le systeme est allume. Sinon : rien.
+  if (typeof BrechesJeu !== "undefined") BrechesJeu.poserAnneau(d);
 }
 
 function texteInfobulle(d) {
@@ -48,7 +52,8 @@ function texteInfobulle(d) {
 
   return '<div class="pop-titre">' + d.nom + '</div>' +
          '<div class="pop-lieu">' + d.lieu + '</div>' +
-         '<div class="pop-mons">' + bas + '</div>';
+         '<div class="pop-mons">' + bas + '</div>' +
+         (typeof BrechesJeu !== "undefined" ? BrechesJeu.ligneInfobulle(d) : "");
 }
 
 function rafraichirMarqueur(d) {
@@ -59,6 +64,7 @@ function rafraichirMarqueur(d) {
     fillOpacity: estClos(d) ? 0.5 : 0.9
   });
   m.setPopupContent(texteInfobulle(d));
+  if (typeof BrechesJeu !== "undefined") BrechesJeu.poserAnneau(d);
 }
 
 
@@ -105,6 +111,13 @@ function mettreAJourHud(lat, lon) {
     distanceProche = DISTANCE_ENTREE - 1;
   }
 
+  /* Breches permanentes (js/brechesjeu.js) : si ce lieu porte une
+     breche ouverte aujourd'hui, son boss prend la place de l'arene.
+     Eteint (BRECHES_PERMANENTES_ACTIF a false et mode test sur Non),
+     ces deux lignes rendent le lieu tel quel. */
+  BrechesJeu.verifierJour();
+  donjonProche = BrechesJeu.surDonjonProche(donjonProche);
+
   var texte = elem("texte");
   var bouton = elem("entrer");
 
@@ -146,4 +159,8 @@ function mettreAJourHud(lat, lon) {
                        "<br><span style='color:#b455d4'>Il ne t'a pas vu venir.</span>" : "");
     bouton.style.display = "block";
   }
+
+  // Le jour du cycle d'un boss, ou pourquoi la breche d'ici dort.
+  var note = BrechesJeu.noteHud(donjonProche);
+  if (note) texte.innerHTML += "<br>" + note;
 }

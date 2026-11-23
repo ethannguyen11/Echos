@@ -45,6 +45,10 @@ elem("btn-depart").addEventListener("click", function () {
   chargerPoches();
   if (nettoyerPoches(Date.now()) > 0) sauverPoches();
 
+  // Les breches permanentes, sous leur propre cle. Ne fait rien tant
+  // que BRECHES_PERMANENTES_ACTIF (js/config.js) vaut false.
+  BrechesJeu.demarrer();
+
   // La permission de geolocalisation exige un geste utilisateur sur
   // iOS : cet appel doit rester dans le clic, avant toute autre chose.
   navigator.geolocation.watchPosition(positionMiseAJour, erreurPosition, {

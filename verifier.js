@@ -39,6 +39,7 @@ var FICHIERS = [
   "js/rendu3d.js",
   "js/modetest.js",
   "js/ecran3.js",
+  "js/brechesjeu.js",
   "js/jeu.js"
 ];
 
@@ -243,7 +244,8 @@ var classesManquantes = [];
  "c3-tour", "c3-jeton", "c3-joueur", "c3-ennemi", "c3-joue",
  "c3-grille", "c3-assimiler", "c3-fuir", "c3-ciblage", "c3-consigne",
  "c3-sortie", "c3-ouvert", "c3-retour", "c3-surprise",
- "mt-interrupteur", "mt-allume"].forEach(function (c) {
+ "mt-interrupteur", "mt-allume",
+ "pop-breche", "breche-note", "breche-anneau", "breche-possedee"].forEach(function (c) {
   if (css.indexOf("." + c) === -1) classesManquantes.push(c);
 });
 ligne(classesManquantes.length === 0,
