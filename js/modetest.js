@@ -20,8 +20,11 @@
    rien casser ailleurs, a condition de retirer aussi son <script>
    dans index.html.
 
-   Aucun combat d'essai n'ecrit dans localStorage : voir
-   estCombatFictif() dans js/combat.js.
+   Aucun combat d'essai n'ecrit dans la partie du joueur : voir
+   estCombatFictif() dans js/combat.js. Seule exception, voulue : la
+   victoire sur une breche d'essai s'inscrit sous CLE_BRECHES_TEST,
+   la cle des breches propre au mode test (section LES BRECHES
+   PERMANENTES, plus bas), jamais sous la vraie cle.
    ============================================================ */
 
 window.ModeTest = (function () {
