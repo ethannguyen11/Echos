@@ -11,6 +11,8 @@
 
    Le panneau ouvre aussi le BANC 3D (bouton "Banc 3D") : le
    modele de test de js/rendu3d.js, sans combat. Voir plus bas.
+   Et le BANC DE TRACE (bouton "Banc de trace") : la reconnaissance
+   des signes de js/trace.js, au doigt, sans rien sauvegarder.
 
    Ce fichier expose un seul global : window.ModeTest.
 
@@ -207,6 +209,7 @@ function preparerPanneau() {
 
   preparerBreches();
   preparerBanc();
+  preparerTrace();
 
   boite.classList.add("actif");
   panneauPret = true;
@@ -393,6 +396,195 @@ function preparerBreches() {
 
 
 /* ------------------------------------------------------------
+   LE BANC DE TRACE
+
+   Pour sentir, sur le telephone, la reconnaissance des signes de
+   js/trace.js avant d'en faire un jeu. On trace dans le cadre ; le
+   doigt leve TRACE_DELAI_FIN millisecondes, le trace est fini (la
+   croix se fait donc en deux traits) : le glyphe reconnu, son score,
+   et le score des six glyphes s'affichent. Le trace reste visible
+   jusqu'au suivant, qui efface le cadre en commencant.
+
+   L'HISTORIQUE des TRACE_HISTORIQUE_MAX derniers traces vit en
+   memoire seulement : rien n'est ecrit dans localStorage, et il
+   disparait au rechargement. Il donne, par glyphe reconnu, le nombre
+   de traces et le score moyen. Un trace trop court n'y entre pas.
+
+   Rien ici ne touche au combat, a la capture, aux breches ni a la
+   sauvegarde.
+   ------------------------------------------------------------ */
+
+var trace = {
+  pret: false,
+  traits: [],          // le trace en cours : [[{x, y}, ...], ...]
+  doigt: null,         // l'identifiant du pointeur qui dessine
+  minuteur: null,      // la fin du trace, apres TRACE_DELAI_FIN
+  fini: false,         // true : le prochain appui efface le cadre
+  historique: []       // [{ glyphe, score }], le plus recent a la fin
+};
+
+function traceCadre() { return elem("banc-trace-cadre"); }
+
+// Le canvas a la taille affichee, en pixels reels de l'ecran.
+function traceDimensionner() {
+  var c = traceCadre();
+  var r = c.getBoundingClientRect();
+  var dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+  c.width = Math.round(r.width * dpr);
+  c.height = Math.round(r.height * dpr);
+  var g = c.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  g.lineWidth = TRACE_EPAISSEUR;
+  g.strokeStyle = "#d4a02a";
+}
+
+function traceDessiner() {
+  var c = traceCadre(), g = c.getContext("2d");
+  g.clearRect(0, 0, c.width, c.height);
+  trace.traits.forEach(function (t) {
+    g.beginPath();
+    g.moveTo(t[0].x, t[0].y);
+    for (var i = 1; i < t.length; i++) g.lineTo(t[i].x, t[i].y);
+    if (t.length === 1) g.lineTo(t[0].x + 0.1, t[0].y);    // un point se voit aussi
+    g.stroke();
+  });
+}
+
+// La position du doigt dans le cadre, en pixels CSS.
+function tracePoint(ev) {
+  var r = traceCadre().getBoundingClientRect();
+  return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+}
+
+function traceEffacer() {
+  clearTimeout(trace.minuteur);
+  trace.minuteur = null;
+  trace.traits = [];
+  trace.doigt = null;
+  trace.fini = false;
+  elem("banc-trace-resultat").textContent = "";
+  elem("banc-trace-scores").innerHTML = "";
+  traceDessiner();
+}
+
+function traceAppui(ev) {
+  if (ev.preventDefault) ev.preventDefault();
+  if (trace.doigt !== null) return;           // un seul doigt dessine
+  if (trace.fini) traceEffacer();
+  clearTimeout(trace.minuteur);               // un trait de plus au meme trace
+  trace.minuteur = null;
+  trace.doigt = ev.pointerId;
+  if (traceCadre().setPointerCapture) {
+    try { traceCadre().setPointerCapture(ev.pointerId); } catch (e) {}
+  }
+  trace.traits.push([tracePoint(ev)]);
+  traceDessiner();
+}
+
+function traceGlisse(ev) {
+  if (trace.doigt === null || ev.pointerId !== trace.doigt) return;
+  if (ev.preventDefault) ev.preventDefault();
+  var trait = trace.traits[trace.traits.length - 1];
+  // Safari regroupe parfois plusieurs positions en un evenement.
+  var liste = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [];
+  if (!liste || !liste.length) liste = [ev];
+  liste.forEach(function (e) { trait.push(tracePoint(e)); });
+  traceDessiner();
+}
+
+function traceLeve(ev) {
+  if (trace.doigt === null || ev.pointerId !== trace.doigt) return;
+  trace.doigt = null;
+  trace.minuteur = setTimeout(traceTerminer, TRACE_DELAI_FIN);
+}
+
+function pourcent(s) { return Math.round(s * 100); }
+
+function nomGlyphe(id) {
+  for (var i = 0; i < GLYPHES.length; i++) if (GLYPHES[i].id === id) return txt(GLYPHES[i].cleNom);
+  return id;
+}
+
+// Le trace est fini : reconnaitre, afficher, noter dans l'historique.
+function traceTerminer() {
+  trace.minuteur = null;
+  trace.fini = true;
+  var r = Trace.reconnaitre(trace.traits, GLYPHES);
+
+  if (!r.ok) {
+    elem("banc-trace-resultat").textContent = txt("trace.tropCourt");
+    elem("banc-trace-scores").innerHTML = "";
+    return r;
+  }
+
+  var meilleur = null;
+  GLYPHES.forEach(function (g) {
+    if (meilleur === null || r.scores[g.id] > r.scores[meilleur]) meilleur = g.id;
+  });
+  elem("banc-trace-resultat").textContent = r.glyphe
+    ? txt("trace.reconnu", { nom: nomGlyphe(r.glyphe), score: pourcent(r.score) })
+    : txt("trace.inconnu", { nom: nomGlyphe(meilleur), score: pourcent(r.score) });
+
+  elem("banc-trace-scores").innerHTML = GLYPHES.map(function (g) {
+    var texte = nomGlyphe(g.id) + " " + pourcent(r.scores[g.id]) + " %";
+    return g.id === meilleur ? '<span class="trace-meilleur">' + texte + "</span>" : texte;
+  }).join(" · ");
+
+  trace.historique.push({ glyphe: r.glyphe, score: r.score });
+  while (trace.historique.length > TRACE_HISTORIQUE_MAX) trace.historique.shift();
+  traceAfficherHistorique();
+  return r;
+}
+
+function traceAfficherHistorique() {
+  var resume = Trace.resumeHistorique(trace.historique, GLYPHES);
+  var lignes = [txt("trace.historique", { nombre: trace.historique.length, inconnus: resume.inconnus })];
+  GLYPHES.forEach(function (g) {
+    var x = resume.parGlyphe[g.id];
+    if (x.nombre > 0) {
+      lignes.push(txt("trace.moyenne", { nom: nomGlyphe(g.id), nombre: x.nombre, score: pourcent(x.moyenne) }));
+    }
+  });
+  elem("banc-trace-historique").innerHTML = lignes.join("<br>");
+}
+
+function ouvrirTrace() {
+  if (!actif()) return;
+  elem("banc-trace-titre").textContent = txt("trace.titre");
+  elem("banc-trace-consigne").textContent = txt("trace.consigne");
+  elem("btn-trace-effacer").textContent = txt("trace.effacer");
+  elem("btn-trace-fermer").textContent = txt("trace.fermer");
+  elem("banc-trace").classList.add("actif");
+  traceDimensionner();     // apres l'affichage : le cadre a enfin sa taille
+  traceEffacer();
+  traceAfficherHistorique();
+}
+
+// Fermer garde l'historique (il vit jusqu'au rechargement).
+function fermerTrace() {
+  clearTimeout(trace.minuteur);
+  trace.minuteur = null;
+  trace.doigt = null;
+  elem("banc-trace").classList.remove("actif");
+}
+
+function preparerTrace() {
+  if (trace.pret || !actif()) return;
+  var c = traceCadre();
+  c.addEventListener("pointerdown", traceAppui);
+  c.addEventListener("pointermove", traceGlisse);
+  c.addEventListener("pointerup", traceLeve);
+  c.addEventListener("pointercancel", traceLeve);
+  elem("btn-banc-trace").addEventListener("click", ouvrirTrace);
+  elem("btn-trace-effacer").addEventListener("click", traceEffacer);
+  elem("btn-trace-fermer").addEventListener("click", fermerTrace);
+  trace.pret = true;
+}
+
+
+/* ------------------------------------------------------------
    LE BANC 3D
 
    Un ecran pour verifier le rendu 3D sur le telephone, sans lancer
@@ -551,6 +743,9 @@ return {
   moisSuivant: moisSuivant,
   finirSemaine: finirSemaine,
   reinitialiserBreches: reinitialiserBreches,
+
+  // Pour verifier/trace.js seulement : lire l'etat du banc de trace.
+  pourTestsTrace: function () { return trace; },
   reglages: reglages
 };
 

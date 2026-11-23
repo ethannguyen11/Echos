@@ -28,6 +28,7 @@ var FICHIERS = [
   "js/carte.js",
   "js/joueur.js",
   "js/fragments.js",
+  "js/trace.js",
   "js/poche.js",
   "js/breches.js",
   "js/combat.js",
@@ -68,7 +69,8 @@ function ligne(ok, texte, detail) {
 titre("1. Syntaxe des fichiers");
 
 FICHIERS.concat(["verifier/tests.js", "verifier/parcours.js", "verifier/breches.js",
-                 "verifier/mutations-breches.js"]).forEach(function (f) {
+                 "verifier/mutations-breches.js", "verifier/trace.js",
+                 "verifier/mutations-trace.js"]).forEach(function (f) {
   try {
     new vm.Script(lire(f), { filename: f });
     ligne(true, f);
@@ -245,7 +247,7 @@ var classesManquantes = [];
  "c3-grille", "c3-assimiler", "c3-fuir", "c3-ciblage", "c3-consigne",
  "c3-sortie", "c3-ouvert", "c3-retour", "c3-surprise",
  "mt-interrupteur", "mt-allume",
- "pop-breche", "breche-note", "breche-anneau", "breche-possedee", "mt-grille"].forEach(function (c) {
+ "pop-breche", "breche-note", "breche-anneau", "breche-possedee", "mt-grille", "trace-meilleur"].forEach(function (c) {
   if (css.indexOf("." + c) === -1) classesManquantes.push(c);
 });
 ligne(classesManquantes.length === 0,
@@ -446,6 +448,31 @@ try {
   });
 } catch (e) {
   ligne(false, "les tests des breches n'ont pas pu aller au bout", e.message);
+}
+
+
+/* ------------------------------------------------------------
+   8. LE TRACE DES SORTS
+   verifier/trace.js : la reconnaissance (js/trace.js) et le banc
+   de trace du mode test. La preuve que ces tests savent echouer :
+   node verifier/mutations-trace.js
+   ------------------------------------------------------------ */
+
+titre("8. Trace des sorts");
+
+try {
+  var testsTrace = require("./verifier/trace.js").lancerTestsTrace();
+  var sectionTrace = "";
+
+  testsTrace.forEach(function (r) {
+    if (r.section !== sectionTrace) {
+      sectionTrace = r.section;
+      console.log(GRIS + "  [" + sectionTrace + "]" + NORMAL);
+    }
+    ligne(r.ok, r.quoi, r.detail);
+  });
+} catch (e) {
+  ligne(false, "les tests du trace n'ont pas pu aller au bout", e.message);
 }
 
 

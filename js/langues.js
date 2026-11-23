@@ -237,7 +237,24 @@ var TEXTES = {
     "breche.combat.final":        "Septième jour. Le gardien de la brèche se dresse : force ×{force}.",
     "breche.victoire.jour":       "La brèche se referme. Elle reviendra demain, plus forte.",
     "breche.victoire.possession": "La brèche est à toi. Elle ne s'ouvrira plus ce mois-ci.",
-    "breche.trophee":             "Un trophée rejoint ta collection."
+    "breche.trophee":             "Un trophée rejoint ta collection.",
+
+    /* --- Le trace des sorts (js/trace.js, banc du mode test) --- */
+    "trace.glyphe.cercle":   "Cercle",
+    "trace.glyphe.triangle": "Triangle",
+    "trace.glyphe.eclair":   "Éclair",
+    "trace.glyphe.spirale":  "Spirale",
+    "trace.glyphe.croix":    "Croix",
+    "trace.glyphe.vague":    "Vague",
+    "trace.titre":           "Banc de tracé",
+    "trace.consigne":        "Trace un signe dans le cadre. Lève le doigt : le résultat arrive.",
+    "trace.effacer":         "Effacer",
+    "trace.fermer":          "Fermer",
+    "trace.reconnu":         "{nom} · {score} %",
+    "trace.inconnu":         "Signe non reconnu · meilleur : {nom} {score} %",
+    "trace.tropCourt":       "Tracé trop court : dessine plus grand.",
+    "trace.historique":      "{nombre} derniers tracés · {inconnus} non reconnu(s)",
+    "trace.moyenne":         "{nom} : {nombre} × · moyenne {score} %"
   },
 
 
@@ -345,7 +362,23 @@ var TEXTES = {
     "breche.combat.final":        "Seventh day. The guardian of the breach rises: strength ×{force}.",
     "breche.victoire.jour":       "The breach seals. It will return tomorrow, stronger.",
     "breche.victoire.possession": "The breach is yours. It will not open again this month.",
-    "breche.trophee":             "A trophy joins your collection."
+    "breche.trophee":             "A trophy joins your collection.",
+
+    "trace.glyphe.cercle":   "Circle",
+    "trace.glyphe.triangle": "Triangle",
+    "trace.glyphe.eclair":   "Lightning",
+    "trace.glyphe.spirale":  "Spiral",
+    "trace.glyphe.croix":    "Cross",
+    "trace.glyphe.vague":    "Wave",
+    "trace.titre":           "Tracing bench",
+    "trace.consigne":        "Draw a sign in the frame. Lift your finger: the result appears.",
+    "trace.effacer":         "Clear",
+    "trace.fermer":          "Close",
+    "trace.reconnu":         "{nom} · {score} %",
+    "trace.inconnu":         "Sign not recognised · best: {nom} {score} %",
+    "trace.tropCourt":       "Too short: draw bigger.",
+    "trace.historique":      "Last {nombre} drawings · {inconnus} not recognised",
+    "trace.moyenne":         "{nom}: {nombre} × · average {score} %"
   }
 
 };

@@ -215,6 +215,38 @@ button { font-family: inherit; }
 
 #banc-3d-etat { min-height: 1.4em; color: #eee; }
 
+/* ---------- Le banc de trace (mode test) ----------
+   Comme le banc 3D : par-dessus tout, invisible tant que
+   js/modetest.js ne lui pose pas la classe "actif". Le cadre de
+   dessin ne fait jamais defiler la page (touch-action: none) et
+   reste carre, aussi grand que l'ecran le permet. */
+#banc-trace { display: none; }
+
+#banc-trace.actif {
+  display: flex; flex-direction: column; gap: 8px;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 3000;
+  padding: 50px 16px 24px;
+  background: #0d0812;
+  color: #9a90a8; font-size: 12px;
+  overflow-y: auto;
+}
+
+#banc-trace-cadre {
+  display: block; flex: none;
+  width: min(100%, 55vh); aspect-ratio: 1 / 1; align-self: center;
+  box-sizing: border-box;
+  background: #1a1024;
+  border: 1px dashed #555; border-radius: 12px;
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#banc-trace-resultat { min-height: 1.4em; color: #eee; font-size: 16px; text-align: center; }
+#banc-trace-scores, #banc-trace-historique { line-height: 1.5; }
+.trace-meilleur { color: #d4a02a; font-weight: 600; }
+
 .banc-3d-ligne { display: flex; flex-wrap: wrap; gap: 6px; }
 .banc-3d-ligne button { flex: 1; min-width: 30%; padding: 10px 6px; font-size: 12px; }
 
