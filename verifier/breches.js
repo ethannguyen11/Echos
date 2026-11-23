@@ -40,6 +40,7 @@ function lancerTestsBreches(options) {
     testerCalendrier(monde, bloc, verifie);
     testerCycle(monde, bloc, verifie, source);
     testerSaison(monde, bloc, verifie);
+    testerSauvegarde(monde, bloc, verifie);
   } catch (e) {
     verifie("les tests des breches vont au bout sans exception", false,
             String(e && e.stack || e).split(/\r?\n/).slice(0, 3).join(" "));
@@ -489,6 +490,170 @@ function testerSaison(monde, bloc, verifie) {
   verifie("un trophee deja gagne n'est pas ajoute deux fois",
           X.ajouterTrophee([{ id: "t" }], { id: "t" }).length === 1 &&
           X.ajouterTrophee([{ id: "t" }], { id: "u" }).length === 2);
+}
+
+/* ------------------------------------------------------------
+   BRIQUE 5 : LA SAUVEGARDE
+   ------------------------------------------------------------ */
+
+function testerSauvegarde(monde, bloc, verifie) {
+  bloc("Breches : sauvegarde");
+
+  var base = monde().ctx;
+  var S = base.SAISONS_BRECHES;
+  var CLE = base.CLE_BRECHES;
+  var NOV = base.jourDeLaDate(2026, 11, 10);
+
+  // Une vraie partie du joueur et une poche, ecrites par le jeu lui-meme.
+  var mj = monde();
+  mj.ctx.chargerJoueur();
+  mj.ctx.ajouterAlaCollection("peng", 4);
+  mj.ctx.gourde.hinezumi = { mince: 2, grand: 0, complet: 0 };
+  mj.ctx.sauverJoueur();
+  mj.ctx.chargerPoches();
+  mj.ctx.ajouterPoche(mj.ctx.creerPoche("leger", { lat: 1, lon: 2, arene_id: null }, 1000));
+  mj.ctx.sauverPoches();
+  var joueurAvant = mj.stockage.echos_joueur_v5, pochesAvant = mj.stockage.echos_poches_v1;
+
+  function mondeAvec(cles) {
+    var st = { echos_joueur_v5: joueurAvant, echos_poches_v1: pochesAvant };
+    for (var c in cles) st[c] = cles[c];
+    return monde(st);
+  }
+
+  // Des donnees bien remplies : 2 breches, journal, trophees, un bilan passe.
+  function remplies(X) {
+    var d = X.basculerSaison(X.donneesBrechesVides("2026-10"), "2026-11", "local").donnees;
+    for (var i = 0; i < 7; i++) d = X.inscrireVictoire(d, "way/1", "temple", NOV + i, S).donnees;
+    d = X.inscrireVictoire(d, "node/2", "parc", NOV, S).donnees;
+    // way/3 : deux victoires, trois jours d'absence, une reprise : 3 victoires, cran 1.
+    [NOV, NOV + 1, NOV + 5].forEach(function (j) { d = X.inscrireVictoire(d, "way/3", "metro", j, S).donnees; });
+    return d;
+  }
+
+  var w0 = mondeAvec({});
+  var err = null, d0 = null;
+  try { d0 = w0.ctx.chargerBreches(CLE, "2026-11"); } catch (e) { err = e; }
+  verifie("aucune cle de breches : donnees vides du mois, sans exception",
+          err === null && JSON.stringify(d0) === JSON.stringify(w0.ctx.donneesBrechesVides("2026-11")));
+  verifie("charger n'ecrit rien", !Object.prototype.hasOwnProperty.call(w0.stockage, CLE));
+
+  var corrompus = ["{pas du json", "null", "42", '"texte"', "[]", "[1,2]", '{"breches":"x","journal":7}', "true"];
+  verifie("JSON corrompu ou format inattendu : donnees vides, aucune exception",
+          corrompus.every(function (brut) {
+            var w = mondeAvec({});
+            w.stockage[CLE] = brut;
+            try {
+              var d = w.ctx.chargerBreches(CLE, "2026-11");
+              return d.saison === "2026-11" && d.breches.length === 0 && d.journal.length === 0 &&
+                     d.trophees.length === 0 && d.saisons_passees.length === 0;
+            } catch (e) { return false; }
+          }));
+
+  verifie("un stockage qui leve une exception : donnees vides, et sauver rend false",
+          (function () {
+            var w = mondeAvec({});
+            w.ctx.localStorage.getItem = function () { throw new Error("bloque"); };
+            w.ctx.localStorage.setItem = function () { throw new Error("plein"); };
+            try {
+              return w.ctx.chargerBreches(CLE, "2026-11").breches.length === 0 &&
+                     w.ctx.sauverBreches(CLE, w.ctx.donneesBrechesVides("2026-11")) === false;
+            } catch (e) { return false; }
+          })());
+
+  // L'aller-retour.
+  var wr = mondeAvec({});
+  var pleines = remplies(wr.ctx);
+  var ok = wr.ctx.sauverBreches(CLE, pleines);
+  var relues = mondeAvec({}); relues.stockage[CLE] = wr.stockage[CLE];
+  var d1 = relues.ctx.chargerBreches(CLE, "2027-05");
+  verifie("aller-retour : sauver puis relire rend exactement les memes donnees",
+          ok && JSON.stringify(d1) === JSON.stringify(pleines) && d1.breches.length === 3 &&
+          d1.breches[2].victoires === 3 && d1.breches[2].cran === 1 && d1.journal.length === 11 && d1.saisons_passees.length === 1,
+          JSON.stringify(d1).slice(0, 300));
+  verifie("la sauvegarde n'est que sous CLE_BRECHES",
+          Object.keys(wr.stockage).sort().join(",") === [CLE, "echos_joueur_v5", "echos_poches_v1"].sort().join(","));
+
+  // Les breches abimees, une par une.
+  var bonne = pleines.breches[1];
+  function b(changement) {
+    var x = JSON.parse(JSON.stringify(bonne));
+    for (var k in changement) x[k] = changement[k];
+    return x;
+  }
+  var abimees = [
+    bonne,
+    null, 42, "breche", [],
+    b({ arene_id: "" }), b({ arene_id: 7 }), b({ categorie: null }), b({ saison: "novembre" }),
+    b({ arene_id: "way/c1", cran: 9 }), b({ arene_id: "way/c2", cran: -1 }), b({ arene_id: "way/c3", cran: 1.5 }),
+    b({ arene_id: "way/c4", dernier_jour: "hier" }), b({ arene_id: "way/c5", cran: 2, dernier_jour: null }),
+    b({ arene_id: "way/c6", possedee: true }),                        // possedee sans le cran 7
+    b({ arene_id: "way/c7", cran: 7, possedee: false }),              // cran 7 sans possession
+    b({ arene_id: bonne.arene_id, cran: 3 }),                         // doublon : la premiere gagne
+    b({ arene_id: "way/oct", saison: "2026-10" }),                    // une autre saison
+    b({ arene_id: "way/ratt", victoires: "beaucoup", intrus: 1 })     // se rattrape
+  ];
+  var wa = mondeAvec({});
+  wa.stockage[CLE] = JSON.stringify({ version: 1, saison: "2026-11", breches: abimees,
+                                      journal: pleines.journal, trophees: pleines.trophees, saisons_passees: [] });
+  var da = wa.ctx.chargerBreches(CLE, "2026-11");
+  verifie("breches abimees ecartees une par une, doublon et autre saison ecartes",
+          da.breches.length === 2 && da.breches[0].arene_id === bonne.arene_id && da.breches[0].cran === bonne.cran &&
+          da.breches[1].arene_id === "way/ratt",
+          JSON.stringify(da.breches.map(function (x) { return x.arene_id; })));
+  verifie("breche rattrapee : victoires remises au cran, champ intrus perdu",
+          da.breches[1] && da.breches[1].victoires === bonne.cran && da.breches[1].intrus === undefined);
+  verifie("une breche possedee sans jour de possession le reprend du dernier jour",
+          wa.ctx.normaliserBreche(b({ cran: 7, possedee: true, dernier_jour: NOV + 6, jour_possession: "?" })).jour_possession === NOV + 6);
+
+  var e0 = pleines.journal[0], t0 = pleines.trophees[0];
+  function avec(o, ch) { var x = JSON.parse(JSON.stringify(o)); for (var k in ch) x[k] = ch[k]; return x; }
+  var wj = mondeAvec({});
+  wj.stockage[CLE] = JSON.stringify({
+    saison: "2026-11", breches: [],
+    journal: [e0, null, avec(e0, { jour: "x" }), avec(e0, { role: "c" }), avec(e0, { cran: 8 }),
+              avec(e0, { multiplicateur: 0.5 }), avec(e0, { espece: "" }), avec(e0, { saison: "?" })],
+    trophees: [t0, t0, null, avec(t0, { id: "" }), avec(t0, { type: "medaille", id: "z1" }),
+               avec(t0, { jour: null, id: "z2" }), { id: "saison/2026-10", type: "saison", saison: "2026-10", possedees: 3 },
+               { id: "saison/x", type: "saison", saison: "2026-09", possedees: -1 }],
+    saisons_passees: [{ saison: "2026-10", joueur_id: "local", possedees: 9,
+                        breches: [{ arene_id: "way/1", jour_possession: 5 }, { arene_id: "", jour_possession: 6 }, null] },
+                      { saison: "?" }, null]
+  });
+  var dj = wj.ctx.chargerBreches(CLE, "2026-11");
+  verifie("lignes de journal abimees ecartees, les bonnes gardees",
+          dj.journal.length === 1 && JSON.stringify(dj.journal[0]) === JSON.stringify(e0));
+  verifie("trophees abimes ou en double ecartes, trophee de saison garde",
+          dj.trophees.length === 2 && dj.trophees[0].id === t0.id && dj.trophees[1].type === "saison",
+          JSON.stringify(dj.trophees));
+  verifie("bilan passe abime : nettoye, son compte suit la liste gardee",
+          dj.saisons_passees.length === 1 && dj.saisons_passees[0].possedees === 1 &&
+          dj.saisons_passees[0].format === 1 && dj.saisons_passees[0].breches.length === 1);
+  verifie("une saison enregistree illisible prend le mois donne",
+          (function () {
+            var w = mondeAvec({});
+            w.stockage[CLE] = JSON.stringify({ saison: 12, breches: [bonne] });
+            var d = w.ctx.chargerBreches(CLE, "2026-11");
+            return d.saison === "2026-11" && d.breches.length === 1;
+          })());
+
+  // La preuve : la partie du joueur et les poches ne bougent pas.
+  var wp = mondeAvec({});
+  var X = wp.ctx;
+  var d = X.chargerBreches(CLE, "2026-11");
+  for (var i = 0; i < 7; i++) {
+    d = X.inscrireVictoire(d, "way/1", "temple", NOV + i, S).donnees;
+    X.sauverBreches(CLE, d);
+  }
+  d = X.basculerSaison(d, "2026-12", "local").donnees;
+  X.sauverBreches(CLE, d);
+  X.chargerBreches(CLE, "2026-12");
+  X.sauverBreches(X.CLE_BRECHES_TEST, X.donneesBrechesVides("2026-12"));
+  verifie("echos_joueur_v5 et echos_poches_v1 restent identiques, octet pour octet",
+          wp.stockage.echos_joueur_v5 === joueurAvant && wp.stockage.echos_poches_v1 === pochesAvant &&
+          joueurAvant.length > 50 && pochesAvant.length > 50);
+  verifie("les Echos assimiles et la gourde sont toujours la apres une bascule",
+          (function () { X.chargerJoueur(); return !!X.collection.peng && X.gourde.hinezumi.mince === 2; })());
 }
 
 // Comparaison de valeurs, avec l'ecart en clair.

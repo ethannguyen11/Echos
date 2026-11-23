@@ -521,3 +521,149 @@ function inscrireVictoire(donnees, areneId, categorie, jour, saisons) {
   d.trophees = ajouterTrophee(d.trophees, r.trophee);
   return { ok: true, raison: "", donnees: d, entree: r.entree, trophee: r.trophee };
 }
+
+
+/* ------------------------------------------------------------
+   7. LA SAUVEGARDE
+
+   La seule section du fichier qui touche a localStorage, et
+   seulement sous la cle qu'on lui donne (CLE_BRECHES, ou
+   CLE_BRECHES_TEST pour le mode test) : jamais echos_joueur_v5,
+   jamais echos_poches_v1. Le choix de la cle appartient a
+   js/brechesjeu.js.
+
+   chargerBreches ne leve JAMAIS d'exception et ne reecrit rien :
+   rien sur le disque, JSON casse, format inattendu -> donnees
+   vides pour le mois donne. Une breche, une ligne de journal ou un
+   trophee abimes sont ecartes un par un ; le reste est garde.
+
+   ATTENTION EN RELISANT : comme normaliserPoche (js/poche.js), ces
+   fonctions RECONSTRUISENT chaque objet a neuf. Un champ absent
+   d'ici est PERDU au prochain chargement. Ajouter un champ a une
+   breche veut dire l'ajouter ici.
+   ------------------------------------------------------------ */
+
+var BRECHES_TYPES_TROPHEE = ["victoire", "possession", "saison"];
+
+function brecheTexte(v) { return typeof v === "string" && v !== ""; }
+function brechePositif(v) { return brecheEntier(v) && v >= 0; }
+
+/* Une breche irrecuperable rend null : sans arene, sans categorie,
+   sans saison, cran hors du cycle, jour illisible, ou incoherente
+   (un cran sans victoire, une possession sans le cran 7 et
+   inversement). Se rattrapent : victoires (au moins le cran) et
+   jour_possession (le dernier jour). */
+function normaliserBreche(brut) {
+  if (!brut || typeof brut !== "object") return null;
+  if (!brecheTexte(brut.arene_id) || !brecheTexte(brut.categorie) || !moisValide(brut.saison)) return null;
+  if (!brecheEntier(brut.cran) || brut.cran < 0 || brut.cran > BRECHES_CYCLE_JOURS) return null;
+  if (brut.dernier_jour !== null && !brecheEntier(brut.dernier_jour)) return null;
+  if (brut.cran > 0 && brut.dernier_jour === null) return null;
+  var possedee = brut.possedee === true;
+  if (possedee !== (brut.cran === BRECHES_CYCLE_JOURS)) return null;
+
+  return {
+    arene_id: brut.arene_id, categorie: brut.categorie, saison: brut.saison,
+    cran: brut.cran, dernier_jour: brut.dernier_jour, possedee: possedee,
+    jour_possession: possedee ? (brecheEntier(brut.jour_possession) ? brut.jour_possession : brut.dernier_jour) : null,
+    victoires: brechePositif(brut.victoires) && brut.victoires >= brut.cran ? brut.victoires : brut.cran
+  };
+}
+
+function normaliserEntree(e) {
+  if (!e || typeof e !== "object") return null;
+  if (!moisValide(e.saison) || !brecheTexte(e.arene_id) || !brecheEntier(e.jour)) return null;
+  if (!etapeDuCran(e.cran) || BRECHES_ROLES.indexOf(e.role) === -1 || !brecheTexte(e.espece)) return null;
+  if (!brecheNombre(e.multiplicateur) || e.multiplicateur < 1) return null;
+  return { saison: e.saison, arene_id: e.arene_id, jour: e.jour, cran: e.cran,
+           role: e.role, espece: e.espece, multiplicateur: e.multiplicateur };
+}
+
+function normaliserTrophee(t) {
+  if (!t || typeof t !== "object" || !brecheTexte(t.id) || !moisValide(t.saison)) return null;
+  if (BRECHES_TYPES_TROPHEE.indexOf(t.type) === -1) return null;
+  if (t.type === "saison") {
+    if (!brechePositif(t.possedees)) return null;
+    return { id: t.id, type: t.type, saison: t.saison, possedees: t.possedees };
+  }
+  if (!brecheTexte(t.arene_id) || !brecheEntier(t.jour) || !brecheTexte(t.espece)) return null;
+  return { id: t.id, type: t.type, saison: t.saison, arene_id: t.arene_id, jour: t.jour, espece: t.espece };
+}
+
+// Un bilan passe. Le compte "possedees" suit la liste gardee.
+function normaliserBilan(b) {
+  if (!b || typeof b !== "object" || !moisValide(b.saison)) return null;
+  var liste = [];
+  var source = b.breches && typeof b.breches.length === "number" ? b.breches : [];
+  for (var i = 0; i < source.length; i++) {
+    var x = source[i];
+    if (!x || !brecheTexte(x.arene_id) || !brecheEntier(x.jour_possession)) continue;
+    liste.push({ arene_id: x.arene_id, jour_possession: x.jour_possession });
+  }
+  return {
+    format: brecheEntier(b.format) ? b.format : BRECHES_FORMAT_CLASSEMENT,
+    saison: b.saison,
+    joueur_id: brecheTexte(b.joueur_id) ? b.joueur_id : BRECHES_JOUEUR_ID,
+    possedees: liste.length,
+    breches: liste
+  };
+}
+
+// Applique f a chaque element d'une liste brute, ecarte les null.
+function listeNormalisee(source, f) {
+  var liste = [];
+  if (!source || typeof source.length !== "number") return liste;
+  for (var i = 0; i < source.length; i++) {
+    var x = f(source[i]);
+    if (x) liste.push(x);
+  }
+  return liste;
+}
+
+/* Les donnees completes. moisParDefaut sert quand la saison
+   enregistree est illisible. Ne garde que les breches de la saison
+   enregistree (la bascule s'occupe du reste), une seule par arene
+   (la premiere gagne), et un trophee par id. */
+function normaliserDonneesBreches(brut, moisParDefaut) {
+  if (!brut || typeof brut !== "object") {
+    return donneesBrechesVides(moisParDefaut);
+  }
+  var d = donneesBrechesVides(moisValide(brut.saison) ? brut.saison : moisParDefaut);
+
+  var vues = {};
+  d.breches = listeNormalisee(brut.breches, normaliserBreche).filter(function (b) {
+    if (b.saison !== d.saison || Object.prototype.hasOwnProperty.call(vues, b.arene_id)) return false;
+    vues[b.arene_id] = true;
+    return true;
+  });
+
+  d.journal = garderLesDerniers(listeNormalisee(brut.journal, normaliserEntree), BRECHES_JOURNAL_MAX);
+
+  var ids = {};
+  d.trophees = garderLesDerniers(listeNormalisee(brut.trophees, normaliserTrophee).filter(function (t) {
+    if (Object.prototype.hasOwnProperty.call(ids, t.id)) return false;
+    ids[t.id] = true;
+    return true;
+  }), BRECHES_TROPHEES_MAX);
+
+  d.saisons_passees = garderLesDerniers(listeNormalisee(brut.saisons_passees, normaliserBilan),
+                                        BRECHES_SAISONS_PASSEES_MAX);
+  return d;
+}
+
+function chargerBreches(cle, moisParDefaut) {
+  try {
+    var brut = localStorage.getItem(cle);
+    return normaliserDonneesBreches(brut ? JSON.parse(brut) : null, moisParDefaut);
+  } catch (e) {
+    return donneesBrechesVides(moisParDefaut);
+  }
+}
+
+// Rend true si l'ecriture a reussi (stockage plein ou bloque : false).
+function sauverBreches(cle, donnees) {
+  try {
+    localStorage.setItem(cle, JSON.stringify(donnees));
+    return true;
+  } catch (e) { return false; }
+}
