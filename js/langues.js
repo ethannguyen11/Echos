@@ -219,7 +219,25 @@ var TEXTES = {
     "c3.fragment.grand.plusieurs":    "grands fragments",
     "c3.fragment.complet.un":         "fragment complet",
     "c3.fragment.complet.plusieurs":  "fragments complets",
-    "c3.et":                   " et "
+    "c3.et":                   " et ",
+
+    /* --- Les breches permanentes (js/brechesjeu.js) ---
+       Textes PRUDENTS, en attente de validation (voir
+       BRECHES_COMPTE_RENDU.md, questions de design). */
+    "breche.nomLieu":             "Brèche — {nom}",
+    "breche.hud.boss":            "Brèche · jour {jour}/{cycle} · force ×{force}",
+    "breche.hud.eteinte":         "La brèche d'ici s'est refermée. Elle revient demain.",
+    "breche.hud.possedee":        "La brèche d'ici est à toi.",
+    "breche.hud.plafond":         "Une brèche dort ici, mais {max} brèches sont déjà ouvertes.",
+    "breche.pop.ouverte":         "Brèche ouverte · jour {jour}/{cycle}",
+    "breche.pop.eteinte":         "Brèche refermée jusqu'à demain",
+    "breche.pop.possedee":        "Brèche possédée",
+    "breche.pop.plafond":         "Brèche hors d'atteinte",
+    "breche.combat.annonce":      "Une brèche s'ouvre : jour {jour} sur {cycle}, force ×{force}.",
+    "breche.combat.final":        "Septième jour. Le gardien de la brèche se dresse : force ×{force}.",
+    "breche.victoire.jour":       "La brèche se referme. Elle reviendra demain, plus forte.",
+    "breche.victoire.possession": "La brèche est à toi. Elle ne s'ouvrira plus ce mois-ci.",
+    "breche.trophee":             "Un trophée rejoint ta collection."
   },
 
 
@@ -312,7 +330,22 @@ var TEXTES = {
     "c3.fragment.grand.plusieurs":    "large fragments",
     "c3.fragment.complet.un":         "whole fragment",
     "c3.fragment.complet.plusieurs":  "whole fragments",
-    "c3.et":                   " and "
+    "c3.et":                   " and ",
+
+    "breche.nomLieu":             "Breach — {nom}",
+    "breche.hud.boss":            "Breach · day {jour}/{cycle} · strength ×{force}",
+    "breche.hud.eteinte":         "The breach here has sealed. It returns tomorrow.",
+    "breche.hud.possedee":        "The breach here is yours.",
+    "breche.hud.plafond":         "A breach sleeps here, but {max} breaches are already open.",
+    "breche.pop.ouverte":         "Open breach · day {jour}/{cycle}",
+    "breche.pop.eteinte":         "Breach sealed until tomorrow",
+    "breche.pop.possedee":        "Breach owned",
+    "breche.pop.plafond":         "Breach out of reach",
+    "breche.combat.annonce":      "A breach opens: day {jour} of {cycle}, strength ×{force}.",
+    "breche.combat.final":        "Seventh day. The guardian of the breach rises: strength ×{force}.",
+    "breche.victoire.jour":       "The breach seals. It will return tomorrow, stronger.",
+    "breche.victoire.possession": "The breach is yours. It will not open again this month.",
+    "breche.trophee":             "A trophy joins your collection."
   }
 
 };

@@ -19,9 +19,9 @@ var RACINE = path.join(__dirname, "..");
 
 // Tout sauf jeu.js : on ne veut pas brancher les boutons du jeu,
 // seulement disposer de ses fonctions.
-var FICHIERS = ["js/config.js", "js/langues.js", "js/especes.js", "js/lieux.js", "js/carte.js",
-                "js/joueur.js", "js/fragments.js", "js/poche.js", "js/combat.js", "js/combat3.js", "js/grimoire.js", "js/intro.js",
-                "js/rendu3d.js", "js/modetest.js", "js/ecran3.js"];
+var FICHIERS = ["js/config.js", "js/langues.js", "js/especes.js", "js/saisons.js", "js/lieux.js", "js/carte.js",
+                "js/joueur.js", "js/fragments.js", "js/poche.js", "js/breches.js", "js/combat.js", "js/combat3.js", "js/grimoire.js", "js/intro.js",
+                "js/rendu3d.js", "js/modetest.js", "js/ecran3.js", "js/brechesjeu.js"];
 
 
 /* ------------------------------------------------------------
@@ -169,8 +169,12 @@ function creerMonde(options) {
   ctx.window = ctx;
   vm.createContext(ctx);
 
+  // options.transformer(fichier, source) : la preuve par mutations
+  // (verifier/mutations-breches.js) s'en sert pour abimer une ligne.
   FICHIERS.forEach(function (f) {
-    vm.runInContext(fs.readFileSync(path.join(RACINE, f), "utf8"), ctx, { filename: f });
+    var source = fs.readFileSync(path.join(RACINE, f), "utf8");
+    if (options.transformer) source = options.transformer(f, source);
+    vm.runInContext(source, ctx, { filename: f });
   });
 
   return { ctx: ctx, horloge: horloge, corps: corps, stockage: stockage, statiques: statiques };
@@ -2301,4 +2305,5 @@ function lancerParcours() {
   return resultats;
 }
 
-module.exports = { lancerParcours: lancerParcours };
+// creerMonde et creerElement servent aussi a verifier/breches.js.
+module.exports = { lancerParcours: lancerParcours, creerMonde: creerMonde, creerElement: creerElement };

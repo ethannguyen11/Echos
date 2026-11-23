@@ -73,7 +73,9 @@ function enCours() { return etat !== null; }
 
 // Le seul point d'entree du bouton "Approcher".
 function lancer(donjon, preemptif) {
-  if (choisi()) return demarrer(donjon, preemptif);
+  // Le boss d'une breche permanente (js/brechesjeu.js) se bat
+  // toujours ici : l'ancien ecran ne sait pas appliquer sa force.
+  if (choisi() || (donjon && donjon.breche)) return demarrer(donjon, preemptif);
   demarrerCombat(donjon, preemptif);
   return true;
 }
@@ -83,6 +85,7 @@ function lancer(donjon, preemptif) {
    POINT D'ACCROCHE : une poche d'Oubli passera ici son propre
    nombre (profond 2, critique 3). */
 function nombreAdversaires(donjon) {
+  if (donjon && donjon.breche) return 1;     // le boss d'une breche est seul
   var n = COMBAT_MULTI_ADVERSAIRES_LIEU;
   if (donjon && donjon.fictif && typeof ModeTest !== "undefined" && ModeTest.actif()) {
     n = ModeTest.reglages.adversaires;
@@ -125,6 +128,10 @@ function demarrer(donjon, preemptif) {
   });
   if (!r.ok) return false;
 
+  // Le boss d'une breche : PV et ATQ multiplies par la force du cran
+  // (appliquerForceBoss, js/breches.js), figee au depart du combat.
+  if (donjon.breche) appliquerForceBoss(r.combat.adversaires, donjon.breche.multiplicateur);
+
   etat = {
     donjon: donjon, combat: r.combat, phase: "intro",
     intention: null, cibles: [],
@@ -143,6 +150,7 @@ function demarrer(donjon, preemptif) {
   var lignes = [n > 1
     ? txt("c3.apparition.plusieurs", { nombre: n, nom: esp.nom, titre: esp.titre })
     : txt("c3.apparition.un", { nom: esp.nom, titre: esp.titre })];
+  if (donjon.breche) lignes.push(BrechesJeu.annonce(donjon));
   if (r.combat.malusGateBreak > 0) lignes.push(txt("c3.gateBreak", { malus: r.combat.malusGateBreak }));
   if (preemptif) {
     lignes.push('<span class="c3-surprise">' +
@@ -785,8 +793,10 @@ function assimilerAuGrimoire(donjon, assimile) {
     lignes.push(txt("c3.assim.connu", { nom: nom }));
   }
 
+  // Le boss d'une breche n'est pas une arene : rien a redessiner ni a
+  // sauver dans les donjons, l'arene reste comme elle etait.
   donjon.capture = true;
-  if (!donjon.fictif) { rafraichirMarqueur(donjon); sauvegarder(); }
+  if (!donjon.fictif && !donjon.breche) { rafraichirMarqueur(donjon); sauvegarder(); }
   return lignes;
 }
 
@@ -819,6 +829,9 @@ function terminer(issue) {
     });
   }
   if (parts > 0) lignes = lignes.concat(donnerXp(d, fortune, parts));
+
+  // Le boss d'une breche battu (ou assimile) : la victoire du jour.
+  if (issue === "victoire" && d.breche) lignes = lignes.concat(BrechesJeu.victoire(d));
 
   // La sauvegarde : la meme regle que finDeCombat().
   if (d.fictif) {

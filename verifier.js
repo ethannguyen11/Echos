@@ -23,11 +23,13 @@ var FICHIERS = [
   "js/config.js",
   "js/langues.js",
   "js/especes.js",
+  "js/saisons.js",
   "js/lieux.js",
   "js/carte.js",
   "js/joueur.js",
   "js/fragments.js",
   "js/poche.js",
+  "js/breches.js",
   "js/combat.js",
   "js/combat3.js",
   "js/grimoire.js",
@@ -37,6 +39,7 @@ var FICHIERS = [
   "js/rendu3d.js",
   "js/modetest.js",
   "js/ecran3.js",
+  "js/brechesjeu.js",
   "js/jeu.js"
 ];
 
@@ -64,7 +67,8 @@ function ligne(ok, texte, detail) {
 
 titre("1. Syntaxe des fichiers");
 
-FICHIERS.concat(["verifier/tests.js", "verifier/parcours.js"]).forEach(function (f) {
+FICHIERS.concat(["verifier/tests.js", "verifier/parcours.js", "verifier/breches.js",
+                 "verifier/mutations-breches.js"]).forEach(function (f) {
   try {
     new vm.Script(lire(f), { filename: f });
     ligne(true, f);
@@ -240,7 +244,8 @@ var classesManquantes = [];
  "c3-tour", "c3-jeton", "c3-joueur", "c3-ennemi", "c3-joue",
  "c3-grille", "c3-assimiler", "c3-fuir", "c3-ciblage", "c3-consigne",
  "c3-sortie", "c3-ouvert", "c3-retour", "c3-surprise",
- "mt-interrupteur", "mt-allume"].forEach(function (c) {
+ "mt-interrupteur", "mt-allume",
+ "pop-breche", "breche-note", "breche-anneau", "breche-possedee", "mt-grille"].forEach(function (c) {
   if (css.indexOf("." + c) === -1) classesManquantes.push(c);
 });
 ligne(classesManquantes.length === 0,
@@ -416,6 +421,31 @@ try {
   });
 } catch (e) {
   ligne(false, "le parcours de l'intro n'a pas pu aller au bout", e.message);
+}
+
+
+/* ------------------------------------------------------------
+   7. LES BRECHES PERMANENTES
+   verifier/breches.js : reglages, saisons, regles du cycle,
+   sauvegarde et branchement. La preuve que ces tests savent
+   echouer est a part : node verifier/mutations-breches.js
+   ------------------------------------------------------------ */
+
+titre("7. Breches permanentes");
+
+try {
+  var testsBreches = require("./verifier/breches.js").lancerTestsBreches();
+  var sectionBreches = "";
+
+  testsBreches.forEach(function (r) {
+    if (r.section !== sectionBreches) {
+      sectionBreches = r.section;
+      console.log(GRIS + "  [" + sectionBreches + "]" + NORMAL);
+    }
+    ligne(r.ok, r.quoi, r.detail);
+  });
+} catch (e) {
+  ligne(false, "les tests des breches n'ont pas pu aller au bout", e.message);
 }
 
 

@@ -154,6 +154,15 @@ button { font-family: inherit; }
   font-size: 11px; border-radius: 8px;
 }
 
+/* Les outils des breches permanentes : caches tant que l'interrupteur
+   "Breches" est sur Non. Le panneau defile s'il devient trop haut
+   pour l'ecran du telephone. */
+#mode-test.actif { max-height: calc(100vh - 230px); overflow-y: auto; }
+#mt-breches-outils { display: none; margin-top: 4px; }
+#mt-breches-outils.actif { display: block; }
+.mt-grille { display: grid; grid-template-columns: 1fr 1fr; gap: 0 4px; }
+#mt-breches-texte { margin-top: 4px; font-size: 10px; line-height: 1.35; color: #ddd; word-break: break-all; }
+
 /* ---------- Le banc 3D (mode test) ----------
    Par-dessus tout, combat compris. Invisible tant que
    js/modetest.js ne lui pose pas la classe "actif". */
@@ -719,3 +728,15 @@ button { font-family: inherit; }
 .pop-titre { font-weight: 700; font-size: 15px; }
 .pop-lieu { color: #666; font-size: 12px; margin-top: 2px; }
 .pop-mons { margin-top: 6px; }
+
+/* Les breches permanentes (js/brechesjeu.js). L'anneau est un cercle
+   Leaflet pose par-dessus le marqueur de l'arene ; celui d'une breche
+   possedee respire doucement : c'est tout l'effet de possession. */
+.pop-breche { margin-top: 6px; color: #b455d4; font-weight: 600; }
+.breche-note { color: #b455d4; }
+.breche-anneau { pointer-events: none; }
+.breche-possedee { pointer-events: none; animation: breche-lueur 2.4s ease-in-out infinite; }
+@keyframes breche-lueur {
+  0%, 100% { stroke-opacity: 0.95; fill-opacity: 0.25; }
+  50%      { stroke-opacity: 0.45; fill-opacity: 0.08; }
+}
