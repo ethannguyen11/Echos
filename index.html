@@ -63,6 +63,7 @@
     </select>
   </label>
   <button id="btn-banc-3d" class="mt-bouton">Banc 3D</button>
+  <button id="btn-banc-trace" class="mt-bouton">Banc de tracé</button>
   <!-- Les breches permanentes (js/brechesjeu.js). Les outils ne
        s'affichent que sur "Breches : Oui" ; ils ecrivent sous
        echos_breches_test_v1 et echos_breches_test_jours, jamais
@@ -101,6 +102,23 @@
     <button id="btn-banc-perte">Simuler perte WebGL</button>
     <button id="btn-banc-fermer">Fermer</button>
   </div>
+</div>
+
+<!-- Le banc de trace, ouvert depuis le panneau du mode test, et
+     seulement de la. Rempli par js/modetest.js (textes via txt()) ;
+     la reconnaissance est dans js/trace.js. Rien n'est sauvegarde :
+     l'historique ne vit qu'en memoire. -->
+<div id="banc-trace">
+  <div id="banc-trace-titre" class="mt-titre"></div>
+  <div id="banc-trace-consigne"></div>
+  <canvas id="banc-trace-cadre"></canvas>
+  <div id="banc-trace-resultat"></div>
+  <div id="banc-trace-scores"></div>
+  <div class="banc-3d-ligne">
+    <button id="btn-trace-effacer"></button>
+    <button id="btn-trace-fermer"></button>
+  </div>
+  <div id="banc-trace-historique"></div>
 </div>
 
 <div id="hud">
