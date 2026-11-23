@@ -301,6 +301,7 @@ return {
   nettoyer: nettoyer,
   reechantillonner: reechantillonner,
   normaliser: normaliser,
+  distanceNuage: distanceNuage,
   distanceTraces: distanceTraces,
   distanceChemin: distanceChemin,
   distanceGlyphe: distanceGlyphe,

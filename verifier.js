@@ -69,7 +69,8 @@ function ligne(ok, texte, detail) {
 titre("1. Syntaxe des fichiers");
 
 FICHIERS.concat(["verifier/tests.js", "verifier/parcours.js", "verifier/breches.js",
-                 "verifier/mutations-breches.js"]).forEach(function (f) {
+                 "verifier/mutations-breches.js", "verifier/trace.js",
+                 "verifier/mutations-trace.js"]).forEach(function (f) {
   try {
     new vm.Script(lire(f), { filename: f });
     ligne(true, f);
@@ -447,6 +448,31 @@ try {
   });
 } catch (e) {
   ligne(false, "les tests des breches n'ont pas pu aller au bout", e.message);
+}
+
+
+/* ------------------------------------------------------------
+   8. LE TRACE DES SORTS
+   verifier/trace.js : la reconnaissance (js/trace.js) et le banc
+   de trace du mode test. La preuve que ces tests savent echouer :
+   node verifier/mutations-trace.js
+   ------------------------------------------------------------ */
+
+titre("8. Trace des sorts");
+
+try {
+  var testsTrace = require("./verifier/trace.js").lancerTestsTrace();
+  var sectionTrace = "";
+
+  testsTrace.forEach(function (r) {
+    if (r.section !== sectionTrace) {
+      sectionTrace = r.section;
+      console.log(GRIS + "  [" + sectionTrace + "]" + NORMAL);
+    }
+    ligne(r.ok, r.quoi, r.detail);
+  });
+} catch (e) {
+  ligne(false, "les tests du trace n'ont pas pu aller au bout", e.message);
 }
 
 
