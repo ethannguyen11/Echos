@@ -1271,6 +1271,75 @@ var BRECHES_TERRAINS_ESSAI  = 4;
 
 
 /* ============================================================
+   LE TRACE DES SORTS (js/trace.js) : BANC D'ESSAI SEULEMENT
+
+   Reconnaitre un signe trace au doigt. Rien n'est branche dans le
+   jeu : seul le banc de trace du mode test s'en sert, pour mesurer
+   la sensation et la fiabilite sur le telephone.
+   ============================================================ */
+
+/* La reconnaissance (famille "$P", voir js/trace.js).
+   TRACE_POINTS         points apres reechantillonnage
+   TRACE_EPSILON        0 a 1 : plus bas = plus de points de depart
+                        essayes (plus juste, plus lent)
+   TRACE_POINTS_MIN     points bruts minimum, sinon "trop_court"
+   TRACE_TAILLE_MIN     pixels : le plus grand cote du trace, sinon
+                        "trop_court" (un tapotement n'est pas un signe)
+   TRACE_SEUIL_RECONNU  sous ce score, le meilleur glyphe n'est pas
+                        "reconnu" (le score reste affiche). Un
+                        gribouillis au hasard plafonne vers 0.25. */
+var TRACE_POINTS        = 32;
+var TRACE_EPSILON       = 0.5;
+var TRACE_POINTS_MIN    = 6;
+var TRACE_TAILLE_MIN    = 40;
+var TRACE_SEUIL_RECONNU = 0.35;
+
+/* Le banc. Un trace est termine quand le doigt reste leve
+   TRACE_DELAI_FIN millisecondes : la croix se fait en deux traits.
+   L'historique (en memoire seulement, jamais sauve) garde les
+   TRACE_HISTORIQUE_MAX derniers traces. */
+var TRACE_DELAI_FIN       = 700;
+var TRACE_HISTORIQUE_MAX  = 20;
+var TRACE_EPAISSEUR       = 6;      // pixels CSS du trait dessine
+
+/* LA BIBLIOTHEQUE DES GLYPHES.
+     id         identifiant stable
+     cleNom     le nom affiche, via txt() (js/langues.js)
+     tolerance  la distance qui donne un score de 0 : score =
+                1 - distance / tolerance. Plus haute = plus indulgente.
+                Calibrees sur des traces de synthese (BANC A FAIRE SUR
+                IPHONE) : entre un trace tremblant et un gribouillis.
+     ordre      true : le trace doit aussi suivre le chemin du modele
+                (la spirale : vue comme un nuage, elle ressemble trop
+                a un gribouillis). D'ou sa tolerance bien plus haute :
+                ce n'est pas la meme distance.
+     miroir     true : le reflet gauche-droite est accepte (une
+                spirale tourne dans les deux sens)
+     deblocage  PREVU, PAS BRANCHE : la condition pour l'apprendre en
+                jeu. null = connu d'office. Rien ne le lit encore.
+     traits     les points modeles, [x, y] de 0 a 100, y vers le bas ;
+                un tableau par trait (la croix en a deux). */
+var GLYPHES = [
+  { id: "cercle", cleNom: "trace.glyphe.cercle", tolerance: 0.15, ordre: false, miroir: false, deblocage: null,
+    traits: [[[50, 0], [69, 4], [85, 15], [96, 31], [100, 50], [96, 69], [85, 85], [69, 96], [50, 100],
+              [31, 96], [15, 85], [4, 69], [0, 50], [4, 31], [15, 15], [31, 4], [50, 0]]] },
+  { id: "triangle", cleNom: "trace.glyphe.triangle", tolerance: 0.14, ordre: false, miroir: false, deblocage: null,
+    traits: [[[50, 0], [100, 87], [0, 87], [50, 0]]] },
+  { id: "eclair", cleNom: "trace.glyphe.eclair", tolerance: 0.14, ordre: false, miroir: false, deblocage: null,
+    traits: [[[65, 0], [25, 50], [75, 50], [35, 100]]] },
+  { id: "spirale", cleNom: "trace.glyphe.spirale", tolerance: 0.35, ordre: true, miroir: true, deblocage: null,
+    traits: [[[54, 50], [55, 53], [54, 57], [50, 60], [44, 60], [38, 57], [35, 50], [35, 41], [40, 33],
+              [50, 29], [62, 30], [72, 37], [77, 50], [75, 64], [65, 77], [50, 83], [33, 80], [18, 68],
+              [12, 50], [15, 30], [29, 13], [50, 6], [73, 10], [92, 26], [100, 50]]] },
+  { id: "croix", cleNom: "trace.glyphe.croix", tolerance: 0.14, ordre: false, miroir: false, deblocage: null,
+    traits: [[[50, 0], [50, 100]], [[0, 50], [100, 50]]] },
+  { id: "vague", cleNom: "trace.glyphe.vague", tolerance: 0.16, ordre: false, miroir: false, deblocage: null,
+    traits: [[[0, 50], [6, 34], [13, 28], [19, 34], [25, 50], [31, 66], [38, 72], [44, 66], [50, 50],
+              [56, 34], [63, 28], [69, 34], [75, 50], [81, 66], [88, 72], [94, 66], [100, 50]]] }
+];
+
+
+/* ============================================================
    LE RENDU 3D (EN PREPARATION)
    Le combat affiche aujourd'hui des images 2D. Cette section
    prepare la RECEPTION des modeles 3D : ou ils se trouvent, a
